@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { saveDraft, submitWork } from "@/app/actions";
 import { VersionComparison } from "@/components/writing-diff";
+import { initialWritingState } from "@/lib/writing-state";
 import type { Assignment, DashboardData, Submission } from "@/lib/data";
 import {
   formatKoreanDate,
@@ -77,17 +78,15 @@ function AssignmentEditor({ data, assignment }: WorkEditorProps) {
     (row) =>
       row.assignment_id === assignment.id && row.student_id === data.profile.id,
   );
-  const initialContent: Content = {
-    title: initialDraft?.title ?? ownSubmissions[0]?.title ?? "",
-    body: initialDraft?.body ?? ownSubmissions[0]?.body ?? "",
-  };
+  const initial = initialWritingState(initialDraft, ownSubmissions[0]);
+  const initialContent: Content = initial.content;
 
   const [content, setContent] = useState<Content>(initialContent);
   const [saveState, setSaveState] = useState<SaveState>(
-    initialDraft ? "saved" : "empty",
+    initial.savedAt ? "saved" : "empty",
   );
   const [savedAt, setSavedAt] = useState<string | null>(
-    initialDraft?.updated_at ?? null,
+    initial.savedAt,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);

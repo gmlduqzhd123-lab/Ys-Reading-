@@ -4,6 +4,8 @@ import Link from "next/link";
 import { bookSchema, koreanDay, type Book } from "@/lib/hub";
 import type { HubData, ReadingLog } from "@/lib/hub-data";
 import { ClassField, Empty, Field, HubForm, Panel, string } from "./shared";
+import { PaperBook } from "@/components/paper-book";
+import { Plus, ArrowDownRight, ArrowRight, PenLine } from "lucide-react";
 export function Bookshelf({ data }: { data: HubData }) {
   const [query, setQuery] = useState(""),
     [books, setBooks] = useState<Book[]>([]),
@@ -15,6 +17,15 @@ export function Bookshelf({ data }: { data: HubData }) {
   const [formVersion, setFormVersion] = useState(0);
   const teacher = data.profile.role === "teacher";
   const [filter, setFilter] = useState("");
+  const ownSubmissions = data.submissions.filter((s) => s.student_id === data.profile.id);
+  const currentDraft = data.drafts.filter((d) => d.student_id === data.profile.id && (d.title.trim() || d.body.trim()) &&
+    !ownSubmissions.some((s) => s.assignment_id === d.assignment_id && Date.parse(s.created_at) >= Date.parse(d.updated_at) && s.status !== "revision_requested"))
+    .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0];
+  const recentWork = currentDraft ?? ownSubmissions.toSorted((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  const editor = useRef<HTMLDetailsElement>(null);
+  const compose = () => {
+    if (editor.current) { editor.current.open = true; editor.current.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  };
   async function search() {
     controller.current?.abort();
     const request = new AbortController();
@@ -46,7 +57,25 @@ export function Bookshelf({ data }: { data: HubData }) {
   }
   return (
     <>
+      <section className="paper-reading-gallery" aria-label={teacher ? "우리 교실의 책장" : "나의 책장"}>
+        <div className="paper-section-heading"><h2>{teacher ? "우리 교실의 책장" : "나의 책장"}</h2><span>최근 독서 기록</span></div>
+        {data.logs.length > 0 ? <div className="paper-book-grid">
+          {data.logs.slice(0, 3).map((l, i) => <a key={l.id} href={`#reading-${l.id}`} className="paper-book-link">
+            <PaperBook key={l.book.thumbnail} title={l.book.title} author={l.book.author} thumbnail={l.book.thumbnail} tone={i} />
+            <h3>{l.book.title}</h3><p>{l.book.author || "저자 미입력"}</p><span className={`status-pill ${l.verified_at ? "completed" : ""}`}>{l.verified_at ? "확인 완료" : l.status === "completed" ? "완독 · 확인 대기" : "읽는 중"}</span>
+          </a>)}
+        </div> : <div className="paper-empty-shelf"><span aria-hidden="true"><Plus size={28} strokeWidth={1} /></span><h3>한 권에서 시작하는 나의 이야기</h3><p>{teacher ? "학생이 기록을 남기면 이곳에 우리 교실의 책장이 채워집니다." : "읽은 책과 떠오른 생각을 남겨 보세요. 나만의 책장이 천천히 채워집니다."}</p></div>}
+        {!teacher && <button className="paper-new-record" onClick={compose}><Plus size={18} />새 독서 기록 남기기 <ArrowDownRight size={16} /></button>}
+      </section>
+      {!teacher && <section className="paper-writing-preview">
+        <div><span className="eyebrow">A SENTENCE OF MY OWN</span><h2>{currentDraft ? "쓰고 있는 이야기" : "나의 글 한 편"}</h2>
+          <h3>{recentWork?.title || "한 문장에서 시작해 볼까요?"}</h3><p>{recentWork?.body || "배정받은 독서미션에서 나의 생각을 글로 남겨 보세요."}</p>
+          <Link href={recentWork ? `/app/work/${recentWork.assignment_id}` : "/app"} className="paper-text-link">{currentDraft ? "이어서 쓰기" : recentWork ? "작품·피드백 보기" : "독서미션 시작하기"}<ArrowRight size={15} /></Link></div>
+        <PenLine size={52} strokeWidth={.65} aria-hidden="true" />
+      </section>}
       {!teacher && (
+        <details ref={editor} id="reading-editor" className="paper-record-editor">
+          <summary>독서 기록 쓰기·수정하기 <Plus size={18} /></summary>
         <Panel title="어떤 책을 읽었나요?">
           <p>
             책을 검색해 선택하거나 직접 입력하세요. 한 권에 여러 날의 생각을
@@ -215,6 +244,7 @@ export function Bookshelf({ data }: { data: HubData }) {
             </button>
           )}
         </Panel>
+        </details>
       )}
       <Panel title={teacher ? "우리 반 독서 기록 확인" : "나의 독서 기록"}>
         <label className="field">
@@ -235,7 +265,7 @@ export function Bookshelf({ data }: { data: HubData }) {
             ),
           )
           .map((l) => (
-            <article className="hub-record" key={l.id}>
+            <article className="hub-record" id={`reading-${l.id}`} key={l.id}>
               <div className="hub-row">
                 <h3>{l.book.title}</h3>
                 <span className="status-pill">
@@ -267,7 +297,7 @@ export function Bookshelf({ data }: { data: HubData }) {
                   onClick={() => {
                     setEdit(l);
                     setBook(null);
-                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    compose();
                   }}
                 >
                   기록 수정

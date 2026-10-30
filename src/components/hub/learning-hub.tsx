@@ -5,6 +5,8 @@ import { Bookshelf } from "./bookshelf";
 import { Character, Economy } from "./growth-economy";
 import { Management, Plaza } from "./community";
 import { Exports } from "./exports";
+import { PaperGrowth } from "./paper-growth";
+import { ArrowRight, PenLine } from "lucide-react";
 import type { HubData } from "@/lib/hub-data";
 export function LearningHub({
   data,
@@ -52,20 +54,25 @@ export function LearningHub({
   }, []);
   return (
     <div className="learning-hub">
+      <div className="paper-breadcrumb"><Link href="/">나의 책숲</Link><span>/</span>{tabs.find(([id]) => id === tab)?.[1]}</div>
       <div className="workspace-heading">
         <div>
-          <span className="eyebrow">READ · WRITE · GROW TOGETHER</span>
+          <span className="eyebrow">MY READING JOURNAL</span>
           <h1>
             {teacher
-              ? "함께 자라는 우리 교실"
-              : `${data.profile.display_name}의 책장`}
+              ? "함께 읽고, 함께 자라는 교실."
+              : "읽은 만큼, 자라는 나."}
           </h1>
-          <p>읽은 책 한 권, 고쳐 쓴 한 문장. 나의 작은 숲이 자라요.</p>
+          <p>{teacher ? "작은 생각을 발견하고, 다음 문장을 응원해 주세요." : `${data.profile.display_name} 님, 오늘의 한 문장을 책숲에 남겨 보세요.`}</p>
+          {data.classes.length > 0 && <span className="paper-class-label">{data.classes[0].name}{data.classes.length > 1 ? ` 외 ${data.classes.length - 1}개 학급` : ""}</span>}
         </div>
-        <Link className="button button-outline" href="/app">
-          독서미션·글쓰기 활동
-        </Link>
-        {teacher && <Link className="button button-outline" href="/operations">학생 계정·기록 관리</Link>}
+        <div className="button-row">
+          {!teacher && tab === "reading" && data.profile.consent_status === "verified" && <button className="button button-primary" onClick={() => {
+            const editor = document.getElementById("reading-editor");
+            if (editor instanceof HTMLDetailsElement) { editor.open = true; editor.scrollIntoView({ behavior: "smooth", block: "start" }); }
+          }}><PenLine size={16} />독서 기록 쓰기</button>}
+          <Link className={teacher ? "button button-primary" : "paper-text-link"} href={teacher ? "/operations" : "/app"}>{teacher ? "학생 계정·기록 관리" : "미션 이어하기"}<ArrowRight size={15} /></Link>
+        </div>
       </div>
       <nav className="workspace-tabs" aria-label="책장과 성장 메뉴">
         {tabs.map(([id, label]) => (
@@ -104,7 +111,7 @@ export function LearningHub({
             </>
           ) : (
             <>
-              {tab === "reading" && <Bookshelf data={data} />}{" "}
+              {tab === "reading" && <div className="paper-dashboard"><div className="paper-main"><Bookshelf data={data} /></div><PaperGrowth data={data} /></div>}
               {tab === "exports" && (
                 <Exports key={data.page} data={data} google={google} />
               )}

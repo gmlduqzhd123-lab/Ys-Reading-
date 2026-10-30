@@ -181,8 +181,7 @@ export function Workspace({
             {teacher ? "A CLASSROOM OF GROWING MINDS" : "YOUR LITTLE FOREST"}
           </span>
           <h1>
-            {data.profile.display_name}
-            {teacher ? " 선생님의 교실" : "의 책숲"}
+            {teacher ? `${data.profile.display_name.replace(/\s*선생님$/, "")} 선생님의 교실` : `${data.profile.display_name}의 책숲`}
           </h1>
           <p>
             {teacher

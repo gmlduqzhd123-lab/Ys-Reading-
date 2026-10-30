@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ForestScene } from "@/components/forest-scene";
+import Image from "next/image";
 import { LoginForm } from "@/components/login-form";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentProfile } from "@/lib/auth";
@@ -28,7 +28,7 @@ export default async function LoginPage({
             <br />
             오늘의 이야기가 기다려요.
           </p>
-          <ForestScene compact />
+          <Image className="paper-login-rabbit" src="/images/paper-rabbit.png" width={280} height={280} sizes="(max-width: 760px) 180px, 280px" alt="책을 읽는 토끼" />
         </div>
         <div className="login-form-wrap">
           <span className="eyebrow">WELCOME BACK</span>

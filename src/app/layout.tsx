@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Shell } from "@/components/shell";
 import "./globals.css";
+import "./paper-gallery.css";
+import { Noto_Serif_KR } from "next/font/google";
+const literary = Noto_Serif_KR({ weight: "variable", subsets: ["latin"], display: "swap", preload: false, variable: "--font-literary" });
 
 export const metadata: Metadata = {
   title: { default: "책숲 — 생각이 자라는 독서 여행", template: "%s | 책숲" },
@@ -13,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={literary.variable}>
       <body>
         <Shell>{children}</Shell>
       </body>
