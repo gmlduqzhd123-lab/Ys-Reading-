@@ -4,7 +4,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { getCurrentProfile } from "./auth";
 import { accountReady } from "./account-access";
 import { seal, unseal } from "./token-box";
-import { csvText, docxBytes, type ExportBundle } from "./export-documents";
+import { docxBytes, type ExportBundle } from "./export-documents";
+import { xlsxBytes } from "./export-spreadsheet";
 const TOKEN = "bookforest_google",
   STATE = "bookforest_google_state";
 interface GoogleToken {
@@ -104,16 +105,25 @@ export async function googleStart(uid: string) {
   }).forEach(([k, v]) => url.searchParams.set(k, v));
   return url.toString();
 }
-export async function googleCallback(uid: string, code: string, state: string) {
+async function consumeState(uid: string, state: string) {
   const c = config();
   if (!c) throw new Error("GOOGLE_NOT_CONFIGURED");
   const jar = await cookies();
   const raw = jar.get(STATE)?.value;
   jar.delete(STATE);
   if (!raw) throw new Error("GOOGLE_STATE_INVALID");
-  const saved = unseal<GoogleState>(raw, c.key, "google-state");
+  let saved: GoogleState;
+  try { saved = unseal<GoogleState>(raw, c.key, "google-state"); }
+  catch { throw new Error("GOOGLE_STATE_INVALID"); }
   if (saved.uid !== uid || saved.nonce !== state || saved.expires < Date.now())
     throw new Error("GOOGLE_STATE_INVALID");
+  return { c, jar, saved };
+}
+export async function googleCancel(uid: string, state: string) {
+  await consumeState(uid, state);
+}
+export async function googleCallback(uid: string, code: string, state: string) {
+  const { c, jar, saved } = await consumeState(uid, state);
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -148,11 +158,14 @@ async function access(uid: string) {
   const jar = await cookies();
   const raw = jar.get(TOKEN)?.value;
   if (!raw) throw new Error("GOOGLE_CONNECT_REQUIRED");
-  let token = unseal<GoogleToken>(raw, c.key, `google-token:${uid}`);
+  let token: GoogleToken;
+  try { token = unseal<GoogleToken>(raw, c.key, `google-token:${uid}`); }
+  catch { throw new Error("GOOGLE_CONNECT_REQUIRED"); }
   if (token.uid !== uid) throw new Error("GOOGLE_CONNECT_REQUIRED");
   if (token.expires < Date.now() + 60000) {
     if (!token.refresh_token) throw new Error("GOOGLE_CONNECT_REQUIRED");
-    const response = await fetch("https://oauth2.googleapis.com/token", {
+    let response: Response;
+    try { response = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -163,7 +176,9 @@ async function access(uid: string) {
       }),
       signal: AbortSignal.timeout(15000),
       cache: "no-store",
-    });
+    }); } catch { throw new Error("GOOGLE_DRIVE_BUSY"); }
+    if (response.status === 429 || response.status >= 500)
+      throw new Error("GOOGLE_DRIVE_BUSY");
     const result = await response.json();
     if (!response.ok || typeof result.access_token !== "string")
       throw new Error("GOOGLE_CONNECT_REQUIRED");
@@ -180,12 +195,16 @@ async function access(uid: string) {
   return token;
 }
 async function drive(token: GoogleToken, path: string, init: RequestInit = {}) {
-  const response = await fetch(`https://www.googleapis.com/${path}`, {
+  let response: Response;
+  try { response = await fetch(`https://www.googleapis.com/${path}`, {
     ...init,
     headers: { ...init.headers, Authorization: `Bearer ${token.access_token}` },
     signal: AbortSignal.timeout(20000),
     cache: "no-store",
-  });
+  }); } catch { throw new Error("GOOGLE_DRIVE_BUSY"); }
+  if (response.status === 401) throw new Error("GOOGLE_CONNECT_REQUIRED");
+  if (response.status === 403) throw new Error("GOOGLE_DRIVE_FORBIDDEN");
+  if (response.status === 429 || response.status >= 500) throw new Error("GOOGLE_DRIVE_BUSY");
   if (!response.ok) throw new Error("GOOGLE_DRIVE_FAILED");
   return response.json();
 }
@@ -227,7 +246,7 @@ export async function googleExport(
     }));
   const boundary = `bookforest_${randomBytes(16).toString("hex")}`;
   const type = spreadsheet
-    ? "text/csv"
+    ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   const metadata = {
     name: bundle.title,
@@ -238,7 +257,7 @@ export async function googleExport(
     appProperties: { bookforest_request: requestId, fingerprint },
   };
   const content = spreadsheet
-    ? Buffer.from(csvText(bundle))
+    ? await xlsxBytes(bundle)
     : await docxBytes(bundle);
   if (content.length > 4 * 1024 * 1024) throw new Error("EXPORT_TOO_LARGE");
   const body = Buffer.concat([

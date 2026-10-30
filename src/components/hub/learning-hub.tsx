@@ -12,10 +12,12 @@ export function LearningHub({
   data,
   initialTab,
   google,
+  googleNotice,
 }: {
   data: HubData;
   initialTab?: string;
   google: { configured: boolean; connected: boolean };
+  googleNotice?: string;
 }) {
   const teacher = data.profile.role === "teacher";
   const tabs = [
@@ -113,7 +115,7 @@ export function LearningHub({
             <>
               {tab === "reading" && <div className="paper-dashboard"><div className="paper-main"><Bookshelf data={data} /></div><PaperGrowth data={data} /></div>}
               {tab === "exports" && (
-                <Exports key={data.page} data={data} google={google} />
+                <Exports key={data.page} data={data} google={google} googleNotice={googleNotice} />
               )}
               {tab === "growth" && <Character data={data} />}
               {tab === "plaza" && <Plaza data={data} />}

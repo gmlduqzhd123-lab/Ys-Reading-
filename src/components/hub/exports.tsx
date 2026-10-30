@@ -3,12 +3,15 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { HubData } from "@/lib/hub-data";
 import { Empty, Panel } from "./shared";
+import { googleCallbackNotice } from "@/lib/google-errors";
 export function Exports({
   data,
   google,
+  googleNotice,
 }: {
   data: HubData;
   google: { configured: boolean; connected: boolean };
+  googleNotice?: string;
 }) {
   const router = useRouter();
   const [kind, setKind] = useState<"reading" | "writing" | "drafts">("reading"),
@@ -18,6 +21,8 @@ export function Exports({
     [url, setUrl] = useState(""),
     [busy, setBusy] = useState(false),
     [includeNames, setIncludeNames] = useState(false);
+  const [requiresReconnect, setRequiresReconnect] = useState(false);
+  const connectionNotice = googleCallbackNotice(googleNotice, google.connected && !requiresReconnect);
   const key = useRef<Record<string, string>>({});
   const rows =
     kind === "reading"
@@ -68,6 +73,7 @@ export function Exports({
       });
       if (!response.ok) {
         const error = await response.json();
+        if (error.requiresReconnect === true) setRequiresReconnect(true);
         throw new Error(error.error ?? "내보내지 못했어요.");
       }
       if (format.startsWith("google-")) {
@@ -104,6 +110,7 @@ export function Exports({
   }
   return (
     <>
+      {connectionNotice && <p className="notice" role="status">{connectionNotice}</p>}
       <Panel title="내 기록을 파일로 간직하기">
         <p>
           선택한 순서로 독서 기록장이나 작품집을 만듭니다. 내보낸 파일은 지금
@@ -112,6 +119,7 @@ export function Exports({
         <label className="field">
           기록 종류
           <select
+            disabled={busy}
             value={kind}
             onChange={(e) => {
               setKind(e.target.value as typeof kind);
@@ -127,6 +135,7 @@ export function Exports({
         <label className="field">
           기록장·작품집 제목
           <input
+            disabled={busy}
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
@@ -139,6 +148,7 @@ export function Exports({
         <label className="hub-check">
           <input
             type="checkbox"
+            disabled={busy}
             checked={includeNames}
             onChange={(e) => {
               setIncludeNames(e.target.checked);
@@ -152,6 +162,7 @@ export function Exports({
           <label className="hub-check hub-record" key={r.id}>
             <input
               type="checkbox"
+              disabled={busy}
               checked={selected.includes(r.id)}
               onChange={(e) => {
                 setSelected((old) =>
@@ -225,9 +236,9 @@ export function Exports({
                 학교의 Google 연결을 준비하고 있어요. Word·인쇄·PDF·CSV 저장은
                 계속 이용할 수 있습니다.
               </div>
-            ) : !google.connected ? (
+            ) : !google.connected || requiresReconnect ? (
               <a className="button button-primary" href="/api/google/connect">
-                교사 Google 계정 연결
+                {requiresReconnect ? "Google 계정 다시 연결" : "교사 Google 계정 연결"}
               </a>
             ) : (
               <>
@@ -247,8 +258,10 @@ export function Exports({
                   >
                     Google Sheets로 저장
                   </button>
+                  {!busy && <a className="button button-outline" href="/api/google/connect">Google 계정 다시 연결</a>}
                   <button
                     className="button button-outline"
+                    disabled={busy}
                     onClick={async () => {
                       const r = await fetch("/api/google/disconnect", {
                         method: "POST",

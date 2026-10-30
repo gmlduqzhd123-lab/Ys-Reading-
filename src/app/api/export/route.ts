@@ -10,6 +10,7 @@ import {
 } from "@/lib/export-documents";
 import { googleExport } from "@/lib/google-drive";
 import { sameOrigin } from "@/lib/request-origin";
+import { googleExportFailure } from "@/lib/google-errors";
 export async function POST(r: NextRequest) {
   if (!sameOrigin(r))
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 403 });
@@ -37,7 +38,7 @@ export async function POST(r: NextRequest) {
         input.format === "google-sheets",
         input.requestId,
       );
-      return NextResponse.json({ url: result.webViewLink });
+      return NextResponse.json({ url: result.webViewLink }, { headers: { "Cache-Control": "private, no-store" } });
     }
     const type =
       input.format === "docx"
@@ -66,6 +67,8 @@ export async function POST(r: NextRequest) {
       },
     });
   } catch (error) {
+    const googleError = googleExportFailure(error);
+    if (googleError) return NextResponse.json(googleError.body, { status: googleError.status, headers: { "Cache-Control": "private, no-store" } });
     const code = error instanceof Error ? error.message : "";
     return NextResponse.json(
       {

@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   profile: null as Profile | null,
   start: vi.fn(),
   callback: vi.fn(),
+  cancel: vi.fn(),
   disconnect: vi.fn(),
   search: vi.fn(),
   load: vi.fn(),
@@ -13,6 +14,7 @@ vi.mock("@/lib/auth", () => ({ getCurrentProfile: async () => state.profile }));
 vi.mock("@/lib/google-drive", () => ({
   googleStart: state.start,
   googleCallback: state.callback,
+  googleCancel: state.cancel,
   googleDisconnect: state.disconnect,
   googleExport: vi.fn(),
 }));
@@ -42,6 +44,8 @@ beforeEach(() => {
     session_fresh: true,
   };
   state.start.mockResolvedValue("https://accounts.google.com/o/oauth2/v2/auth");
+  state.callback.mockReset();
+  state.cancel.mockReset();
 });
 describe("external API gates after account/session changes", () => {
   it.each([
@@ -87,5 +91,17 @@ describe("external API gates after account/session changes", () => {
   it("allows a ready teacher to start their own OAuth flow", async () => {
     expect((await connect()).status).toBe(307);
     expect(state.start).toHaveBeenCalledWith("teacher");
+  });
+  it("returns a canceled OAuth flow to exports without exposing its state", async () => {
+    const r = await callback(new NextRequest("http://127.0.0.1:3086/api/google/callback?error=access_denied&state=opaque-state"));
+    expect(state.cancel).toHaveBeenCalledWith("teacher", "opaque-state");
+    expect(r.status).toBe(307);
+    expect(r.headers.get("location")).toBe("http://127.0.0.1:3086/hub?tab=exports&google=cancelled");
+  });
+  it("returns an expired callback to a safe reconnect page", async () => {
+    state.callback.mockRejectedValue(new Error("GOOGLE_STATE_INVALID"));
+    const r = await callback(new NextRequest("http://127.0.0.1:3086/api/google/callback?code=private-code&state=opaque-state"));
+    expect(r.headers.get("location")).toBe("http://127.0.0.1:3086/hub?tab=exports&google=expired");
+    expect(r.headers.get("location")).not.toContain("private-code");
   });
 });
