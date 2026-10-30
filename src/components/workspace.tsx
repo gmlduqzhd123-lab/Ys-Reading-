@@ -435,11 +435,21 @@ export function Workspace({
 function ClassManagement({ data }: { data: DashboardData }) {
   return (
     <>
+      <section className="panel" style={{ marginBottom: 22 }}>
+        <h2>우리 반 시작 순서</h2>
+        <ol>
+          <li>학급을 만든 뒤 아래 학급의 ‘학생 계정 발급·동의 확인’으로 이동해요.</li>
+          <li>담당 교사가 계정을 발급하고 학생이 첫 비밀번호를 변경해요. 발급된 학생은 해당 학급에 자동 연결됩니다.</li>
+          <li>교사가 확인한 참여 동의 근거를 제출하고 운영자가 승인해요.</li>
+          <li>독서미션을 배정하고 독서 기록·제출 글을 확인하면 경험치와 학급 화폐가 지급돼요.</li>
+        </ol>
+        <Link className="text-link" href="/hub?tab=economy">경제 교실에서 보상 기준·상품 준비하기 <ArrowRight size={14} /></Link>
+      </section>
       <div className="teacher-forms">
         <section className="panel">
           <h2>우리 반 만들기</h2>
           <p className="form-help">
-            학생 연결과 계정 발급은 현재 운영자가 진행합니다.
+            학급을 만든 뒤 담당 교사가 학생 계정을 발급할 수 있어요.
           </p>
           <Form action={createClassroom} submitLabel="학급 만들기">
             <div className="field">
@@ -499,7 +509,7 @@ function ClassManagement({ data }: { data: DashboardData }) {
           data.classes.map((c) => (
             <div className="class-row" key={c.id}>
               <strong>{c.name}</strong>
-              <small className="class-code">운영자 연결 ID: {c.id}</small>
+              <Link className="button button-outline" href={`/operations?classroom=${c.id}`}>학생 계정 발급·동의 확인</Link>
             </div>
           ))
         )}

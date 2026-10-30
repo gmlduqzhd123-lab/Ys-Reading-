@@ -1,6 +1,6 @@
 # 계정·참여·기록 운영
 
-2026-10-31 추가: 초기 운영자는 소유자가 원격 DB에 이메일 등록을 예약하고, 실제 이메일 인증 뒤 권한을 받는 경로도 사용할 수 있다. 공개 배포는 보류했으며 현재 로컬 주소·Google 설정·검증 경계는 [LOCAL-ACCOUNT-GOOGLE.md](LOCAL-ACCOUNT-GOOGLE.md)를 우선한다.
+2026-10-31 추가: 초기 운영자는 소유자가 원격 DB에 이메일 등록을 예약하고, 실제 이메일 인증 뒤 권한을 받는 경로도 사용할 수 있다. 공개 배포는 후속 승인으로 진행했다. 주소·Google 설정·검증 경계는 [LOCAL-ACCOUNT-GOOGLE.md](LOCAL-ACCOUNT-GOOGLE.md), 가상 계정으로 확인한 학급 운영 흐름과 개선은 [CLASSROOM-JOURNEY-QA.md](CLASSROOM-JOURNEY-QA.md)를 따른다.
 
 2026-10-30 구현. 실제 학습 기능은 `/hub`, 교사 운영 화면은 `/operations`, 본인 상태와 비밀번호 변경은 `/account`에서 이용한다. 학교에서 실제 교사 신원·보호자 동의 근거를 확인하는 절차는 화면 구현으로 대신하지 않는다.
 

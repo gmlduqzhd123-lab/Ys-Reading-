@@ -43,14 +43,16 @@ function credentials(
 export function OperationsPanel({
   state,
   asOf,
+  initialClassId,
 }: {
   state: OperationsState;
   asOf: string;
+  initialClassId?: string;
 }) {
   const router = useRouter();
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
-  const [classId, setClassId] = useState(state.classes[0]?.id ?? "");
+  const [classId, setClassId] = useState(initialClassId ?? state.classes[0]?.id ?? "");
   const cls = state.classes.find((c) => c.id === classId);
   const students = state.students.filter((s) => s.classroom_id === classId);
   const [batch, setBatch] = useState<AccountInput | null>(null);
@@ -146,6 +148,15 @@ export function OperationsPanel({
       {!cls && <p>먼저 ‘학급 초대·연결’에서 학급을 만들어 주세요.</p>}
       {cls && (
         <>
+          <section className="ops-card">
+            <h2>{cls.name} · 학습 시작 준비</h2>
+            <p>계정 {students.length}명 · 비밀번호 변경 대기 {students.filter((s) => s.must_change_password).length}명 · 동의 확인 대기 {students.filter((s) => s.consent_status !== "verified").length}명</p>
+            <p>발급된 학생은 이 학급에 자동 연결됩니다. 별도의 초대 코드 입력 없이 비밀번호 변경과 동의 승인을 마치면 활동을 시작할 수 있어요.</p>
+            <div className="ops-actions">
+              <Link className="button button-outline" href="/app?view=classes">다음: 독서미션 배정</Link>
+              <Link className="button button-outline" href="/hub?tab=economy">학급 보상·상점 준비</Link>
+            </div>
+          </section>
           <section className="ops-card">
             <h2>학생 계정 한 번에 발급</h2>
             <p>

@@ -1,4 +1,6 @@
 "use client";
+import { useState } from "react";
+import { classroomStudents } from "@/lib/classroom-roster";
 import {
   activityLabels,
   badgeLabels,
@@ -142,6 +144,8 @@ export function Character({ data }: { data: HubData }) {
 }
 export function Economy({ data }: { data: HubData }) {
   const teacher = data.profile.role === "teacher";
+  const [adjustClassId, setAdjustClassId] = useState(data.classes[0]?.id ?? "");
+  const recipients = classroomStudents(data.students, data.enrollments, adjustClassId);
   const name = (id: string) =>
     String(
       data.settings.find((s) => s.classroom_id === id)?.currency_name ?? "책잎",
@@ -212,8 +216,8 @@ export function Economy({ data }: { data: HubData }) {
                 <HubForm
                   command="shop_buy"
                   payload={() => ({ id: item.id })}
-                  disabled={!item.active || Number(item.stock) < 1}
-                  label="구매 예약하기"
+                  disabled={!item.active || Number(item.stock) < 1 || (data.totals.balances[item.classroom_id] ?? 0) < Number(item.price)}
+                  label={!item.active ? "판매 중지" : Number(item.stock) < 1 ? "품절" : (data.totals.balances[item.classroom_id] ?? 0) < Number(item.price) ? "학급 화폐 부족" : "구매 예약하기"}
                 />
               )}
             </article>
@@ -299,21 +303,28 @@ export function Economy({ data }: { data: HubData }) {
       </Panel>
       {teacher && (
         <Panel title="화폐 지급·조정">
+          <label className="field">
+            지급할 학급
+            <select value={adjustClassId} required onChange={(e) => setAdjustClassId(e.target.value)}>
+              {data.classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
           <HubForm
+            key={adjustClassId}
             command="wallet_adjust"
+            disabled={!recipients.length}
             payload={(f) => ({
-              classroomId: string(f, "classroomId"),
+              classroomId: adjustClassId,
               id: string(f, "studentId"),
               amount: Number(f.get("amount")),
               reason: string(f, "reason"),
             })}
           >
-            <ClassField classes={data.classes} />
             <label className="field">
               학생
-              <select name="studentId" required>
-                {data.students
-                  .filter((p) => p.role === "student")
+              <select key={adjustClassId} name="studentId" required>
+                <option value="">학생을 선택해 주세요</option>
+                {recipients
                   .map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.display_name}
@@ -321,6 +332,7 @@ export function Economy({ data }: { data: HubData }) {
                   ))}
               </select>
             </label>
+            {!recipients.length && <p>선택한 학급에 활동 중인 학생이 없습니다. 학생 계정·학급 연결 상태를 확인해 주세요.</p>}
             <Field
               name="amount"
               label="지급액 · 차감은 음수"

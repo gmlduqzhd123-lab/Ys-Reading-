@@ -158,11 +158,20 @@ export function Management({ data }: { data: HubData }) {
   const teacher = data.profile.role === "teacher";
   if (!teacher)
     return (
-      <Panel title="우리 학급 연결 신청">
+      <Panel title="나의 학급 연결">
+        {data.classes.length > 0 && (
+          <>
+            <p>연결된 학급: {data.classes.map((c) => c.name).join(", ")}</p>
+            <Link className="button button-outline" href="/app">배정받은 독서미션 보기</Link>
+          </>
+        )}
         <p>
-          발급받은 계정으로 로그인한 뒤 선생님의 초대 코드를 입력하세요. 동의
-          확인과 교사의 승인을 마치면 학급 활동을 사용할 수 있어요.
+          선생님이 발급한 학생 계정은 해당 학급에 자동 연결됩니다. 초대 코드를
+          다시 입력할 필요 없이 비밀번호 변경과 참여 동의 승인을 마치면 활동할 수 있어요.
         </p>
+        <details>
+          <summary>초대 코드로 다른 학급에 연결 신청</summary>
+          <p>담당 선생님이 별도로 초대 코드를 안내한 경우에만 신청해 주세요.</p>
         <HubForm
           command="join_class"
           payload={(f) => ({ code: string(f, "code") })}
@@ -170,6 +179,7 @@ export function Management({ data }: { data: HubData }) {
         >
           <Field name="code" label="학급 초대 코드" maxLength={36} />
         </HubForm>
+        </details>
         {data.requests.map((r) => (
           <p key={r.id}>
             연결 신청:{" "}

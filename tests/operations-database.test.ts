@@ -290,6 +290,18 @@ describe("Account and record operations: authorization, session cutoff and delet
       ready: false,
     });
   });
+  it("accepts today's Korean consent date independently of the caller timezone and rejects tomorrow", async () => {
+    await db.exec("set local timezone='Pacific/Pago_Pago'");
+    const dates = await one(`select
+      to_char(now() at time zone 'Asia/Seoul','YYYY-MM-DD') today,
+      to_char((now() at time zone 'Asia/Seoul') + interval '1 day','YYYY-MM-DD') tomorrow`);
+    await actor(t);
+    const input = { studentId: s, classroomId: c, method: "paper", reference: "가상 날짜 검증" };
+    await denied("select public.operations_command('consent_request',$1,$2)",
+      [{ ...input, confirmedOn: dates.tomorrow }, randomUUID()], "BF_INVALID_INPUT");
+    expect(await cmd("consent_request", { ...input, confirmedOn: dates.today })).toHaveProperty("id");
+    expect((await one("show timezone")).TimeZone).toBe("Pacific/Pago_Pago");
+  });
   it("requires operator evidence confirmation to verify consent", async () => {
     await owner();
     await db.query(
