@@ -14,6 +14,7 @@ const schema = z.object({
   password: z.string().min(12).max(128),
   classroomId: z.string().uuid().optional(),
   testFixture: z.boolean().default(false),
+  operator: z.boolean().default(false),
 }).strict();
 
 async function readInput() {
@@ -30,6 +31,7 @@ async function main() {
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error("MISSING_SERVER_CONFIGURATION");
   const input = await readInput();
+  if (input.operator && input.role !== "teacher") throw new Error("OPERATOR_MUST_BE_TEACHER");
   if (input.role === "teacher" && !input.email) throw new Error("TEACHER_EMAIL_REQUIRED");
   if (input.role === "student" && !input.loginId) throw new Error("STUDENT_LOGIN_ID_REQUIRED");
   if (input.testFixture && (process.env.BOOKFOREST_ALLOW_TEST_FIXTURES !== "true" || !input.displayName.startsWith("테스트"))) {
@@ -50,6 +52,7 @@ async function main() {
     const { error: profileError } = await supabase.from("profiles").upsert({
       id, display_name: input.displayName, role: input.role,
       consent_status: input.role === "student" && input.testFixture ? "verified" : "pending",
+      must_change_password: input.role === "student",
     }, { onConflict: "id" });
     if (profileError) throw new Error("PROFILE_CREATION_FAILED");
     if (input.role === "student" && input.classroomId) {
@@ -57,6 +60,10 @@ async function main() {
         classroom_id: input.classroomId, student_id: id, active: true,
       });
       if (enrollmentError) throw new Error("ENROLLMENT_CREATION_FAILED");
+    }
+    if (input.operator) {
+      const { error: operatorError } = await supabase.rpc("bootstrap_operator", { p_user_id: id });
+      if (operatorError) throw new Error("OPERATOR_SETUP_FAILED");
     }
   } catch (error) {
     const cleanup = await supabase.auth.admin.deleteUser(id);

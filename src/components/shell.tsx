@@ -82,6 +82,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <GraduationCap size={20} />
           우리 교실
         </Link>
+        <Link href="/account" className="nav-link" onClick={() => setOpen(false)}>
+          <GraduationCap size={20} />계정·참여 관리
+        </Link>
         <Link
           href="/guide"
           className={`nav-link ${pathname === "/guide" ? "active" : ""}`}

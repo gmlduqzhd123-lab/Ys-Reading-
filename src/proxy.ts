@@ -40,6 +40,8 @@ export const config = {
   matcher: [
     "/app/:path*",
     "/hub/:path*",
+    "/account/:path*",
+    "/operations/:path*",
     "/login",
     "/auth/:path*",
     "/api/books",

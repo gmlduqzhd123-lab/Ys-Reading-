@@ -65,6 +65,7 @@ export function LearningHub({
         <Link className="button button-outline" href="/app">
           독서미션·글쓰기 활동
         </Link>
+        {teacher && <Link className="button button-outline" href="/operations">학생 계정·기록 관리</Link>}
       </div>
       <nav className="workspace-tabs" aria-label="책장과 성장 메뉴">
         {tabs.map(([id, label]) => (

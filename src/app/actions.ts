@@ -48,9 +48,10 @@ async function actor(requiredRole?: "student" | "teacher", needsConsent = true) 
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) throw new ActionFailure("로그인이 필요해요. 다시 로그인해 주세요.");
   const { data, error: profileError } = await supabase.from("profiles")
-    .select("id,display_name,role,consent_status").eq("id", user.id).maybeSingle();
+    .select("id,display_name,role,consent_status,account_active,must_change_password").eq("id", user.id).maybeSingle();
   if (profileError || !data) throw new ActionFailure("계정 준비 상태를 확인해 주세요. 선생님 또는 운영자에게 문의해 주세요.");
   const profile = data as Profile;
+  if (profile.account_active === false || profile.must_change_password) throw new ActionFailure("계정 상태 확인 또는 비밀번호 변경이 필요해요. 계정 관리 화면을 열어 주세요.");
   if (requiredRole && profile.role !== requiredRole) throw new ActionFailure("이 작업을 할 수 있는 계정이 아니에요.");
   if (needsConsent && profile.role === "student" && profile.consent_status !== "verified") {
     throw new ActionFailure("보호자 동의 확인을 기다리고 있어요. 선생님에게 문의해 주세요.");
