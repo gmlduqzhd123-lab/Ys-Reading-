@@ -13,7 +13,7 @@ describe("Google Sheets import workbook", () => {
     const sheet = await zip.file("xl/worksheets/sheet1.xml")!.async("string");
     expect(sheet.indexOf("첫째")).toBeLessThan(sheet.indexOf("둘째</t>"));
     expect(sheet).toContain("한글 &amp; &lt;생각&gt; &quot;질문&quot;\n둘째 줄 🌱");
-    expect(sheet).toContain('<c r="D2" s="1" t="inlineStr"><is><t xml:space="preserve">=1+1</t>');
+    expect(sheet).toContain('<c r="D2" s="2" t="inlineStr"><is><t xml:space="preserve">=1+1</t>');
     expect(sheet).not.toMatch(/<f[ >]/);
     expect(await zip.file("xl/workbook.xml")!.async("string")).toContain('name="책숲 기록"');
   });
@@ -26,5 +26,9 @@ describe("Google Sheets import workbook", () => {
     expect(sheet).toContain('ht="409"');
     expect(styles).toContain('wrapText="1"');
     expect(styles).toContain('rgb="FF70586D"');
+    // Importers treat style zero as the workbook default, so the header must use its own style.
+    expect(styles).toContain('<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>');
+    expect(sheet).toContain('<c r="A1" s="1"');
+    expect(sheet).toContain('<c r="A2" s="2"');
   });
 });
