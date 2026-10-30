@@ -203,6 +203,11 @@ export function Workspace({
           로그아웃
         </button>
       </div>
+      <p>
+        <Link className="button button-outline" href="/hub">
+          나의 책장 · 기록 내보내기 · 캐릭터 · 광장 · 경제 교실
+        </Link>
+      </p>
       {data.profile.role === "student" &&
         data.profile.consent_status !== "verified" && (
           <div className="notice">
@@ -812,7 +817,16 @@ function ContestCard({
       s.status === "completed" &&
       s.student_id === data.profile.id &&
       data.assignments.some(
-        (a) => a.id === s.assignment_id && a.classroom_id === c.classroom_id,
+        (a) =>
+          a.id === s.assignment_id &&
+          (c.group_id
+            ? data.gradeMembers?.some(
+                (m) =>
+                  m.group_id === c.group_id &&
+                  m.classroom_id === a.classroom_id &&
+                  m.approved,
+              )
+            : a.classroom_id === c.classroom_id),
       ),
   );
   return (
@@ -830,7 +844,10 @@ function ContestCard({
       <h3>{c.title}</h3>
       <p style={{ whiteSpace: "pre-wrap" }}>{c.description}</p>
       <div className="contest-meta">
-        {data.classes.find((x) => x.id === c.classroom_id)?.name}
+        {c.group_id
+          ? (data.gradeGroups?.find((g) => g.id === c.group_id)?.name ??
+            "우리 학년 글쓰기")
+          : data.classes.find((x) => x.id === c.classroom_id)?.name}
         <br />
         시작 {formatKoreanDate(c.opens_at)}
         <br />

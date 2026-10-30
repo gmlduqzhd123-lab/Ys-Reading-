@@ -20,8 +20,9 @@ import {
 const links = [
   { href: "/", label: "오늘의 책숲", icon: House },
   { href: "/missions", label: "독서미션", icon: Compass },
-  { href: "/app?view=forest", label: "나의 책숲", icon: Sprout },
-  { href: "/app?view=contests", label: "글쓰기 축제", icon: Trophy },
+  { href: "/hub", label: "나의 책장", icon: BookOpen },
+  { href: "/hub?tab=growth", label: "캐릭터·배지", icon: Sprout },
+  { href: "/app?view=contests", label: "우리 반·학년 글쓰기", icon: Trophy },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -135,11 +136,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   ? "독서미션"
                   : pathname.startsWith("/app")
                     ? "우리 교실"
-                    : pathname === "/login"
-                      ? "로그인"
-                      : pathname === "/guide"
-                        ? "사용 안내"
-                        : "둘러보기"}
+                    : pathname.startsWith("/hub")
+                      ? "나의 책장"
+                      : pathname === "/login"
+                        ? "로그인"
+                        : pathname === "/guide"
+                          ? "사용 안내"
+                          : "둘러보기"}
             </span>
           </div>
           <div className="topbar-right">

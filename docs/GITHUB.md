@@ -1,6 +1,6 @@
 # GitHub 소스 연결
 
-2026-10-30 사용자가 지정한 저장소는 [gmlduqzhd123-lab/Ys-Reading-](https://github.com/gmlduqzhd123-lab/Ys-Reading-)이며 기본 브랜치는 `main`이다. 연결 범위는 소스·개발 문서·GitHub Actions 검사다. Vercel·Supabase의 프로젝트 연결과 배포는 이후에 진행한다.
+2026-10-30 사용자가 지정한 저장소는 [gmlduqzhd123-lab/Ys-Reading-](https://github.com/gmlduqzhd123-lab/Ys-Reading-)이며 기본 브랜치는 `main`이다. 소스·개발 문서·GitHub Actions 검사를 연결했다. 이후 사용자가 선택한 Supabase 개발 프로젝트에 DB 구조와 미션을 반영했다. 웹 호스팅 배포는 별도 단계다. 최신 기능·검증 범위는 `FOUR-STAGES.md`와 `VERIFICATION.md`를 참고한다.
 
 프로젝트 파일은 저장소 루트에 둔다. 다른 컴퓨터에서 가져오려면 이 공개 저장소에 접근할 수 있는 GitHub 계정으로 인증한 뒤 아래 순서로 실행한다.
 

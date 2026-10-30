@@ -7,19 +7,27 @@ export async function proxy(request: NextRequest) {
   const config = getSupabaseConfig();
   const privateHeaders = {
     "Cache-Control": "private, no-cache, no-store, must-revalidate, max-age=0",
-    "Expires": "0",
-    "Pragma": "no-cache",
+    Expires: "0",
+    Pragma: "no-cache",
   };
-  Object.entries(privateHeaders).forEach(([key, value]) => response.headers.set(key, value));
+  Object.entries(privateHeaders).forEach(([key, value]) =>
+    response.headers.set(key, value),
+  );
   if (!config) return response;
   const supabase = createServerClient(config.url, config.key, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet, cacheHeaders) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value),
+        );
         response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        Object.entries({ ...privateHeaders, ...cacheHeaders }).forEach(([key, value]) => response.headers.set(key, value));
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options),
+        );
+        Object.entries({ ...cacheHeaders, ...privateHeaders }).forEach(
+          ([key, value]) => response.headers.set(key, value),
+        );
       },
     },
   });
@@ -28,4 +36,14 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/app/:path*", "/login", "/auth/:path*"] };
+export const config = {
+  matcher: [
+    "/app/:path*",
+    "/hub/:path*",
+    "/login",
+    "/auth/:path*",
+    "/api/books",
+    "/api/export",
+    "/api/google/:path*",
+  ],
+};
