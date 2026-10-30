@@ -6,9 +6,9 @@
 
 ## 현재 구현
 
-2026-10-31 공개 재배포: 사용자의 후속 승인으로 기존 Vercel `reading`에 Production 환경 변수 7개와 공개 인증 콜백을 설정했습니다. [공개 책숲](https://reading-blush-zeta.vercel.app)에서 `configured=true`, 실제 운영자 Google 로그인과 관리 화면 접근을 확인했습니다. Google Drive 콜백은 등록했고 첫 공개 요청의 반영 상태를 재확인 중입니다. 상세한 검증 범위는 [검증 기록](docs/VERIFICATION.md)을 따릅니다.
+2026-10-31 공개 재배포: 사용자의 후속 승인으로 기존 Vercel `reading`에 Production 환경 변수 7개와 공개 인증 콜백을 설정했습니다. [공개 책숲](https://reading-blush-zeta.vercel.app)에서 `configured=true`, 실제 운영자 Google 로그인과 관리 화면 접근을 확인했습니다. Google Drive 콜백은 등록했지만 Google의 콜백 오류·승인 로딩으로 공개 연결 완료는 확인하지 못했습니다. 상세한 검증 범위는 [검증 기록](docs/VERIFICATION.md)을 따릅니다.
 
-2026-10-31: **교사·운영자의 Google·이메일 로그인과 최초 운영자 등록**을 추가했습니다. 이메일 소유 확인 후 서버에 예약된 대상만 운영자로 등록되며, 클라이언트가 역할이나 복귀 주소를 지정할 수 없습니다. Google 로컬 인증 설정 도구도 추가했습니다. Google 로그인과 Drive 내보내기 연결은 각각 확인합니다. 사용자의 결정에 따라 웹 공개 배포·Vercel 연동은 보류합니다. [로컬 계정·Google 연결 안내](docs/LOCAL-ACCOUNT-GOOGLE.md)를 확인하세요.
+2026-10-31: **교사·운영자의 Google·이메일 로그인과 최초 운영자 등록**을 추가했습니다. 이메일 소유 확인 후 서버에 예약된 대상만 운영자로 등록되며, 클라이언트가 역할이나 복귀 주소를 지정할 수 없습니다. Google 로컬 인증 설정 도구도 추가했습니다. Google 로그인과 Drive 내보내기 연결은 각각 확인합니다. 초기 계정 준비 때 보류했던 공개 배포는 위 운영 설정 단계에서 재개했습니다. [계정·Google 연결 안내](docs/LOCAL-ACCOUNT-GOOGLE.md)를 확인하세요.
 
 실제 운영자 계정의 Google 로그인·운영자 등록·관리 화면 접근과 Google Drive 연결을 확인했습니다. 현재 기록이 없어 Google Docs·Sheets 실제 파일 생성은 아직 확인하지 않았습니다. 테스트 모드의 로컬 연결이며 공개 서비스 배포를 뜻하지 않습니다.
 

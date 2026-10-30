@@ -1,6 +1,6 @@
 # 로컬 운영 계정과 Google 연결
 
-2026-10-31 기준. 사용자의 후속 승인으로 운영 설정과 공개 재배포를 진행했다. 공개 주소는 `https://reading-blush-zeta.vercel.app`이며 Production 환경 변수·Supabase 기본 주소와 허용 콜백·Google Drive 콜백을 설정했다. 공개 주소의 `configured=true`, 운영자 Google 로그인과 관리 화면 접근을 확인했다. Drive의 첫 공개 요청은 콜백 반영 지연 가능성을 두고 재확인 중이다. 로컬 주소 `http://127.0.0.1:3086`은 이 컴퓨터에서 사용하는 별도 실행 환경이다.
+2026-10-31 기준. 사용자의 후속 승인으로 운영 설정과 공개 재배포를 진행했다. 공개 주소는 `https://reading-blush-zeta.vercel.app`이며 Production 환경 변수·Supabase 기본 주소와 허용 콜백·Google Drive 콜백을 설정했다. 공개 주소의 `configured=true`, 운영자 Google 로그인과 관리 화면 접근을 확인했다. 공개 Drive는 등록값과 요청값이 일치하지만 반복 요청에서 콜백 오류와 승인 로딩이 발생해 연결 완료를 확인하지 못했다. 로컬 주소 `http://127.0.0.1:3086`은 이 컴퓨터에서 사용하는 별도 실행 환경이다.
 
 실제 운영자 1명의 Google 로그인·확인 완료 이메일·운영자 등록과 `/operations` 접근을 확인했다. 같은 계정의 Google Drive 동의와 앱의 **Google 연결됨**도 확인했다. 현재 기록이 없어 실제 Google Docs·Sheets 파일 생성은 아직 검사하지 않았다. 실제 학생·학급은 만들지 않았다.
 
@@ -12,18 +12,17 @@ Supabase Auth의 Google 제공자를 활성화한 환경에서는 같은 로그�
 
 프로젝트 소유자는 신뢰된 관리 연결로 `private.operator_email_invitations`에 이메일·표시 이름·만료 시각을 예약한다. 예약은 GitHub의 SQL 파일에 실제 이메일을 넣지 않고 원격 DB에만 기록한다. 최초 예약은 유효기간 7일로 준비했고 본인 확인 후 소비 완료됐다. `complete_operator_email_setup()`은 **Auth의 실제 확인 완료 이메일**, 계정 상태, 미소비·미만료 예약을 대조한다. 학생으로 발급받거나 학급에 등록된 계정은 운영자로 전환하지 않는다. 일반 가입자·사용자 편집 metadata·다른 이메일은 권한을 얻지 못한다. 이미 소비된 예약은 소유자가 나중에 회수한 운영자 권한을 복구하지 않는다.
 
-Supabase Auth URL Configuration은 다음 로컬 값으로 맞췄다.
+Supabase Auth URL Configuration의 현재 설정은 다음과 같다.
 
-- Site URL: `http://127.0.0.1:3086`
-- 허용 Redirect URL: `http://127.0.0.1:3086/auth/callback`
-
-위 값은 로컬 준비 시점의 설정이다. 공개 재배포 후 Site URL은 `https://reading-blush-zeta.vercel.app`이며 허용 Redirect URL에는 로컬 주소와 `https://reading-blush-zeta.vercel.app/auth/callback`이 함께 있다.
+- Site URL: `https://reading-blush-zeta.vercel.app`
+- 허용 공개 Redirect URL: `https://reading-blush-zeta.vercel.app/auth/callback`
+- 허용 로컬 Redirect URL: `http://127.0.0.1:3086/auth/callback`
 
 인증 메일 발송은 실제 소유 확인을 위한 요청이다. 메일 발송 성공만으로 로그인이나 운영자 등록 완료를 표시하지 않는다. 브라우저를 바꾸면 PKCE 확인 정보가 없어 다시 요청해야 할 수 있다. 메일의 링크·코드·비밀번호는 채팅에 전달하지 않는다. 실제 등록 완료 여부는 DB의 예약 소비 시각과 운영자 레지스트리, 앱 운영 화면으로 확인한다.
 
 이번 실제 이메일 로그인에서는 `otp_expired`와 재요청 발송 제한이 확인됐다. 만료 원인을 추측해 확정하지 않으며 반복 발송하지 않는다. Google 본인 확인 경로를 추가해 메일 요청 없이 로그인할 수 있게 했다. 동의 화면 도착과 실제 계정 활성화는 별도로 확인한다.
 
-## Google 로컬 설정
+## Google 공통 설정과 환경별 콜백
 
 - Google Cloud 프로젝트: **Bookforest Reading** (`ys-reading-bookforest`).
 - OAuth 앱: **책숲 Bookforest**, 외부 사용자·테스트 모드.
@@ -46,7 +45,7 @@ node scripts/configure-google.mjs <다운로드한-클라이언트-JSON-경로> 
 
 책숲 계정에 로그인하는 Google 동의(이름·프로필·이메일)와 Drive 내보내기 동의(`drive.file`)는 목적과 범위가 다르다. 로그인 성공만으로 Drive 연결 완료를 표시하지 않는다.
 
-Drive 연결은 로그인한 교사와 이 브라우저에 묶인 암호화 쿠키로 유지된다. 다른 브라우저에서 사용하거나 연결이 만료·해제된 경우 다시 연결한다. Google 앱은 현재 테스트 모드이며 공개 배포나 일반 사용자 공개 승인을 완료한 상태가 아니다.
+Drive 연결은 로그인한 교사와 이 브라우저에 묶인 암호화 쿠키로 유지된다. 다른 브라우저에서 사용하거나 연결이 만료·해제된 경우 다시 연결한다. Google OAuth 앱은 현재 테스트 모드이며 일반 사용자 공개 승인은 완료하지 않았다.
 
 Vercel Production에는 실제 Supabase URL·publishable key, 공개 앱 URL, Google 클라이언트 ID·비밀키·토큰 암호화 키, `GOOGLE_AUTH_ENABLED=true`를 등록했다. 비밀키 두 항목은 Secret이며 운영 암호화 키는 로컬과 다르다. 로컬 `.env.local`은 덮어쓰지 않는다. 웹앱 호스팅 배포와 Google OAuth 앱의 테스트 모드/일반 사용자 공개 승인은 서로 다른 상태다.
 
@@ -58,4 +57,4 @@ npm run check
 npm run start -- --port 3086
 ```
 
-공개 배포를 재개하면 확정한 HTTPS 주소를 앱의 `NEXT_PUBLIC_APP_URL`, Supabase Auth Site/Redirect URL, Google OAuth 콜백에 함께 반영한다. 로컬 콜백이 그대로 공개 배포에 적용된 것으로 간주하지 않는다.
+운영 주소를 변경하면 확정한 HTTPS 주소를 앱의 `NEXT_PUBLIC_APP_URL`, Supabase Auth Site/Redirect URL, Google OAuth 콜백에 함께 반영한다. 로컬 콜백이 그대로 공개 배포에 적용된 것으로 간주하지 않는다.
