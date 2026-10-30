@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
+import { accountReady } from "@/lib/account-access";
 import {
   exportSchema,
   loadExportBundle,
@@ -13,7 +14,10 @@ export async function POST(r: NextRequest) {
   if (!sameOrigin(r))
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 403 });
   const p = await getCurrentProfile();
-  if (!p || (p.role === "student" && p.consent_status !== "verified"))
+  if (
+    !accountReady(p) ||
+    (p.role === "student" && p.consent_status !== "verified")
+  )
     return NextResponse.json(
       { error: "참여 가능한 계정으로 로그인해 주세요." },
       { status: 401 },

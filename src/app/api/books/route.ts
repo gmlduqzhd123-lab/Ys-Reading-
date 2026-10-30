@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
+import { accountReady } from "@/lib/account-access";
 import { searchBooks } from "@/lib/book-search";
 export async function GET(request: NextRequest) {
   const profile = await getCurrentProfile();
   if (
-    !profile ||
+    !accountReady(profile) ||
     (profile.role === "student" && profile.consent_status !== "verified")
   )
     return NextResponse.json(

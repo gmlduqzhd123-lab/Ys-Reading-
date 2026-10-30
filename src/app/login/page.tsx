@@ -3,8 +3,14 @@ import { ForestScene } from "@/components/forest-scene";
 import { LoginForm } from "@/components/login-form";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentProfile } from "@/lib/auth";
+import { TeacherEmailLogin } from "@/components/teacher-email-login";
 export const metadata = { title: "내 교실 입장" };
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
+  const notice = (await searchParams).notice;
   const configured = isSupabaseConfigured();
   if (configured && (await getCurrentProfile())) redirect("/app");
   return (
@@ -36,6 +42,13 @@ export default async function LoginPage() {
             </div>
           )}
           <LoginForm configured={configured} />
+          {notice === "email-link" && (
+            <p role="alert" className="notice">
+              이메일 링크가 만료되었거나 다른 브라우저에서 열렸어요. 이
+              브라우저에서 로그인 링크를 다시 요청해 주세요.
+            </p>
+          )}
+          <TeacherEmailLogin configured={configured} />
         </div>
       </div>
     </>

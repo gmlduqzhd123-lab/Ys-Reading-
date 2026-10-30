@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
+import { accountReady } from "@/lib/account-access";
 import { googleStart } from "@/lib/google-drive";
 export async function GET() {
   const p = await getCurrentProfile();
-  if (!p || p.role !== "teacher")
+  if (!accountReady(p) || p.role !== "teacher")
     return NextResponse.json(
       { error: "교사 계정으로 로그인해 주세요." },
       { status: 403 },

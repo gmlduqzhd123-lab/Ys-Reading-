@@ -101,6 +101,7 @@ export const operationLabels: Record<string, string> = {
   change_password: "본인 비밀번호 변경",
   delete_account: "삭제 완료",
   operator_assigned_by_owner: "운영자 지정",
+  operator_email_verified: "이메일 확인 후 운영자 등록",
 };
 export const statusLabels: Record<string, string> = {
   pending: "확인 대기",

@@ -2747,3 +2747,4 @@ button {
 .ops-record{border-top:1px solid #e2e9df;padding:14px 0}.ops-subpanel{background:#f3f7ed;padding:18px;border-radius:12px;margin-top:18px}.ops-subpanel .button{margin:4px}
 .ops-subpanel code{overflow-wrap:anywhere;user-select:all}.muted{color:#5e6e63;font-size:14px}
 @media(max-width:600px){.ops-card{padding:18px}.ops-card h2{font-size:20px}.ops-actions .button{width:100%;justify-content:center}.ops-table{min-width:640px}.operations-page h1{font-size:28px}}
+.teacher-email-login{margin-top:26px;border-top:1px solid #dce5d8;padding-top:20px}.teacher-email-login summary{cursor:pointer;font-weight:700;color:#355a42}.teacher-email-login p{line-height:1.7}.teacher-email-login form{display:grid;gap:12px}.teacher-email-login input{font:inherit;padding:12px;border:1px solid #cbd8c7;border-radius:8px;width:100%}

@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import { getCurrentProfile } from "./auth";
+import { accountReady } from "./account-access";
 import { seal, unseal } from "./token-box";
 import { csvText, docxBytes, type ExportBundle } from "./export-documents";
 const TOKEN = "bookforest_google",
@@ -55,7 +56,7 @@ export async function googleConnectionState() {
   const ready = Boolean(config());
   if (!ready) return { configured: false, connected: false };
   const profile = await getCurrentProfile();
-  if (!profile || profile.role !== "teacher")
+  if (!accountReady(profile) || profile.role !== "teacher")
     return { configured: true, connected: false };
   try {
     const raw = (await cookies()).get(TOKEN)?.value;

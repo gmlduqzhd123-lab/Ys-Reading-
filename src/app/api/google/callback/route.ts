@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
+import { accountReady } from "@/lib/account-access";
 import { googleCallback } from "@/lib/google-drive";
 import { appOrigin } from "@/lib/request-origin";
 export async function GET(r: NextRequest) {
   const p = await getCurrentProfile();
-  if (!p || p.role !== "teacher")
+  if (!accountReady(p) || p.role !== "teacher")
     return NextResponse.json(
       { error: "연결을 시작한 교사 계정으로 다시 로그인해 주세요." },
       { status: 403 },
