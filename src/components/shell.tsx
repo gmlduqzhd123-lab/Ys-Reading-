@@ -32,6 +32,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const more = useRef<HTMLDetailsElement>(null);
   const close = () => { setOpen(false); if (more.current) more.current.open = false; };
   useEffect(() => {
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
+  useEffect(() => {
     if (!open) return;
     const escape = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); toggle.current?.focus(); } };
     document.addEventListener("keydown", escape);
@@ -55,6 +58,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link className="paper-mobile-account" href="/account" onClick={close}>계정·참여 관리</Link>
         </nav>
         <div className="paper-header-actions">
+          {/* 엽쌤의 다른 앱과 같은 상단 버튼: public/ys-install.js, public/ys-qr.js 가 연결합니다 */}
+          <button type="button" className="ys-chip" data-ys-install="">📲 <span className="ys-wide">앱 </span>설치</button>
+          <button type="button" className="ys-chip" data-qr="" aria-label="QR 코드로 접속">📱 QR</button>
           <Link className="paper-account" href="/account" onClick={close} aria-label="나의 계정"><UserRound size={17} strokeWidth={1.4} /><span>나의 계정</span></Link>
           <button ref={toggle} className="paper-menu-button" aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
             aria-expanded={open} aria-controls="primary-navigation" onClick={() => setOpen(!open)}>
@@ -67,6 +73,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <footer className="page-footer">
           <Link href="/" className="paper-footer-brand">책숲 <span>읽고, 생각하고, 함께 자라요.</span></Link>
           <div><Link href="/guide">사용 안내 <ArrowUpRight size={12} /></Link><Link href="/guide#privacy">개인정보와 작품 공개 안내</Link></div>
+          <p className="ys-credit">© 2026 엽쌤. All rights reserved. · <a href="https://gmlduqzhd123-lab.github.io/YScode/">엽쌤의 다른 앱 보기 →</a></p>
         </footer>
       </div>
     </div>
