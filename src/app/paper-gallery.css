@@ -44,6 +44,11 @@ select:focus-visible, summary:focus-visible, .learning-hub :focus-visible {
 .paper-account { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; white-space: nowrap; }
 .paper-account > svg { box-sizing: content-box; padding: 9px; border: 1px solid var(--line); border-radius: 50%; color: var(--green); }
 .paper-menu-button, .paper-navigation .paper-mobile-account { display: none; }
+.ys-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: #57534f; font-size: 12px; white-space: nowrap; cursor: pointer; }
+.ys-chip:hover { border-color: var(--green); color: var(--green-dark); }
+.paper-shell .page-footer { flex-wrap: wrap; }
+.ys-credit { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--muted); }
+.ys-credit a { text-decoration: underline; }
 .paper-breadcrumb { display: flex; align-items: center; gap: 14px; font-size: 11px; color: #77716b; margin: 0 0 28px; }
 .paper-breadcrumb span { color: #b9afa6; }
 .paper-shell .page-footer { max-width: 1480px; margin: 0 auto; padding: 28px 52px; font-size: 11px; color: var(--muted); align-items: center; }
@@ -247,6 +252,8 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
   .paper-brand > svg { width: 22px; }
   .paper-account > span { display: none; }
   .paper-header-actions { gap: 6px; }
+  .ys-wide { display: none; }
+  .ys-chip { padding: 0 9px; }
   .paper-shell .main-content { padding: 24px 20px 40px; }
   .paper-breadcrumb { font-size: 10px; margin-bottom: 18px; }
   .paper-home-intro { padding: 14px 0 34px; }
