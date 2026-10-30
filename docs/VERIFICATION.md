@@ -1,5 +1,25 @@
 # 책숲 개발 검증 기록
 
+## 2026-10-31 · Production 환경 설정과 공개 주소 재배포
+
+사용자가 환경 변수·인증 콜백 등록과 재배포를 명시적으로 승인해 이전 배포 보류를 해제했다. 대상은 기존 Vercel `reading` 프로젝트와 `https://reading-blush-zeta.vercel.app`이다.
+
+- **원격 설정:** Production 전용 환경 변수 7개를 등록했다. Supabase URL·publishable key, 앱 URL, Google 클라이언트 ID·로그인 활성화는 일반 설정이며 Google 비밀키·32바이트 토큰 암호화 키는 Secret으로 저장했다. Preview/Development에 운영 값을 등록하지 않았다. 운영 암호화 키는 로컬 키와 별도로 생성했다. 서비스 관리자 키는 Next 서버에 등록하지 않는다.
+- **인증 주소:** Supabase Site URL을 공개 HTTPS 주소로 저장하고 정확한 `/auth/callback`을 추가했다. 기존 로컬 콜백도 유지한다. Google 웹 OAuth 클라이언트에는 정확한 공개 `/api/google/callback`을 추가하고 저장된 입력값을 재조회했다. Supabase 제공자용 콜백은 그대로 유지한다.
+- **배포:** 검사 완료 소스 `24f2febe539ddbcd5f6f3a250a36c2cec676c6c2`로 production 재배포 `dpl_DG3FyvaFgymLnaSSmNUQK7fXUrw6`가 Ready와 기본 도메인 연결 완료를 반환했다. 공개 `/api/health` HTTP 200·`configured=true`, `/login`의 연결 준비 안내 제거·Google 로그인 버튼 표시를 확인했다.
+- **공개 주소의 실제 계정:** Google 로그인 → Supabase → 공개 PKCE 콜백 → `/account`가 성공했고, 확인된 운영자 계정의 사용 가능 상태와 `/operations` 운영자 기능·기존 이력 조회를 확인했다. DB에는 사용자 1명·운영자 1명, 확인 완료 이메일·소비 완료 초대가 유지된다.
+- **운영 보호:** 익명 도서 검색은 401, Google 연결은 403. 익명 `/account`·`/operations`는 Next 스트리밍 응답의 로그인 이동 메타 태그를 반환하며 운영자 이름이 없다. 네 경로 모두 private/no-store를 확인했다. 공개 로그인 HTML과 연결된 JS 자산 10개에 Google 비밀키·운영 암호화 키 원문이 없었다. 배포 후 조회한 10분 오류/fatal 로그 집계는 비어 있었다.
+- **자동 검사:** 타입 검사·17개 파일의 229개 검사·프로덕션 빌드를 재확인했다. 학교 기기·실제 수업·실제 학생 자료는 사용하지 않았다.
+- **Drive 확인 진행:** 공개 Google 요청의 클라이언트 ID·`drive.file` 범위·콜백은 저장된 값과 일치한다. 첫 요청은 `redirect_uri_mismatch`를 반환했다. Google 콘솔은 설정 적용에 5분~몇 시간이 걸릴 수 있다고 안내하므로 시간을 두고 다시 확인한다. 실제 파일 생성·토큰 갱신은 별도 검증 대상이다.
+
+## 2026-10-31 · 요청한 Vercel `reading` 프로젝트 연동 확인
+
+- **읽기 전용 확인:** `gmlduqzhd123-labs-projects/reading` 대시보드에서 저장소 `gmlduqzhd123-lab/Ys-Reading-`, production 브랜치 `main`, 커밋 `24f2febe539ddbcd5f6f3a250a36c2cec676c6c2`, 배포 **Ready**를 확인했다. 기존 배포 주소는 `https://reading-blush-zeta.vercel.app`이다. 이번 확인에서 배포·승격·Vercel 설정 변경을 실행하지 않았다.
+- **실제 공개 응답:** `/api/health` HTTP 200, `service=bookforest`, `configured=false`. `/login`도 HTTP 200이지만 ‘교실 연결을 준비하고 있어요’ 안내가 표시되며 Google 로그인 버튼은 없다. Ready는 빌드/호스팅 상태이며 실제 계정·저장·Google 내보내기까지 준비됐다는 뜻이 아니다.
+- **누락 설정:** Vercel Environment Variables에 **No Environment Variables Added**가 표시된다. 운영하려면 Supabase URL·publishable key, 배포용 앱 URL, Google 클라이언트 ID·비밀키·암호화 키·로그인 활성화 설정, Supabase 허용 콜백과 Google Drive 콜백을 배포 주소에 맞춰 준비한 뒤 재배포해야 한다. 로컬의 운영자·Drive 연결 성공이 이 배포에 적용됐다고 간주하지 않는다.
+- **연결 도구 접근:** Vercel MCP는 이 팀 범위를 403으로 거부했지만, 브라우저의 해당 소유자 로그인으로 프로젝트 조회는 성공했다. MCP 권한과 GitHub 프로젝트 연동 상태를 구분한다.
+- **검증 기록 반영:** `main` push가 production 자동 배포를 일으키므로, 기존 공개 배포 보류 지시와 이번 조회 요청 범위에 따라 최신 운영자·Drive·Vercel 검증 문서 변경은 로컬에 준비했다. 새로운 production 배포를 실행하기 전 반영한다.
+
 ## 2026-10-31 · 공개 배포 보류, 로컬 Google·운영 계정 준비
 
 사용자의 명시적 결정으로 웹 공개 배포와 Vercel 연동을 보류했다. 원격 웹 배포를 실행하지 않았다.
@@ -8,10 +28,12 @@
 - **계정 경계:** 정지·첫 비밀번호 변경 필요·이전 세션 상태이면 Google 연결/콜백/해제, 도서 검색과 내보내기 API가 외부 호출 전에 거부된다. 서버와 DB의 기존 계정 제한을 함께 유지한다.
 - **실제 Google Cloud:** 확인된 소유자 계정으로 책숲 전용 `Bookforest Reading` (`ys-reading-bookforest`) 프로젝트, 테스트 모드 OAuth 앱과 로컬 웹 클라이언트를 만들었다. Google Drive API의 ‘사용 설정됨’ 상태와 운영자 이메일의 테스트 사용자 1명 등록을 확인했다. 클라이언트 인증 값은 대상 프로젝트·정확한 콜백을 대조한 후 Git에서 제외된 `.env.local`에만 적용했다. JSON 파일 다운로드의 완료 경로는 확인되지 않아 발급된 클라이언트 화면의 값을 비공개로 읽어 설정했으며 값을 출력하지 않았다.
 - **실제 Supabase:** 운영자 이메일 예약을 원격 DB에 기록하고, Auth URL Configuration을 Site URL `http://127.0.0.1:3086`, 정확한 허용 콜백 `/auth/callback`으로 저장·확인했다. 실제 운영자 이메일 로그인 요청에서 인증 메일 발송 성공 응답을 확인했다. 이메일 발송은 이메일 소유 확인·운영자 등록 완료와 구분한다.
-- **실제 로그인 준비:** 사용자가 Google 제공자 비밀키 입력·저장을 완료했고, Auth 설정 API에서 `external.google=true`를 확인했다. 실제 앱 버튼에서 대상 Google 계정의 이름·프로필·이메일 동의 화면까지 도달했다. 사용자의 동의 후 Google 코드 교환은 `invalid_client`로 실패했고 DB에는 확인 완료 이메일·운영자 등록이 아직 없었다. 지정 클라이언트 ID와 두 콜백이 저장된 것을 확인했다. 로컬 비밀키를 Google 토큰 API에 직접 전달한 비공개 검사에서는 클라이언트 인증 오류 없이 의도적으로 잘못된 코드의 `invalid_grant`를 받았다. Supabase 비밀키 재적용 후 실제 로그인을 다시 확인해야 한다. 앞선 이메일 링크는 `otp_expired`, 재발송은 제한 응답을 반환해 반복 발송하지 않았다. Drive 동의·파일 생성도 아직 확인하지 않았다.
+- **실제 운영자 로그인 완료:** Google 제공자 비밀키를 사용자가 재저장한 뒤 앱의 Google 로그인 → Supabase → PKCE 콜백 → `/account`까지 성공했다. 실제 DB에서 사용자 1명·운영자 1명, Auth 이메일 확인 완료와 초대 소비 완료를 확인했다. `/operations`의 운영자 안내·동의/삭제/교사 권한 관리·운영 이력도 조회했다. 실제 학생 계정이나 실제 학급은 임의로 만들지 않았다.
+- **실제 Google Drive 연결 완료:** 운영자가 `drive.file` 권한을 직접 승인한 뒤 `/api/google/callback`의 코드 교환과 앱 복귀가 성공했다. 내보내기 화면의 **Google 연결됨**과 연결 해제 버튼을 확인했다. 연결은 이 브라우저의 암호화된 교사 쿠키에 보관한다. 현재 계정의 기록 목록이 비어 있으므로 Docs·Sheets 버튼은 비활성화돼 있으며 **실제 Google 파일 생성·재로그인/토큰 갱신은 아직 검증하지 않았다.**
+- **인증 문제 해결 이력:** 앞선 이메일 링크는 `otp_expired`, 재발송은 제한 응답을 반환해 반복 발송하지 않았다. 초기 Google 교환은 `invalid_client`로 실패했다. 지정 클라이언트 ID·두 콜백을 확인하고 비밀키를 비공개로 검사했다. 로컬 키에는 의도적으로 잘못된 코드의 `invalid_grant`, 같은 검사에서 잘못된 키에는 `invalid_client`가 반환됐다. 브라우저/Windows 복사 준비와 사용자 재저장 후 실제 로그인이 성공했다. 저장 전 입력값은 최종 대조하지 못했으므로 특정 붙여넣기 오류를 원인으로 단정하지 않는다.
 - **보안 점검:** 공개 운영자 등록 RPC의 익명 실행을 회수했다. 원격 점검에는 의도된 비공개 RLS 무정책 INFO 2건과 인가된 SECURITY DEFINER RPC 주의 15건이 남았다. 익명 호출 거부와 확인되지 않은 이메일·metadata·다른 사용자로의 등록 차단은 별도 DB 검사로 확인했다.
 
-현재 준비 경로와 실제 이메일 인증·Google OAuth 동의/파일 생성의 구분은 [LOCAL-ACCOUNT-GOOGLE.md](LOCAL-ACCOUNT-GOOGLE.md)에 기록했다. 실제 학생 자료는 이 설정 검증에 사용하지 않았다.
+현재 운영자 로그인·Drive 연결과 아직 확인하지 않은 파일 생성의 구분은 [LOCAL-ACCOUNT-GOOGLE.md](LOCAL-ACCOUNT-GOOGLE.md)에 기록했다. 실제 학생 자료는 이 설정 검증에 사용하지 않았다.
 
 ---
 

@@ -2,11 +2,15 @@
 
 초등학생이 책을 읽고 질문을 만들고 글을 고쳐 쓰는 독서인문교육 웹앱입니다. PRD를 바탕으로 첫 개발 단계를 구현했습니다.
 
-소스 저장소: [gmlduqzhd123-lab/Ys-Reading-](https://github.com/gmlduqzhd123-lab/Ys-Reading-). GitHub에서 소스와 자동 검사 결과를 관리합니다. Supabase 개발 DB 구조·원본 미션을 반영했으며 웹 호스팅은 별도 단계입니다.
+소스 저장소: [gmlduqzhd123-lab/Ys-Reading-](https://github.com/gmlduqzhd123-lab/Ys-Reading-). GitHub에서 소스와 자동 검사 결과를 관리합니다. Supabase 개발 DB 구조·원본 미션을 반영했으며 공개 서버의 운영 설정은 별도 단계입니다.
 
 ## 현재 구현
 
+2026-10-31 공개 재배포: 사용자의 후속 승인으로 기존 Vercel `reading`에 Production 환경 변수 7개와 공개 인증 콜백을 설정했습니다. [공개 책숲](https://reading-blush-zeta.vercel.app)에서 `configured=true`, 실제 운영자 Google 로그인과 관리 화면 접근을 확인했습니다. Google Drive 콜백은 등록했고 첫 공개 요청의 반영 상태를 재확인 중입니다. 상세한 검증 범위는 [검증 기록](docs/VERIFICATION.md)을 따릅니다.
+
 2026-10-31: **교사·운영자의 Google·이메일 로그인과 최초 운영자 등록**을 추가했습니다. 이메일 소유 확인 후 서버에 예약된 대상만 운영자로 등록되며, 클라이언트가 역할이나 복귀 주소를 지정할 수 없습니다. Google 로컬 인증 설정 도구도 추가했습니다. Google 로그인과 Drive 내보내기 연결은 각각 확인합니다. 사용자의 결정에 따라 웹 공개 배포·Vercel 연동은 보류합니다. [로컬 계정·Google 연결 안내](docs/LOCAL-ACCOUNT-GOOGLE.md)를 확인하세요.
+
+실제 운영자 계정의 Google 로그인·운영자 등록·관리 화면 접근과 Google Drive 연결을 확인했습니다. 현재 기록이 없어 Google Docs·Sheets 실제 파일 생성은 아직 확인하지 않았습니다. 테스트 모드의 로컬 연결이며 공개 서비스 배포를 뜻하지 않습니다.
 
 2026-10-30: **교사용 계정·참여·기록 운영**을 추가했습니다. `/operations`에서 학생 계정 일괄 발급·복구, 동의 확인 요청, 보관 기간·삭제 요청을 관리합니다. 운영자는 근거 확인·삭제 승인·실행, 교사 권한과 학급 인계를 처리합니다. `/account`에서 첫 비밀번호 변경, 참여 철회, 전체 계정 삭제 요청을 지원합니다. [운영 안내](docs/ACCOUNT-OPERATIONS.md)를 확인하세요.
 
@@ -62,7 +66,7 @@ npm run start
 
 이 소스가 PRD 전체 또는 실제 학생 운영 준비를 완료했다는 의미는 아닙니다.
 
-- 웹 호스팅 선택·배포, Google OAuth 앱 설정·교사 승인, 실제 운영 계정의 수업 흐름 검증. Supabase 개발 DB의 가상 계정 연결 검증은 완료했습니다.
+- 공개 주소의 Google Drive 연결 최종 확인·실제 기록의 Docs·Sheets 생성, 실제 학급·학생 계정과 수업 흐름 검증. 공개 배포·운영자 로그인, 로컬 Drive 연결과 Supabase 개발 DB의 가상 계정 검증은 완료했습니다.
 - 실제 운영자·교사 계정 준비와 학교의 동의 근거 확인. 관련 운영 화면과 Supabase Auth 연동은 구현했습니다.
 - 기관 모델 확장과 외부 심사위원 배정, 대회 접수본 교체·철회.
 - 결과 확정/공개 단계 분리, 학급 작품 전시·공개 취소·신고 처리.

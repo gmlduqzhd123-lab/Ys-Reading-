@@ -43,4 +43,4 @@
 4. 이 함수는 새 publishable key와 호환되도록 플랫폼의 구형 JWT 검사 대신 **함수 내부 `auth.getUser(bearer token)` 검사**를 사용한다(`verify_jwt=false`). DB는 같은 사용자 JWT로 발급·복구 권한을 다시 검사한다. 인증 없는 호출은 401, 다른 학급 대상은 거부한다. 서비스 키는 승인된 Auth API 처리와 서비스 전용 완료 RPC에만 사용한다.
 5. 정지·재발급·비밀번호 변경 시 `security_cutoff`를 기록하고 서명된 JWT의 `session_id`를 `auth.sessions`의 생성 시각과 대조한다. JWT 만료 전이라도 이전 세션은 학습 RPC·RLS를 통과하지 못한다.
 
-Vercel 연결은 이 Supabase 함수 실행의 전제가 아니다. 교사·학생이 웹앱에 접속할 호스팅은 별도로 필요하며 현재 공개 웹 배포는 아직 수행하지 않았다. Google OAuth 실제 연결, 실제 운영자 계정 준비, 실제 동의 근거 확인, 학교 기기·수업 검증도 별도 확인 대상이다.
+Vercel 연결은 이 Supabase 함수 실행의 전제가 아니다. 사용자의 후속 승인으로 기존 Vercel `reading`의 운영 설정과 공개 재배포를 완료했고 공개 주소에서 실제 운영자 Google 로그인·관리 화면을 확인했다. 로컬 Drive 연결은 확인했고 공개 Drive 연결은 콜백 반영 상태를 재확인 중이다. 실제 Google 파일 생성, 학생 계정·동의 근거 확인, 학교 기기·수업 검증은 별도 확인 대상이다. 최신 상태는 [LOCAL-ACCOUNT-GOOGLE.md](LOCAL-ACCOUNT-GOOGLE.md)를 따른다.
