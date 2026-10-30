@@ -2,7 +2,7 @@
 
 ## 2026-10-31 · 로컬 Google·운영 계정 준비
 
-사용자 결정으로 공개 배포와 Vercel 연동을 보류했다. 이메일 PKCE 로그인·확인된 이메일에 한정한 최초 운영자 등록, Google 클라이언트의 비공개 설정 가져오기 도구를 구현했다. Google Cloud의 책숲 전용 프로젝트·로컬 OAuth 클라이언트·Drive API·테스트 사용자를 준비했다. 실제 이메일 인증·운영자 등록 완료와 Google OAuth 동의·파일 생성 확인은 각각 실제 결과로 구분한다. 상세는 [LOCAL-ACCOUNT-GOOGLE.md](LOCAL-ACCOUNT-GOOGLE.md)와 최신 검증 기록을 따른다.
+사용자 결정으로 공개 배포와 Vercel 연동을 보류했다. Google·이메일 PKCE 로그인·확인된 이메일에 한정한 최초 운영자 등록, Google 클라이언트의 비공개 설정 가져오기 도구를 구현했다. Google Cloud의 책숲 전용 프로젝트·로컬 OAuth 클라이언트·Drive API·테스트 사용자를 준비했고 Supabase Google 제공자 활성화를 확인했다. 실제 운영자 등록 완료와 Google Drive 동의·파일 생성 확인은 각각 실제 결과로 구분한다. 상세는 [LOCAL-ACCOUNT-GOOGLE.md](LOCAL-ACCOUNT-GOOGLE.md)와 최신 검증 기록을 따른다.
 
 ## 2026-10-30 · 다음 개발 묶음: 계정·참여·기록 운영
 

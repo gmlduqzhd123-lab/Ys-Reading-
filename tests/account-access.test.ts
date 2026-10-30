@@ -6,6 +6,8 @@ const state = vi.hoisted(() => ({
   exchange: vi.fn(),
   user: vi.fn(),
   rpc: vi.fn(),
+  oauth: vi.fn(),
+  redirect: vi.fn(),
 }));
 vi.mock("@/lib/supabase/config", () => ({
   isSupabaseConfigured: () => state.configured,
@@ -16,17 +18,33 @@ vi.mock("@/lib/supabase/server", () => ({
       signInWithOtp: state.otp,
       exchangeCodeForSession: state.exchange,
       getUser: state.user,
+      signInWithOAuth: state.oauth,
     },
     rpc: state.rpc,
   }),
 }));
-import { sendTeacherLoginLink } from "../src/app/auth/actions";
+vi.mock("next/navigation", () => ({ redirect: state.redirect }));
+import {
+  sendTeacherLoginLink,
+  startTeacherGoogleLogin,
+} from "../src/app/auth/actions";
 import { GET } from "../src/app/auth/callback/route";
 import { NextRequest } from "next/server";
 beforeEach(() => {
   vi.clearAllMocks();
   state.configured = true;
   process.env.NEXT_PUBLIC_APP_URL = "http://127.0.0.1:3086";
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
+  process.env.GOOGLE_AUTH_ENABLED = "true";
+  state.oauth.mockResolvedValue({
+    data: {
+      url: "https://project.supabase.co/auth/v1/authorize?provider=google",
+    },
+    error: null,
+  });
+  state.redirect.mockImplementation(() => {
+    throw new Error("NEXT_REDIRECT_TEST");
+  });
   state.otp.mockResolvedValue({ error: null });
   state.exchange.mockResolvedValue({ error: null });
   state.user.mockResolvedValue({
@@ -36,6 +54,43 @@ beforeEach(() => {
   state.rpc.mockResolvedValue({ error: null, data: { claimed: true } });
 });
 describe("teacher email entry and callback", () => {
+  it("starts Google sign-in through the configured Supabase project and fixed callback", async () => {
+    await expect(startTeacherGoogleLogin()).rejects.toThrow(
+      "NEXT_REDIRECT_TEST",
+    );
+    expect(state.oauth).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo: "http://127.0.0.1:3086/auth/callback",
+        queryParams: { prompt: "select_account" },
+        skipBrowserRedirect: true,
+      },
+    });
+    expect(state.redirect).toHaveBeenCalledWith(
+      "https://project.supabase.co/auth/v1/authorize?provider=google",
+    );
+  });
+  it("does not advertise a provider before setup is enabled", async () => {
+    process.env.GOOGLE_AUTH_ENABLED = "false";
+    expect((await startTeacherGoogleLogin())?.ok).toBe(false);
+    expect(state.oauth).not.toHaveBeenCalled();
+  });
+  it("rejects a substituted Google sign-in host", async () => {
+    state.oauth.mockResolvedValue({
+      data: { url: "https://untrusted.invalid/auth/v1/authorize" },
+      error: null,
+    });
+    expect((await startTeacherGoogleLogin())?.ok).toBe(false);
+    expect(state.redirect).not.toHaveBeenCalled();
+  });
+  it("reports provider errors without redirecting or claiming a login", async () => {
+    state.oauth.mockResolvedValue({
+      data: { url: null },
+      error: { message: "private" },
+    });
+    expect((await startTeacherGoogleLogin())?.ok).toBe(false);
+    expect(state.redirect).not.toHaveBeenCalled();
+  });
   it("accepts real adult email and rejects internal student IDs", () => {
     expect(teacherEmail.parse("TEACHER@example.com")).toBe(
       "teacher@example.com",

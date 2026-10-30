@@ -2,6 +2,36 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { teacherEmail, teacherCallbackUrl } from "@/lib/account-access";
+import { redirect } from "next/navigation";
+
+export async function startTeacherGoogleLogin() {
+  if (!isSupabaseConfigured() || process.env.GOOGLE_AUTH_ENABLED !== "true")
+    return { ok: false, message: "Google 로그인 설정을 준비하고 있어요." };
+  const callback = teacherCallbackUrl(process.env.NEXT_PUBLIC_APP_URL);
+  const client = await createClient();
+  const { data, error } = await client.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: callback,
+      queryParams: { prompt: "select_account" },
+      skipBrowserRedirect: true,
+    },
+  });
+  if (error || !data.url)
+    return {
+      ok: false,
+      message: "Google 로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
+    };
+  const url = new URL(data.url);
+  const configured = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (
+    !configured ||
+    url.origin !== new URL(configured).origin ||
+    url.pathname !== "/auth/v1/authorize"
+  )
+    return { ok: false, message: "Google 로그인 주소 설정을 확인해 주세요." };
+  redirect(url.toString());
+}
 
 export async function sendTeacherLoginLink(form: FormData) {
   if (!isSupabaseConfigured())

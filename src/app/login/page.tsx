@@ -44,11 +44,14 @@ export default async function LoginPage({
           <LoginForm configured={configured} />
           {notice === "email-link" && (
             <p role="alert" className="notice">
-              이메일 링크가 만료되었거나 다른 브라우저에서 열렸어요. 이
-              브라우저에서 로그인 링크를 다시 요청해 주세요.
+              인증을 완료하지 못했어요. 같은 브라우저에서 로그인을 다시 시작해
+              주세요. 이메일을 사용했다면 가장 최근 링크를 확인해 주세요.
             </p>
           )}
-          <TeacherEmailLogin configured={configured} />
+          <TeacherEmailLogin
+            configured={configured}
+            googleEnabled={process.env.GOOGLE_AUTH_ENABLED === "true"}
+          />
         </div>
       </div>
     </>
