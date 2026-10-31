@@ -162,7 +162,7 @@ export function Management({ data }: { data: HubData }) {
         {data.classes.length > 0 && (
           <>
             <p>연결된 학급: {data.classes.map((c) => c.name).join(", ")}</p>
-            <Link className="button button-outline" href="/app">배정받은 독서미션 보기</Link>
+            <Link className="button button-outline" href="/app?view=missions">배정받은 독서미션 보기</Link>
           </>
         )}
         <p>

@@ -97,6 +97,10 @@ export function koreanDay(date = new Date()) {
     day: "2-digit",
   }).format(date);
 }
+export function readingScrollBehavior():ScrollBehavior{
+  if(typeof window==="undefined")return "auto";
+  return document.documentElement.dataset.motion==="reduce"||window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth";
+}
 export function hubError(error: unknown) {
   const text =
     error instanceof Error

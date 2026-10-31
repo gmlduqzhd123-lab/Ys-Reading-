@@ -74,6 +74,9 @@ export async function loadHub(
     "drafts",
   ]);
   const nextTables: Record<string, string[]> = {
+    today: ["reading_logs"],
+    review: ["reading_logs"],
+    exhibitions: ["plaza_posts"],
     reading: ["reading_logs"],
     exports: ["reading_logs", "submissions", "drafts"],
     growth: ["activity_events", "achievement_badges"],
@@ -115,6 +118,7 @@ export async function loadHub(
         .limit(pagedTables.has(table) ? 101 : 1001);
       if (pagedTables.has(table))
         query = query.order("id").range((page - 1) * 100, page * 100);
+      if(table==="reading_logs"&&activeTab==="review")query=query.eq("status","completed").is("verified_at",null);
       const response = await query;
       return { table, ...response };
     }),

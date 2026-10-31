@@ -23,6 +23,8 @@ export interface MissionSnapshot {
   kind?: string;
 }
 export interface Assignment {
+  choices?: import("./participation").MissionChoice[];
+  success_criteria?: string;
   id: string;
   classroom_id: string;
   mission_id: string;

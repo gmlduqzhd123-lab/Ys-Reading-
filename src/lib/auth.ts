@@ -37,8 +37,10 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   if (!profile) return null;
   const { data: session, error: sessionError } =
     await supabase.rpc("account_session");
-  if (sessionError)
+  if (sessionError) {
+    console.warn("bookforest:account-session", { code: sessionError.code });
     throw new Error("로그인 상태를 확인하지 못했습니다. 다시 로그인해 주세요.");
+  }
   return { ...profile, session_fresh: session?.fresh === true } as Profile;
 });
 

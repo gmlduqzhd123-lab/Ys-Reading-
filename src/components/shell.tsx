@@ -3,15 +3,18 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, ChevronDown, Leaf, Menu, UserRound, X } from "lucide-react";
+import { ViewSettings } from "@/components/participation/view-settings";
 
 const links = [
-  { href: "/hub", label: "나의 책장", active: "reading" },
+  { href: "/hub?tab=today", label: "오늘 할 일", active: "today" },
   { href: "/missions", label: "독서미션", active: "missions" },
   { href: "/app?view=contests", label: "글쓰기 활동", active: "contests" },
   { href: "/hub?tab=plaza", label: "학급 광장", active: "plaza" },
   { href: "/hub?tab=economy", label: "경제 교실", active: "economy" },
 ];
 const moreLinks = [
+  ["/hub?tab=reading", "나의 책장"],
+  ["/hub?tab=today", "오늘 할 일"], ["/start", "우리 반 시작하기"], ["/hub?tab=packs", "수업 꾸러미"], ["/hub?tab=exhibitions", "작은 작품 전시회"],
   ["/app", "우리 교실"], ["/hub?tab=growth", "캐릭터·배지"],
   ["/hub?tab=exports", "기록·글 내보내기"], ["/hub?tab=manage", "학급 연결·관리"],
   ["/studio", "책숲 놀이터"], ["/guide", "책숲 사용 안내"],
@@ -19,7 +22,7 @@ const moreLinks = [
 function Navigation({ close }: { close: () => void }) {
   const path = usePathname();
   const query = useSearchParams();
-  const current = path === "/hub" ? (query.get("tab") ?? "reading")
+  const current = path === "/hub" ? (query.get("tab") ?? "today")
     : path.startsWith("/missions") ? "missions"
       : path === "/app" && query.get("view") === "contests" ? "contests" : "";
   return <>{links.map((l) => <Link key={l.href} href={l.href} onClick={close}
@@ -58,6 +61,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link className="paper-mobile-account" href="/account" onClick={close}>계정·참여 관리</Link>
         </nav>
         <div className="paper-header-actions">
+          <ViewSettings />
           {/* 엽쌤의 다른 앱과 같은 상단 버튼: public/ys-install.js, public/ys-qr.js 가 연결합니다 */}
           <button type="button" className="ys-chip" data-ys-install="">📲 <span className="ys-wide">앱 </span>설치</button>
           <button type="button" className="ys-chip" data-qr="" aria-label="QR 코드로 접속">📱 QR</button>

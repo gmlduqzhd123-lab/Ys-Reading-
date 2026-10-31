@@ -1,11 +1,12 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { bookSchema, koreanDay, type Book } from "@/lib/hub";
+import { bookSchema, koreanDay, readingScrollBehavior, type Book } from "@/lib/hub";
 import type { HubData, ReadingLog } from "@/lib/hub-data";
 import { ClassField, Empty, Field, HubForm, Panel, string } from "./shared";
 import { PaperBook } from "@/components/paper-book";
 import { Plus, ArrowDownRight, ArrowRight, PenLine } from "lucide-react";
+import { GuidedThought } from "@/components/participation/guided-thought";
 export function Bookshelf({ data }: { data: HubData }) {
   const [query, setQuery] = useState(""),
     [books, setBooks] = useState<Book[]>([]),
@@ -23,8 +24,9 @@ export function Bookshelf({ data }: { data: HubData }) {
     .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0];
   const recentWork = currentDraft ?? ownSubmissions.toSorted((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
   const editor = useRef<HTMLDetailsElement>(null);
+  useEffect(()=>{if(location.hash==="#reading-editor"&&editor.current)editor.current.open=true;},[]);
   const compose = () => {
-    if (editor.current) { editor.current.open = true; editor.current.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    if (editor.current) { editor.current.open = true; editor.current.scrollIntoView({ behavior: readingScrollBehavior(), block: "start" }); }
   };
   async function search() {
     controller.current?.abort();
@@ -70,7 +72,7 @@ export function Bookshelf({ data }: { data: HubData }) {
       {!teacher && <section className="paper-writing-preview">
         <div><span className="eyebrow">A SENTENCE OF MY OWN</span><h2>{currentDraft ? "쓰고 있는 이야기" : "나의 글 한 편"}</h2>
           <h3>{recentWork?.title || "한 문장에서 시작해 볼까요?"}</h3><p>{recentWork?.body || "배정받은 독서미션에서 나의 생각을 글로 남겨 보세요."}</p>
-          <Link href={recentWork ? `/app/work/${recentWork.assignment_id}` : "/app"} className="paper-text-link">{currentDraft ? "이어서 쓰기" : recentWork ? "작품·피드백 보기" : "독서미션 시작하기"}<ArrowRight size={15} /></Link></div>
+          <Link href={recentWork ? `/app/work/${recentWork.assignment_id}` : "/app?view=missions"} className="paper-text-link">{currentDraft ? "이어서 쓰기" : recentWork ? "작품·피드백 보기" : "독서미션 시작하기"}<ArrowRight size={15} /></Link></div>
         <PenLine size={52} strokeWidth={.65} aria-hidden="true" />
       </section>}
       {!teacher && (
@@ -208,16 +210,7 @@ export function Bookshelf({ data }: { data: HubData }) {
                 <option value="completed">완독했어요</option>
               </select>
             </label>
-            <label className="field">
-              기억에 남는 장면과 나의 생각
-              <textarea
-                name="thought"
-                defaultValue={edit?.thought ?? ""}
-                required
-                maxLength={10000}
-                rows={6}
-              />
-            </label>
+            <GuidedThought initial={edit?.thought ?? ""}/>
             <label className="field">
               더 생각해 보고 싶은 질문
               <textarea

@@ -1,0 +1,401 @@
+.participation-page {
+  max-width: 960px;
+  margin: 40px auto 80px;
+}
+.participation-page h1 {
+  font: 500 clamp(2rem, 5vw, 3.5rem)/1.25 var(--serif);
+}
+.participation-page > p,
+.today-intro p {
+  max-width: 68ch;
+  line-height: 1.8;
+}
+.participation-page .panel,
+.participation-record,
+.review-card,
+.lesson-pack,
+.exhibition-card {
+  margin: 24px 0;
+}
+.setup-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 28px 0;
+}
+.setup-steps button {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 16px 10px;
+  border-radius: 8px;
+  min-height: 48px;
+  font: inherit;
+}
+.setup-steps button.selected {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+.setup-guide {
+  text-align: center;
+}
+.setup-guide img {
+  margin: 16px auto;
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.setup-guide ol {
+  text-align: left;
+  max-width: 540px;
+  margin: 24px auto;
+  line-height: 2;
+}
+.setup-url {
+  overflow-wrap: anywhere;
+}
+.today-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 24px 0 32px;
+}
+.today-actions > a,
+.today-actions > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 26px;
+  color: var(--ink);
+  text-decoration: none;
+  min-width: 0;
+}
+.today-actions > a {
+  min-height: 180px;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+.today-actions > a:hover {
+  border-color: var(--green);
+  transform: translateY(-2px);
+}
+.today-actions strong {
+  font-size: 1.25rem;
+}
+.today-actions span {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.today-actions svg {
+  color: var(--green);
+}
+.today-task {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding: 20px 0;
+}
+.today-task h3 {
+  margin: 0 0 8px;
+}
+.today-task .button {
+  flex-shrink: 0;
+}
+.review-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  background: var(--paper);
+}
+.review-card summary,
+.panel > summary,
+.exhibition-card summary,
+.lesson-pack summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.7;
+  padding: 10px 0;
+}
+.review-card .submission-body {
+  padding: 18px 0;
+}
+.guided-prompts {
+  border: 1px solid var(--line);
+  padding: 20px;
+  border-radius: 10px;
+  margin: 20px 0;
+}
+.feeling-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.feeling-choices .button {
+  font-size: 0.85rem;
+  min-height: 44px;
+}
+.choice-card {
+  display: flex;
+  gap: 16px;
+  padding: 24px;
+  margin: 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.choice-card:has(input:checked) {
+  border-color: var(--green);
+  background: var(--soft);
+}
+.choice-card input {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin-top: 4px;
+}
+.choice-card strong {
+  display: block;
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+}
+.choice-card span span {
+  line-height: 1.8;
+  display: block;
+  color: var(--muted);
+}
+.shared-forest-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  padding: 24px;
+  margin: 24px 0;
+  background: var(--paper);
+}
+.forest-landscape {
+  display: flex;
+  gap: clamp(12px, 4vw, 48px);
+  justify-content: center;
+  align-items: flex-end;
+  background: linear-gradient(0deg, #e1e8dd, #f4f6f0);
+  height: 160px;
+  border-radius: 9px;
+  margin-bottom: 22px;
+  padding-bottom: 20px;
+  color: #60755b;
+}
+.forest-landscape.stage-1 {
+  background: linear-gradient(0deg, #d8e2d1, #eef3e9);
+  color: #4e6e4f;
+}
+.forest-landscape.stage-2 {
+  background: linear-gradient(0deg, #ebe2d3, #faf5ea);
+  color: #70586d;
+}
+.shared-forest-card progress,
+.economy-lab progress {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: 14px;
+  accent-color: var(--green);
+}
+.participation-record,
+.lesson-pack,
+.exhibition-card {
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.participation-record > form,
+.lesson-pack > form {
+  margin-top: 16px;
+}
+.job-application,
+.exhibition-work {
+  border-top: 1px solid var(--line);
+  padding: 20px 0;
+  margin-top: 20px;
+}
+.exhibition-work h4 {
+  font-size: 1.25rem;
+  font-family: var(--serif);
+  font-weight: 500;
+}
+.collection-export {
+  padding: 24px;
+  border: 1px dashed var(--green);
+  border-radius: 10px;
+  margin-top: 24px;
+}
+.view-settings {
+  position: relative;
+}
+.view-settings summary {
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 10px 8px;
+  white-space: nowrap;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.view-settings > div {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 1100;
+  width: min(310px, calc(100vw - 40px));
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 8px 35px #2d2b291a;
+  border-radius: 12px;
+  padding: 24px;
+}
+.view-settings > div p {
+  font-size: 13px;
+  line-height: 1.7;
+  margin-bottom: 0;
+}
+.view-settings .hub-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  margin: 4px 0;
+}
+.view-settings input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--green);
+}
+.workspace-tabs {
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.hub-inline > .field {
+  min-width: 180px;
+  flex: 1;
+}
+html[data-text-size="large"] {
+  font-size: 20px;
+}
+html[data-text-size="large"]
+  .site-shell
+  :is(p, label, input, textarea, select, summary, li, .button) {
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+html[data-contrast="high"] {
+  --bg: #fff;
+  --paper: #fff;
+  --ink: #111;
+  --muted: #292329;
+  --line: #554855;
+  --green: #4c2948;
+  --green-dark: #341c31;
+  --soft: #eee5ee;
+}
+html[data-contrast="high"] body {
+  background: #fff;
+  color: #111;
+}
+html[data-contrast="high"] .site-shell :is(p, small, .muted, .eyebrow) {
+  color: #292329;
+}
+html[data-contrast="high"] .button-primary {
+  color: #fff;
+  background: #4c2948;
+}
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .today-actions > a {
+    transition: none;
+  }
+}
+@media (max-width: 760px) {
+  .today-actions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .today-actions > a {
+    min-height: 140px;
+    padding: 22px;
+  }
+  .today-task {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .setup-steps {
+    grid-template-columns: 1fr 1fr;
+  }
+  .participation-page {
+    margin: 24px 0 50px;
+  }
+  .participation-record,
+  .lesson-pack,
+  .exhibition-card {
+    padding: 20px;
+  }
+  .view-settings > div {
+    top: 70px;
+    right: 16px;
+  }
+  .paper-header-actions {
+    gap: 3px;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .view-settings summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    min-height: 44px;
+    padding: 0;
+  }
+  .view-settings summary span {
+    display: none;
+  }
+}
+@media print {
+  body:has(.setup-guide) * {
+    visibility: hidden;
+  }
+  body:has(.setup-guide) .setup-guide,
+  body:has(.setup-guide) .setup-guide * {
+    visibility: visible;
+  }
+  body:has(.setup-guide) .setup-guide {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    border: 0;
+  }
+  body:has(.setup-guide) .setup-guide .button-row {
+    display: none;
+  }
+  .view-settings {
+    display: none;
+  }
+}

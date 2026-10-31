@@ -1,4 +1,5 @@
 "use client";
+import { formatOperationsDate } from "@/lib/operations";
 import { useState } from "react";
 import { classroomStudents } from "@/lib/classroom-roster";
 import {
@@ -362,9 +363,7 @@ export function Economy({ data }: { data: HubData }) {
               <small>
                 {" "}
                 ·{" "}
-                {new Date(l.created_at).toLocaleString("ko-KR", {
-                  timeZone: "Asia/Seoul",
-                })}
+                {formatOperationsDate(String(l.created_at))}
               </small>
             </span>
             <strong>

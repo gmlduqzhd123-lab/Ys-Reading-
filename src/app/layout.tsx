@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Shell } from "@/components/shell";
 import "./globals.css";
 import "./paper-gallery.css";
+import "./participation.css";
 import { Noto_Serif_KR } from "next/font/google";
 const literary = Noto_Serif_KR({ weight: "variable", subsets: ["latin"], display: "swap", preload: false, variable: "--font-literary" });
 

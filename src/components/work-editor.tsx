@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { saveDraft, submitWork } from "@/app/actions";
 import { VersionComparison } from "@/components/writing-diff";
+import { MissionChoicePicker } from "@/components/participation/mission-choice";
 import { initialWritingState } from "@/lib/writing-state";
 import type { Assignment, DashboardData, Submission } from "@/lib/data";
 import {
@@ -29,7 +30,7 @@ import {
   WRITING_TITLE_LIMIT,
 } from "@/lib/rules";
 
-type WorkEditorProps = { data: DashboardData; assignment: Assignment };
+type WorkEditorProps = { data: DashboardData; assignment: Assignment; choiceKey?: string };
 type Content = { title: string; body: string };
 type SaveState = "empty" | "unsaved" | "saving" | "saved" | "error";
 
@@ -56,6 +57,7 @@ function runAction<T>(action: () => Promise<T>): Promise<T> {
 }
 
 export function WorkEditor(props: WorkEditorProps) {
+  if (props.assignment.choices?.length && !props.choiceKey && props.data.profile.consent_status === "verified") return <MissionChoicePicker assignment={props.assignment}/>;
   // A different assignment must not reuse the previous assignment's draft refs.
   return (
     <AssignmentEditor
@@ -65,7 +67,9 @@ export function WorkEditor(props: WorkEditorProps) {
   );
 }
 
-function AssignmentEditor({ data, assignment }: WorkEditorProps) {
+function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
+  const chosen=assignment.choices?.find(c=>c.key===choiceKey);
+  const guideSteps=assignment.choices?.length?["책에서 기억나는 장면을 떠올려요.","내가 고른 표현 방법으로 생각을 써요.","책 속 근거와 나의 이유를 덧붙여요.","다시 읽으며 생각을 다듬어요."]:assignment.mission_snapshot.steps??[];
   const router = useRouter();
   const ownSubmissions = data.submissions
     .filter(
@@ -560,6 +564,8 @@ function AssignmentEditor({ data, assignment }: WorkEditorProps) {
             이 미션은 초고 제출 → 선생님 피드백 → 글 고치기 순서로 함께해요.
           </p>
         )}
+        {assignment.choices?.find(c=>c.key===choiceKey)&&<div className="notice"><strong>{assignment.choices.find(c=>c.key===choiceKey)!.label}</strong><p>{assignment.choices.find(c=>c.key===choiceKey)!.prompt}</p></div>}
+        {assignment.success_criteria&&<details className="panel"><summary>이번 활동의 확인 기준</summary><p className="submission-body">{assignment.success_criteria}</p></details>}
 
         <form onSubmit={handleSubmit} aria-busy={isSubmitting || isNavigating}>
           <div className="field">
@@ -708,7 +714,7 @@ function AssignmentEditor({ data, assignment }: WorkEditorProps) {
           <BookOpen className="accent-icon" size={23} aria-hidden="true" />
           <h2 id="activity-heading">오늘의 생각 질문</h2>
           <p className="submission-body">
-            {assignment.mission_snapshot.prompt}
+            {chosen?.prompt??assignment.mission_snapshot.prompt}
           </p>
           {assignment.due_at && (
             <p className="form-help">
@@ -716,11 +722,11 @@ function AssignmentEditor({ data, assignment }: WorkEditorProps) {
               글은 제출할 수 있어요.
             </p>
           )}
-          {!!assignment.mission_snapshot.steps?.length && (
+          {guideSteps.length>0 && (
             <details>
               <summary className="text-link">활동 순서 펼쳐 보기</summary>
               <ol className="guide-list">
-                {assignment.mission_snapshot.steps.map((step, index) => (
+                {guideSteps.map((step, index) => (
                   <li key={index}>{step}</li>
                 ))}
               </ol>

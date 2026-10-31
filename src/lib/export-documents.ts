@@ -6,7 +6,7 @@ import { createClient } from "./supabase/server";
 import { escapeHtml } from "./studio";
 export const exportSchema = z
   .object({
-    kind: z.enum(["reading", "writing", "drafts"]),
+    kind: z.enum(["reading", "writing", "drafts", "exhibition"]),
     ids: z.array(z.uuid()).min(1).max(100),
     format: z.enum(["docx", "print", "csv", "google-docs", "google-sheets"]),
     title: z.string().trim().min(1).max(100).default("나의 책숲 기록"),
@@ -32,6 +32,16 @@ export async function loadExportBundle(
     throw new Error("BF_CONSENT_REQUIRED");
   const client = await createClient();
   const ids = [...new Set(input.ids)];
+  if(input.kind==="exhibition"){
+    if(profile.role!=="teacher")throw new Error("BF_FORBIDDEN");
+    const entries=await client.from("exhibition_entries").select("id,post_id").in("id",ids).eq("status","approved");
+    if(entries.error||entries.data?.length!==ids.length)throw new Error("BF_FORBIDDEN");
+    const posts=await client.from("plaza_posts").select("id,title,body,pen_name").in("id",entries.data.map(e=>e.post_id)).eq("status","published");
+    const byId=new Map((posts.data??[]).map(p=>[p.id,p]));
+    if(posts.error||entries.data.some(e=>!byId.has(e.post_id)))throw new Error("BF_FORBIDDEN");
+    const entryById=new Map(entries.data.map(e=>[e.id,e]));
+    return {title:input.title,entries:ids.map(id=>{const post=byId.get(entryById.get(id)!.post_id)!;return {title:post.title,body:post.body,meta:"학급·학년 전시 작품"+(input.includeNames?" · "+post.pen_name:"")};})};
+  }
   const table =
     input.kind === "reading"
       ? "reading_logs"

@@ -92,6 +92,7 @@ export async function deletionPreview(id: string) {
       ok: true,
       data: data as {
         reading_logs: number;
+        participation_records?: number;
         submissions: number;
         plaza_posts: number;
         ledger: number;

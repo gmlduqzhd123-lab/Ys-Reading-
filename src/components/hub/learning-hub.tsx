@@ -8,27 +8,44 @@ import { Exports } from "./exports";
 import { PaperGrowth } from "./paper-growth";
 import { ArrowRight, PenLine } from "lucide-react";
 import type { HubData } from "@/lib/hub-data";
+import { readingScrollBehavior } from "@/lib/hub";
+import type { DashboardData } from "@/lib/data";
+import type { ParticipationData } from "@/lib/participation";
+import { Today } from "@/components/participation/today";
+import { ReviewQueue } from "@/components/participation/review-queue";
+import { SharedForest } from "@/components/participation/shared-forest";
+import { EconomyLab } from "@/components/participation/economy-lab";
+import { Exhibitions } from "@/components/participation/exhibitions";
+import { LessonPacks } from "@/components/participation/lesson-packs";
+import { RefreshButton } from "@/components/participation/refresh-button";
 export function LearningHub({
   data,
   initialTab,
   google,
   googleNotice,
+  participation,
+  dashboard,
 }: {
   data: HubData;
   initialTab?: string;
   google: { configured: boolean; connected: boolean };
   googleNotice?: string;
+  participation?: ParticipationData | null;
+  dashboard?: DashboardData | null;
 }) {
   const teacher = data.profile.role === "teacher";
   const tabs = [
+    ["today", teacher?"오늘의 교실":"오늘 할 일"],
+    ...(teacher?[["review","학생 기록 확인"],["packs","수업 꾸러미"]]:[]),
     ["reading", "나의 책장"],
     ["exports", "기록·글 내보내기"],
     ["growth", "캐릭터·배지"],
     ["plaza", "학급 광장"],
+    ["exhibitions", "작은 작품 전시회"],
     ["economy", "경제 교실"],
     ["manage", teacher ? "학급·학년 관리" : "학급 연결"],
   ];
-  const tab = tabs.some(([id]) => id === initialTab) ? initialTab! : "reading";
+  const tab = tabs.some(([id]) => id === initialTab) ? initialTab! : "today";
   useEffect(() => {
     const guard = (e: MouseEvent) => {
       if (
@@ -69,11 +86,12 @@ export function LearningHub({
           {data.classes.length > 0 && <span className="paper-class-label">{data.classes[0].name}{data.classes.length > 1 ? ` 외 ${data.classes.length - 1}개 학급` : ""}</span>}
         </div>
         <div className="button-row">
+          <RefreshButton/>
           {!teacher && tab === "reading" && data.profile.consent_status === "verified" && <button className="button button-primary" onClick={() => {
             const editor = document.getElementById("reading-editor");
-            if (editor instanceof HTMLDetailsElement) { editor.open = true; editor.scrollIntoView({ behavior: "smooth", block: "start" }); }
+            if (editor instanceof HTMLDetailsElement) { editor.open = true; editor.scrollIntoView({ behavior: readingScrollBehavior(), block: "start" }); }
           }}><PenLine size={16} />독서 기록 쓰기</button>}
-          <Link className={teacher ? "button button-primary" : "paper-text-link"} href={teacher ? "/operations" : "/app"}>{teacher ? "학생 계정·기록 관리" : "미션 이어하기"}<ArrowRight size={15} /></Link>
+          <Link className={teacher ? "button button-primary" : "paper-text-link"} href={teacher ? "/operations" : "/app?view=missions"}>{teacher ? "학생 계정·기록 관리" : "미션 이어하기"}<ArrowRight size={15} /></Link>
         </div>
       </div>
       <nav className="workspace-tabs" aria-label="책장과 성장 메뉴">
@@ -113,18 +131,22 @@ export function LearningHub({
             </>
           ) : (
             <>
+              {tab === "today" && dashboard && <Today data={dashboard} hub={data}/>}
+              {tab === "review" && teacher && dashboard && participation && <ReviewQueue data={dashboard} hub={data} extra={participation}/>}
+              {tab === "packs" && teacher && participation && <LessonPacks hub={data} extra={participation}/>}
+              {tab === "exhibitions" && participation && <Exhibitions hub={data} extra={participation} google={google}/>}
               {tab === "reading" && <div className="paper-dashboard"><div className="paper-main"><Bookshelf data={data} /></div><PaperGrowth data={data} /></div>}
               {tab === "exports" && (
                 <Exports key={data.page} data={data} google={google} googleNotice={googleNotice} />
               )}
-              {tab === "growth" && <Character data={data} />}
+              {tab === "growth" && <><Character data={data} />{participation&&<SharedForest hub={data} extra={participation}/>}</>}
               {tab === "plaza" && <Plaza data={data} />}
-              {tab === "economy" && <Economy data={data} />}
+              {tab === "economy" && <>{participation&&<EconomyLab hub={data} extra={participation}/>}<Economy data={data} /></>}
               {tab === "manage" && <Management data={data} />}
               {!teacher && !data.classes.length && tab !== "manage" && (
                 <Management data={data} />
               )}
-              <nav className="hub-row" aria-label="기록 페이지">
+              {!["today","packs"].includes(tab)&&<nav className="hub-row" aria-label="기록 페이지">
                 {data.page > 1 && (
                   <Link
                     className="button button-outline"
@@ -145,7 +167,7 @@ export function LearningHub({
                     다음 기록
                   </Link>
                 )}
-              </nav>
+              </nav>}
             </>
           )}
         </>

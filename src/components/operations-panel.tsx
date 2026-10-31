@@ -735,6 +735,7 @@ export function OperationsPanel({
                   {preview.data.submissions}건 · 광장 글{" "}
                   {preview.data.plaza_posts}건 · 경제 원장 {preview.data.ledger}
                   건
+                  {" · 역할·저축·제안·전시·선택·공동 배지 "+(preview.data.participation_records??0)+"건"}
                   {preview.data.auth_account ? " · 로그인 계정 삭제 포함" : ""}
                   {!preview.data.retention_eligible
                     ? " · 새 활동이 있어 보관 만료 삭제 불가"
