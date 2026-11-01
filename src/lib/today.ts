@@ -1,6 +1,11 @@
 import type { DashboardData } from "./data";
 export function todayTasks(data: DashboardData) {
   return data.assignments
+    .filter((a) =>
+      data.classes.some(
+        (c) => c.id === a.classroom_id && c.term_state !== "archived",
+      ),
+    )
     .map((a) => {
       const latest = data.submissions
         .filter(

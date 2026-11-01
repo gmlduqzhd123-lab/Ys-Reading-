@@ -113,8 +113,11 @@ async function consumeState(uid: string, state: string) {
   jar.delete(STATE);
   if (!raw) throw new Error("GOOGLE_STATE_INVALID");
   let saved: GoogleState;
-  try { saved = unseal<GoogleState>(raw, c.key, "google-state"); }
-  catch { throw new Error("GOOGLE_STATE_INVALID"); }
+  try {
+    saved = unseal<GoogleState>(raw, c.key, "google-state");
+  } catch {
+    throw new Error("GOOGLE_STATE_INVALID");
+  }
   if (saved.uid !== uid || saved.nonce !== state || saved.expires < Date.now())
     throw new Error("GOOGLE_STATE_INVALID");
   return { c, jar, saved };
@@ -159,24 +162,31 @@ async function access(uid: string) {
   const raw = jar.get(TOKEN)?.value;
   if (!raw) throw new Error("GOOGLE_CONNECT_REQUIRED");
   let token: GoogleToken;
-  try { token = unseal<GoogleToken>(raw, c.key, `google-token:${uid}`); }
-  catch { throw new Error("GOOGLE_CONNECT_REQUIRED"); }
+  try {
+    token = unseal<GoogleToken>(raw, c.key, `google-token:${uid}`);
+  } catch {
+    throw new Error("GOOGLE_CONNECT_REQUIRED");
+  }
   if (token.uid !== uid) throw new Error("GOOGLE_CONNECT_REQUIRED");
   if (token.expires < Date.now() + 60000) {
     if (!token.refresh_token) throw new Error("GOOGLE_CONNECT_REQUIRED");
     let response: Response;
-    try { response = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: c.id,
-        client_secret: c.secret,
-        refresh_token: token.refresh_token,
-        grant_type: "refresh_token",
-      }),
-      signal: AbortSignal.timeout(15000),
-      cache: "no-store",
-    }); } catch { throw new Error("GOOGLE_DRIVE_BUSY"); }
+    try {
+      response = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: c.id,
+          client_secret: c.secret,
+          refresh_token: token.refresh_token,
+          grant_type: "refresh_token",
+        }),
+        signal: AbortSignal.timeout(15000),
+        cache: "no-store",
+      });
+    } catch {
+      throw new Error("GOOGLE_DRIVE_BUSY");
+    }
     if (response.status === 429 || response.status >= 500)
       throw new Error("GOOGLE_DRIVE_BUSY");
     const result = await response.json();
@@ -196,17 +206,50 @@ async function access(uid: string) {
 }
 async function drive(token: GoogleToken, path: string, init: RequestInit = {}) {
   let response: Response;
-  try { response = await fetch(`https://www.googleapis.com/${path}`, {
-    ...init,
-    headers: { ...init.headers, Authorization: `Bearer ${token.access_token}` },
-    signal: AbortSignal.timeout(20000),
-    cache: "no-store",
-  }); } catch { throw new Error("GOOGLE_DRIVE_BUSY"); }
+  try {
+    response = await fetch(`https://www.googleapis.com/${path}`, {
+      ...init,
+      headers: {
+        ...init.headers,
+        Authorization: `Bearer ${token.access_token}`,
+      },
+      signal: AbortSignal.timeout(20000),
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error("GOOGLE_DRIVE_BUSY");
+  }
   if (response.status === 401) throw new Error("GOOGLE_CONNECT_REQUIRED");
-  if (response.status === 403) throw new Error("GOOGLE_DRIVE_FORBIDDEN");
-  if (response.status === 429 || response.status >= 500) throw new Error("GOOGLE_DRIVE_BUSY");
+  if (response.status === 403) {
+    const detail = await response.json().catch(() => null);
+    const reasons =
+      detail?.error?.errors?.map((e: { reason?: string }) => e.reason) ?? [];
+    if (
+      reasons.some((r: string) =>
+        [
+          "rateLimitExceeded",
+          "userRateLimitExceeded",
+          "sharingRateLimitExceeded",
+        ].includes(r),
+      )
+    )
+      throw new Error("GOOGLE_DRIVE_BUSY");
+    if (reasons.includes("storageQuotaExceeded"))
+      throw new Error("GOOGLE_DRIVE_QUOTA");
+    throw new Error("GOOGLE_DRIVE_FORBIDDEN");
+  }
+  if (response.status === 429 || response.status >= 500)
+    throw new Error("GOOGLE_DRIVE_BUSY");
   if (!response.ok) throw new Error("GOOGLE_DRIVE_FAILED");
   return response.json();
+}
+export async function verifyGoogleConnection(uid: string) {
+  const token = await access(uid);
+  await drive(
+    token,
+    "drive/v3/files?spaces=drive&pageSize=1&fields=files(id)&q=trashed%3Dfalse",
+  );
+  return { connected: true, checkedAt: new Date().toISOString() };
 }
 export async function googleExport(
   uid: string,

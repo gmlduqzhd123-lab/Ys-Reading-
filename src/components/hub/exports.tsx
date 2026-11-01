@@ -1,4 +1,5 @@
 "use client";
+import { GoogleConnectionCheck } from "./google-connection-check";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { HubData } from "@/lib/hub-data";
@@ -22,7 +23,10 @@ export function Exports({
     [busy, setBusy] = useState(false),
     [includeNames, setIncludeNames] = useState(false);
   const [requiresReconnect, setRequiresReconnect] = useState(false);
-  const connectionNotice = googleCallbackNotice(googleNotice, google.connected && !requiresReconnect);
+  const connectionNotice = googleCallbackNotice(
+    googleNotice,
+    google.connected && !requiresReconnect,
+  );
   const key = useRef<Record<string, string>>({});
   const rows =
     kind === "reading"
@@ -110,7 +114,11 @@ export function Exports({
   }
   return (
     <>
-      {connectionNotice && <p className="notice" role="status">{connectionNotice}</p>}
+      {connectionNotice && (
+        <p className="notice" role="status">
+          {connectionNotice}
+        </p>
+      )}
       <Panel title="내 기록을 파일로 간직하기">
         <p>
           선택한 순서로 독서 기록장이나 작품집을 만듭니다. 내보낸 파일은 지금
@@ -238,11 +246,16 @@ export function Exports({
               </div>
             ) : !google.connected || requiresReconnect ? (
               <a className="button button-primary" href="/api/google/connect">
-                {requiresReconnect ? "Google 계정 다시 연결" : "교사 Google 계정 연결"}
+                {requiresReconnect
+                  ? "Google 계정 다시 연결"
+                  : "교사 Google 계정 연결"}
               </a>
             ) : (
               <>
-                <p className="status-pill">Google 연결됨</p>
+                <p className="status-pill">
+                  이 브라우저에 Google 연결 정보가 있어요
+                </p>
+                <GoogleConnectionCheck />
                 <div className="hub-inline">
                   <button
                     className="button button-primary"
@@ -258,7 +271,14 @@ export function Exports({
                   >
                     Google Sheets로 저장
                   </button>
-                  {!busy && <a className="button button-outline" href="/api/google/connect">Google 계정 다시 연결</a>}
+                  {!busy && (
+                    <a
+                      className="button button-outline"
+                      href="/api/google/connect"
+                    >
+                      Google 계정 다시 연결
+                    </a>
+                  )}
                   <button
                     className="button button-outline"
                     disabled={busy}

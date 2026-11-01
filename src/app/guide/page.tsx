@@ -18,7 +18,10 @@ export default function GuidePage() {
             <li>내 교실에서 배정된 독서미션을 골라요.</li>
             <li>책을 읽고 생각을 쓴 다음 제출해요.</li>
             <li>선생님의 피드백을 읽고 글을 다듬어요.</li>
-            <li>저장 완료를 확인하고, 연결이 불안하면 임시보관·파일 저장을 이용해요.</li>
+            <li>
+              저장 완료를 확인하고, 연결이 불안하면 임시보관·파일 저장을
+              이용해요.
+            </li>
             <li>완성한 글은 원할 때 우리 반·학년 글쓰기 활동에 참여해요.</li>
           </ol>
           <Link href="/login" className="text-link">
@@ -31,15 +34,20 @@ export default function GuidePage() {
           <ol className="guide-list">
             <li>교사 계정으로 로그인하고 학급을 만들어요.</li>
             <li>
-              ‘우리 반 시작하기’에서 학생 계정을 준비하고 필요한 참여 동의 확인을 진행해요.
+              ‘우리 반 시작하기’에서 학생 계정을 준비하고 필요한 참여 동의
+              확인을 진행해요.
             </li>
             <li>검토한 미션을 선택해 학급에 배정해요.</li>
             <li>제출 버전에 피드백과 수정 요청을 남겨요.</li>
-            <li>현황·알림에서 학생의 활동을 확인하고 기록 검색으로 지난 글을 찾아요.</li>
+            <li>
+              현황·알림에서 학생의 활동을 확인하고 기록 검색으로 지난 글을
+              찾아요.
+            </li>
             <li>완료된 작품으로 우리 반·학년 글쓰기 활동을 열어요.</li>
           </ol>
           <p className="form-help">
-            담당 교사는 학생 계정을 발급하고, 운영자는 필요한 동의 근거와 교사 권한을 확인합니다.
+            담당 교사는 학생 계정을 발급하고, 운영자는 필요한 동의 근거와 교사
+            권한을 확인합니다.
           </p>
         </section>
       </div>
@@ -96,6 +104,39 @@ export default function GuidePage() {
         <Link href="/hub" className="text-link">
           나의 책장 열기 <ArrowRight size={16} />
         </Link>
+      </section>
+      <section className="panel" id="operator-backup">
+        <h2>운영자 백업과 복원 확인</h2>
+        <p>
+          운영자 PC의 프로젝트 폴더에서{" "}
+          <code>node scripts/operator-backup.mjs</code>를 실행합니다. Codex의
+          책숲 Supabase 연결 인증이 필요합니다. 백업은 현재 Windows 사용자와
+          SYSTEM만 접근하는 로컬 AppData의 Bookforest/OperatorBackups 폴더에
+          암호화해 저장합니다.
+        </p>
+        <p>
+          계정·권한·학습 기록·경제 원장과 마이그레이션을 함께 보관하고, 매번
+          별도 PostgreSQL에 복원해 행 내용·외래키·접근 정책을 검사한 뒤 운영자
+          상태 화면에 검증 결과를 기록합니다. 실패하거나 48시간 이상 지나면 상태
+          화면에서 확인할 수 있습니다.
+        </p>
+        <p>
+          암호화 키는 이 Windows 사용자 계정에 묶여 있습니다. PC나 Windows
+          계정을 잃으면 이 백업만으로 복호화할 수 없으므로 기기 교체 전 운영자가
+          별도 키 이전 절차를 준비해야 합니다. 자동 예약 실행은 아직 설정하지
+          않았습니다.
+        </p>
+        <p>
+          복원 검사는 운영 자료를 덮어쓰지 않습니다. 실제 장애 복구는 격리된 새
+          프로젝트에서 검증 후 전환해야 합니다. 기존 로그인 세션·일회용 인증
+          링크, Google Drive 파일, 서비스 환경 변수와 외부 서비스 설정은 이
+          백업에 포함하지 않습니다.
+        </p>
+        <p>
+          학생 명단 CSV는 ‘아이디,별칭’으로 준비하고 오류를 먼저 수정하세요.
+          발급 후 초기 비밀번호 안내표를 저장해야 합니다. 학기 진급은 페이지별로
+          같은 다음 학급에 추가한 뒤 새 학급의 참여 근거를 확인하고 시작합니다.
+        </p>
       </section>
       <section className="panel privacy-panel" id="privacy">
         <ShieldCheck className="accent-icon" size={30} />

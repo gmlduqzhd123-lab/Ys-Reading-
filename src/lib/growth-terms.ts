@@ -9,6 +9,11 @@ export const growthTermCommands = [
   "reopen",
   "promote",
   "activate",
+  "activate_batch",
+  "handover_request",
+  "handover_accept",
+  "consent_batch",
+  "promote_append",
 ] as const;
 export const growthTermInput = z.object({
   command: z.enum(growthTermCommands),
@@ -54,6 +59,7 @@ export interface TermStudent {
   deletion_pending: boolean;
 }
 export interface TermState {
+  rosterPage?: number;
   asOf: string;
   selected: string | null;
   classes: TermClass[];
@@ -125,6 +131,9 @@ export function growthTermError(error: unknown) {
     BF_BUSY: "계정 처리가 진행 중이에요. 잠시 후 다시 시도해 주세요.",
     BF_ENROLLMENT_CLOSED:
       "이 학급의 참여 기록이 없어 시작할 수 없어요. 운영자에게 문의해 주세요.",
+    BF_EVIDENCE_REQUIRED: "선택한 동의 자료를 확인한 뒤 승인해 주세요.",
+    BF_HANDOVER_CHANGED:
+      "이미 학급 담당자가 바뀌었어요. 새로고침해 현재 담당자를 확인해 주세요.",
     BF_FORBIDDEN:
       "이 작업을 할 권한이 없어요. 로그인과 학급 참여 상태를 확인해 주세요.",
     BF_CONFIRM_REQUIRED: "안내를 읽고 확인 항목을 선택해 주세요.",

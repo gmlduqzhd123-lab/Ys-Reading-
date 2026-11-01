@@ -11,6 +11,7 @@ import {
 import { formatOperationsDate } from "@/lib/operations";
 import { GrowthTermForm } from "./growth-term-form";
 import { Empty, Field, Panel, string } from "./shared";
+import { TermBulkStart } from "./operations-batch";
 function PeriodFields({
   year,
   semester,
@@ -66,6 +67,7 @@ export function TermPanel({
 }) {
   const router = useRouter(),
     [notice, setNotice] = useState("");
+  const [targetClassId, setTargetClassId] = useState("");
   const c = state.classes.find((c) => c.id === state.selected);
   const currentYear = Number(
     new Intl.DateTimeFormat("en", {
@@ -165,6 +167,29 @@ export function TermPanel({
           </div>
         )}
       </Panel>
+      {teacher && c && state.rosterTotal > 50 && (
+        <nav className="button-row" aria-label="학기 학생 명단 페이지">
+          {(state.rosterPage ?? 1) > 1 && (
+            <Link
+              className="button button-outline"
+              href={`/hub?tab=terms&classroom=${c.id}&rosterPage=${(state.rosterPage ?? 1) - 1}`}
+            >
+              이전 학생
+            </Link>
+          )}
+          <span>
+            전체 {state.rosterTotal}명 · {state.rosterPage ?? 1}페이지 · 50명씩
+          </span>
+          {(state.rosterPage ?? 1) * 50 < state.rosterTotal && (
+            <Link
+              className="button button-outline"
+              href={`/hub?tab=terms&classroom=${c.id}&rosterPage=${(state.rosterPage ?? 1) + 1}`}
+            >
+              다음 학생
+            </Link>
+          )}
+        </nav>
+      )}
       {teacher && c && (
         <>
           {c.term_state === "open" && !state.promotions.length && (
@@ -271,16 +296,21 @@ export function TermPanel({
               </p>
               <GrowthTermForm
                 key={c.id + ":" + c.term_revision}
-                command="promote"
+                command={targetClassId ? "promote_append" : "promote"}
                 payload={(f) => ({
                   ...common(f),
+                  targetClassId,
                   name: string(f, "name"),
                   year: Number(f.get("year")),
                   semester: Number(f.get("semester")),
                   grade: string(f, "grade"),
                   students: f.getAll("students").map(String),
                 })}
-                label="선택한 학생으로 새 학급 준비"
+                label={
+                  targetClassId
+                    ? "선택한 학생을 준비된 학급에 추가"
+                    : "선택한 학생으로 새 학급 준비"
+                }
                 disabled={
                   !state.roster.some(
                     (s) => s.active && s.account_active && !s.deletion_pending,
@@ -294,25 +324,55 @@ export function TermPanel({
                     router.push(`/hub?tab=terms&classroom=${r.targetClassId}`);
                 }}
               >
-                <Field name="name" label="새 학급 이름" maxLength={80} />
-                <PeriodFields
-                  year={defaults.year}
-                  semester={defaults.semester}
-                  grade={
-                    c.grade_level === 6
-                      ? null
-                      : c.grade_level === null
-                        ? null
-                        : Math.min(
-                            6,
-                            c.grade_level +
-                              (defaults.year >
-                              (c.academic_year ?? defaults.year)
-                                ? 1
-                                : 0),
-                          )
-                  }
-                />
+                <label className="field">
+                  다음 학급
+                  <select
+                    value={targetClassId}
+                    onChange={(e) => setTargetClassId(e.target.value)}
+                  >
+                    <option value="">새 학급 만들기</option>
+                    {state.promotions
+                      .filter(
+                        (p) =>
+                          p.source_classroom_id === c.id &&
+                          p.owned_target &&
+                          state.classes.some(
+                            (cls) =>
+                              cls.id === p.target_classroom_id &&
+                              cls.term_state === "open",
+                          ),
+                      )
+                      .map((p) => (
+                        <option key={p.id} value={p.target_classroom_id}>
+                          {p.target_name} · {p.academic_year}학년도 {p.semester}
+                          학기 · 준비된 학급에 추가
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                {!targetClassId && (
+                  <>
+                    <Field name="name" label="새 학급 이름" maxLength={80} />
+                    <PeriodFields
+                      year={defaults.year}
+                      semester={defaults.semester}
+                      grade={
+                        c.grade_level === 6
+                          ? null
+                          : c.grade_level === null
+                            ? null
+                            : Math.min(
+                                6,
+                                c.grade_level +
+                                  (defaults.year >
+                                  (c.academic_year ?? defaults.year)
+                                    ? 1
+                                    : 0),
+                              )
+                      }
+                    />
+                  </>
+                )}
                 <fieldset className="term-student-selection">
                   <legend>진급할 학생 선택 · 한 번에 최대 100명</legend>
                   {state.roster.map((s) => (
@@ -334,8 +394,8 @@ export function TermPanel({
                 </fieldset>
                 {state.rosterTotal > state.roster.length && (
                   <p className="notice">
-                    현재 {state.rosterTotal}명 중 {state.roster.length}명이
-                    표시됩니다. 큰 학급은 운영자에게 분할 진행을 요청해 주세요.
+                    현재 묶음 {state.roster.length}명만 선택합니다. 다음 학생
+                    페이지에서도 같은 다음 학급을 선택해 추가할 수 있어요.
                   </p>
                 )}
                 {confirmation(
@@ -347,6 +407,7 @@ export function TermPanel({
           {c.term_state === "open" &&
             state.roster.some((s) => s.membership_id) && (
               <Panel title="진급한 학생의 참여 시작">
+                <TermBulkStart state={state} cls={c} />
                 <p>
                   새 학급의 동의 자료 등록 → 운영자 승인 → 선생님의 참여 시작
                   순서입니다. 학생 비밀번호는 바뀌지 않아요. 시작 이후 비밀번호

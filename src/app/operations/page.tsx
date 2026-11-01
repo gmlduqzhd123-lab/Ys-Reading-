@@ -3,8 +3,11 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { OperationsPanel } from "@/components/operations-panel";
 import type { OperationsState } from "@/lib/operations";
+import { loadHandovers } from "@/lib/growth-terms-server";
 export const metadata = { title: "학생 계정·기록 관리" };
-export default async function OperationsPage({ searchParams }: {
+export default async function OperationsPage({
+  searchParams,
+}: {
   searchParams: Promise<{ classroom?: string | string[] }>;
 }) {
   const profile = await requireProfile();
@@ -16,13 +19,17 @@ export default async function OperationsPage({ searchParams }: {
     );
   if (profile.role !== "teacher" && !data.operator) redirect("/account");
   const requestedClass = (await searchParams).classroom;
-  const initialClassId = (data as OperationsState).classes.find((c) => c.id === requestedClass)?.id;
+  const initialClassId = (data as OperationsState).classes.find(
+    (c) => c.id === requestedClass,
+  )?.id;
+  const handovers = profile.role === "teacher" ? await loadHandovers() : null;
   return (
     <OperationsPanel
       key={initialClassId ?? "default"}
       state={data as OperationsState}
       initialClassId={initialClassId}
       asOf={new Date().toISOString()}
+      handovers={handovers}
     />
   );
 }

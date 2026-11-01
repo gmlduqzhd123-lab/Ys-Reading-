@@ -4,7 +4,11 @@ import type { DashboardData } from "@/lib/data";
 function data(status = "completed", draft = true): DashboardData {
   return {
     profile: { id: "student", role: "student" },
-    assignments: [{ id: "a" }, { id: "b" }],
+    classes: [{ id: "class", term_state: "open" }],
+    assignments: [
+      { id: "a", classroom_id: "class" },
+      { id: "b", classroom_id: "class" },
+    ],
     submissions: [
       {
         id: "old",
@@ -42,6 +46,13 @@ function data(status = "completed", draft = true): DashboardData {
   } as DashboardData;
 }
 describe("Today's next action", () => {
+  it("never recommends archived or inaccessible classroom assignments", () => {
+    const d = data();
+    d.classes[0].term_state = "archived";
+    expect(todayTasks(d)).toEqual([]);
+    d.classes = [];
+    expect(todayTasks(d)).toEqual([]);
+  });
   it("continues a newer changed draft after a completed work", () => {
     expect(todayTasks(data())[0].state).toBe("draft");
   });

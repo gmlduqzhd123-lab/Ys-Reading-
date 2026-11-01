@@ -13,6 +13,7 @@ export interface Profile {
   account_active?: boolean;
   must_change_password?: boolean;
   session_fresh?: boolean;
+  operator?: boolean;
 }
 
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
@@ -41,7 +42,11 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
     console.warn("bookforest:account-session", { code: sessionError.code });
     throw new Error("로그인 상태를 확인하지 못했습니다. 다시 로그인해 주세요.");
   }
-  return { ...profile, session_fresh: session?.fresh === true } as Profile;
+  return {
+    ...profile,
+    session_fresh: session?.fresh === true,
+    operator: session?.operator === true,
+  } as Profile;
 });
 
 export async function requireProfile(): Promise<Profile> {

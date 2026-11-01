@@ -86,7 +86,7 @@ export async function loadHub(
   };
   const activeTables = new Set(nextTables[activeTab] ?? nextTables.reading);
   const profile = await requireProfile();
-  const light = ["search","overview"].includes(activeTab) || (activeTab==="today"&&profile.role==="teacher");
+  const light = ["search", "overview", "today", "review"].includes(activeTab);
   const client = await createClient();
   const tables = [
     "classrooms",
@@ -110,7 +110,8 @@ export async function loadHub(
   ] as const;
   const results = await Promise.all(
     tables.map(async (table) => {
-      if(light&&table!=="classrooms")return {table,data:[],error:null};
+      if (light && table !== "classrooms")
+        return { table, data: [], error: null };
       const fields =
         table === "grade_groups" ? "id,name,owner_id,created_at" : "*";
       let query = client
@@ -120,7 +121,8 @@ export async function loadHub(
         .limit(pagedTables.has(table) ? 101 : 1001);
       if (pagedTables.has(table))
         query = query.order("id").range((page - 1) * 100, page * 100);
-      if(table==="reading_logs"&&activeTab==="review")query=query.eq("status","completed").is("verified_at",null);
+      if (table === "reading_logs" && activeTab === "review")
+        query = query.eq("status", "completed").is("verified_at", null);
       const response = await query;
       return { table, ...response };
     }),
@@ -140,7 +142,7 @@ export async function loadHub(
       0,
       pagedTables.has(table) ? 100 : 1000,
     ) as unknown as HubRow[];
-  const summary = missing||light ? null : await client.rpc("hub_summary");
+  const summary = missing || light ? null : await client.rpc("hub_summary");
   if (summary?.error)
     throw new Error(
       "성장·지갑 합계를 불러오지 못했습니다. 새 데이터베이스 구성을 확인해 주세요.",

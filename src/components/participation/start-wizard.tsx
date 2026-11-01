@@ -10,6 +10,7 @@ import type { OperationsState } from "@/lib/operations";
 import { missions } from "@/lib/missions";
 import { responseChoices } from "@/lib/participation";
 import { ParticipationForm, value } from "./form";
+import { RosterImporter } from "./roster-importer";
 function downloadAccounts(rows: NonNullable<AccountInput["students"]>) {
   const cell = (text: string) =>
     `"${(/^[\s]*[=+\-@]/.test(text) ? "'" : "") + text.replaceAll('"', '""')}"`;
@@ -41,12 +42,16 @@ export function StartWizard({
 }) {
   const router = useRouter(),
     [step, setStep] = useState(1),
-    [classId, setClassId] = useState(data.classes[0]?.id ?? "");
+    [classId, setClassId] = useState(
+      data.classes.find((c) => c.term_state !== "archived")?.id ?? "",
+    );
   const [created, setCreated] = useState<{ id: string; name: string }[]>([]),
     [className, setClassName] = useState("");
   const classes = [
     ...created,
-    ...data.classes.filter((c) => !created.some((n) => n.id === c.id)),
+    ...data.classes.filter(
+      (c) => c.term_state !== "archived" && !created.some((n) => n.id === c.id),
+    ),
   ];
   const [batch, setBatch] = useState<AccountInput | null>(null),
     [completed, setCompleted] = useState(0),
@@ -54,6 +59,7 @@ export function StartWizard({
   const [busy, start] = useTransition(),
     [downloaded, setDownloaded] = useState(false),
     [qr, setQr] = useState("");
+  const [importPending, setImportPending] = useState(false);
   const batchRef = useRef(batch);
   batchRef.current = batch;
   const url = classId
@@ -134,7 +140,7 @@ export function StartWizard({
             key={name}
             aria-current={step === i + 1 ? "step" : undefined}
             className={step === i + 1 ? "selected" : ""}
-            disabled={busy || (i > 0 && !classId)}
+            disabled={busy || importPending || (i > 0 && !classId)}
             onClick={() => setStep(i + 1)}
           >
             {i + 1}. {name}
@@ -149,7 +155,7 @@ export function StartWizard({
               준비할 학급
               <select
                 value={classId}
-                disabled={batch !== null}
+                disabled={batch !== null || importPending}
                 onChange={(e) => setClassId(e.target.value)}
               >
                 {classes.map((c) => (
@@ -203,58 +209,71 @@ export function StartWizard({
             이 학급에 이미 발급된 학생 {enrolled.length}명입니다. 아래에는
             추가할 학생만 입력하세요. 한 줄에 한 명, 최대 30명입니다.
           </p>
+          {!batch && (
+            <RosterImporter
+              classId={classId}
+              existing={state.students.flatMap((s) =>
+                s.login_id ? [s.login_id] : [],
+              )}
+              onPending={setImportPending}
+            />
+          )}
           {!batch ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const raw = new FormData(e.currentTarget);
-                const names = value(raw, "names")
-                  .split(/\r?\n/)
-                  .map((n) => n.trim())
-                  .filter(Boolean);
-                if (
-                  !names.length ||
-                  names.length > 30 ||
-                  names.some((n) => n.length > 40)
-                ) {
-                  setMessage("별칭 1~40자, 학생 1~30명인지 확인해 주세요.");
-                  return;
-                }
-                const prefix =
-                  "bf" + crypto.randomUUID().replaceAll("-", "").slice(0, 12);
-                const students = names.map((name, i) => ({
-                  name,
-                  loginId: prefix + String(i + 1).padStart(2, "0"),
-                  password:
-                    "Aa7!" +
-                    Array.from(
-                      crypto.getRandomValues(new Uint8Array(16)),
-                      (n) => n.toString(16).padStart(2, "0"),
-                    ).join(""),
-                }));
-                setBatch({
-                  kind: "create_students",
-                  requestId: crypto.randomUUID(),
-                  classroomId: classId,
-                  students,
-                });
-                setCompleted(0);
-                setDownloaded(false);
-                setMessage("");
-              }}
-            >
-              <label className="field">
-                학생 별칭 목록
-                <textarea
-                  name="names"
-                  rows={6}
-                  maxLength={1300}
-                  placeholder={"새싹\n다람쥐\n책나무"}
-                  required
-                />
-              </label>
-              <button className="button button-primary">발급 명단 준비</button>
-            </form>
+            !importPending && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const raw = new FormData(e.currentTarget);
+                  const names = value(raw, "names")
+                    .split(/\r?\n/)
+                    .map((n) => n.trim())
+                    .filter(Boolean);
+                  if (
+                    !names.length ||
+                    names.length > 30 ||
+                    names.some((n) => n.length > 40)
+                  ) {
+                    setMessage("별칭 1~40자, 학생 1~30명인지 확인해 주세요.");
+                    return;
+                  }
+                  const prefix =
+                    "bf" + crypto.randomUUID().replaceAll("-", "").slice(0, 12);
+                  const students = names.map((name, i) => ({
+                    name,
+                    loginId: prefix + String(i + 1).padStart(2, "0"),
+                    password:
+                      "Aa7!" +
+                      Array.from(
+                        crypto.getRandomValues(new Uint8Array(16)),
+                        (n) => n.toString(16).padStart(2, "0"),
+                      ).join(""),
+                  }));
+                  setBatch({
+                    kind: "create_students",
+                    requestId: crypto.randomUUID(),
+                    classroomId: classId,
+                    students,
+                  });
+                  setCompleted(0);
+                  setDownloaded(false);
+                  setMessage("");
+                }}
+              >
+                <label className="field">
+                  학생 별칭 목록
+                  <textarea
+                    name="names"
+                    rows={6}
+                    maxLength={1300}
+                    placeholder={"새싹\n다람쥐\n책나무"}
+                    required
+                  />
+                </label>
+                <button className="button button-primary">
+                  발급 명단 준비
+                </button>
+              </form>
+            )
           ) : (
             <>
               <p>
@@ -332,6 +351,7 @@ export function StartWizard({
               </Link>
               <button
                 className="button button-outline"
+                disabled={importPending}
                 onClick={() => setStep(3)}
               >
                 학생 발급은 나중에 · 다음 단계

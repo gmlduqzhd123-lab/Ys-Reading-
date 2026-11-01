@@ -31,7 +31,11 @@ import {
   WRITING_TITLE_LIMIT,
 } from "@/lib/rules";
 
-type WorkEditorProps = { data: DashboardData; assignment: Assignment; choiceKey?: string };
+type WorkEditorProps = {
+  data: DashboardData;
+  assignment: Assignment;
+  choiceKey?: string;
+};
 type Content = { title: string; body: string };
 type SaveState = "empty" | "unsaved" | "saving" | "saved" | "error";
 
@@ -58,7 +62,14 @@ function runAction<T>(action: () => Promise<T>): Promise<T> {
 }
 
 export function WorkEditor(props: WorkEditorProps) {
-  if (props.assignment.choices?.length && !props.choiceKey && props.data.profile.consent_status === "verified" && props.data.classes.find(c=>c.id===props.assignment.classroom_id)?.term_state!=="archived") return <MissionChoicePicker assignment={props.assignment}/>;
+  if (
+    props.assignment.choices?.length &&
+    !props.choiceKey &&
+    props.data.profile.consent_status === "verified" &&
+    props.data.classes.find((c) => c.id === props.assignment.classroom_id)
+      ?.term_state !== "archived"
+  )
+    return <MissionChoicePicker assignment={props.assignment} />;
   // A different assignment must not reuse the previous assignment's draft refs.
   return (
     <AssignmentEditor
@@ -69,8 +80,15 @@ export function WorkEditor(props: WorkEditorProps) {
 }
 
 function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
-  const chosen=assignment.choices?.find(c=>c.key===choiceKey);
-  const guideSteps=assignment.choices?.length?["책에서 기억나는 장면을 떠올려요.","내가 고른 표현 방법으로 생각을 써요.","책 속 근거와 나의 이유를 덧붙여요.","다시 읽으며 생각을 다듬어요."]:assignment.mission_snapshot.steps??[];
+  const chosen = assignment.choices?.find((c) => c.key === choiceKey);
+  const guideSteps = assignment.choices?.length
+    ? [
+        "책에서 기억나는 장면을 떠올려요.",
+        "내가 고른 표현 방법으로 생각을 써요.",
+        "책 속 근거와 나의 이유를 덧붙여요.",
+        "다시 읽으며 생각을 다듬어요.",
+      ]
+    : (assignment.mission_snapshot.steps ?? []);
   const router = useRouter();
   const ownSubmissions = data.submissions
     .filter(
@@ -90,9 +108,7 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
   const [saveState, setSaveState] = useState<SaveState>(
     initial.savedAt ? "saved" : "empty",
   );
-  const [savedAt, setSavedAt] = useState<string | null>(
-    initial.savedAt,
-  );
+  const [savedAt, setSavedAt] = useState<string | null>(initial.savedAt);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
@@ -118,8 +134,11 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestRef = useRef<{ payload: string; id: string } | null>(null);
 
-  const archived=data.classes.find(c=>c.id===assignment.classroom_id)?.term_state==="archived";
-  const canWrite = !archived &&
+  const archived =
+    data.classes.find((c) => c.id === assignment.classroom_id)?.term_state ===
+    "archived";
+  const canWrite =
+    !archived &&
     data.profile.role === "student" &&
     data.profile.consent_status === "verified";
   const canWriteRef = useRef(canWrite);
@@ -149,8 +168,9 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
     const warnIfUnsaved = (event: BeforeUnloadEvent) => {
       // Read refs at exit time: a stale render must not report a save as complete.
       if (
-        !recoveryReloadRef.current && (!sameContent(contentRef.current, savedContentRef.current) ||
-        submittingRef.current)
+        !recoveryReloadRef.current &&
+        (!sameContent(contentRef.current, savedContentRef.current) ||
+          submittingRef.current)
       ) {
         event.preventDefault();
         event.returnValue = "";
@@ -555,11 +575,13 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
         {!canWrite && (
           <div className="notice">
             <strong>
-                {archived ? "보관된 학기의 글이에요. 읽기·내보내기로 추억을 이어가세요." : data.profile.role === "student"
-                ? "보호자 동의 확인을 기다리고 있어요"
-                : "학생 계정에서 글을 쓸 수 있어요"}
+              {archived
+                ? "보관된 학기의 글이에요. 읽기·내보내기로 추억을 이어가세요."
+                : data.profile.role === "student"
+                  ? "보호자 동의 확인을 기다리고 있어요"
+                  : "학생 계정에서 글을 쓸 수 있어요"}
             </strong>
-            {!archived&&"선생님에게 계정의 참여 준비 상태를 확인해 주세요."}
+            {!archived && "선생님에게 계정의 참여 준비 상태를 확인해 주세요."}
           </div>
         )}
         {assignment.mission_snapshot.requires_revision && (
@@ -567,11 +589,43 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
             이 미션은 초고 제출 → 선생님 피드백 → 글 고치기 순서로 함께해요.
           </p>
         )}
-        {assignment.choices?.find(c=>c.key===choiceKey)&&<div className="notice"><strong>{assignment.choices.find(c=>c.key===choiceKey)!.label}</strong><p>{assignment.choices.find(c=>c.key===choiceKey)!.prompt}</p></div>}
-        {assignment.success_criteria&&<details className="panel"><summary>이번 활동의 확인 기준</summary><p className="submission-body">{assignment.success_criteria}</p></details>}
+        {assignment.choices?.find((c) => c.key === choiceKey) && (
+          <div className="notice">
+            <strong>
+              {assignment.choices.find((c) => c.key === choiceKey)!.label}
+            </strong>
+            <p>{assignment.choices.find((c) => c.key === choiceKey)!.prompt}</p>
+          </div>
+        )}
+        {assignment.success_criteria && (
+          <details className="panel">
+            <summary>이번 활동의 확인 기준</summary>
+            <p className="submission-body">{assignment.success_criteria}</p>
+          </details>
+        )}
 
         <form onSubmit={handleSubmit} aria-busy={isSubmitting || isNavigating}>
-          {canWrite&&<DraftRecovery userId={data.profile.id} assignmentId={assignment.id} revision={revisionRef.current} title={content.title} body={content.body} dirty={!sameContent(content,savedContentRef.current)} onRestore={(title,body)=>{updateContent("title",title);updateContent("body",body);}} onReload={()=>{if(submittingRef.current)return;recoveryReloadRef.current=true;savePausedRef.current=true;if(timerRef.current)clearTimeout(timerRef.current);window.location.reload();}}/>}
+          {canWrite && (
+            <DraftRecovery
+              userId={data.profile.id}
+              assignmentId={assignment.id}
+              revision={revisionRef.current}
+              title={content.title}
+              body={content.body}
+              dirty={!sameContent(content, savedContentRef.current)}
+              onRestore={(title, body) => {
+                updateContent("title", title);
+                updateContent("body", body);
+              }}
+              onReload={() => {
+                if (submittingRef.current) return;
+                recoveryReloadRef.current = true;
+                savePausedRef.current = true;
+                if (timerRef.current) clearTimeout(timerRef.current);
+                window.location.reload();
+              }}
+            />
+          )}
           <div className="field">
             <label htmlFor="writing-title">글 제목</label>
             <input
@@ -648,13 +702,13 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
             </p>
           )}
 
-          {awaitingReview && (
+          {canWrite && awaitingReview && (
             <p className="form-help">
               선생님이 제출한 글을 읽고 있어요. 초안은 계속 고칠 수 있고,
               피드백을 받은 뒤 다시 제출할 수 있어요.
             </p>
           )}
-          {latestSubmission?.status === "completed" && (
+          {canWrite && latestSubmission?.status === "completed" && (
             <p className="form-help">
               완료한 글도 더 다듬어 새 버전으로 제출할 수 있어요. 앞선 완료
               기록은 남아 있어요.
@@ -718,7 +772,7 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
           <BookOpen className="accent-icon" size={23} aria-hidden="true" />
           <h2 id="activity-heading">오늘의 생각 질문</h2>
           <p className="submission-body">
-            {chosen?.prompt??assignment.mission_snapshot.prompt}
+            {chosen?.prompt ?? assignment.mission_snapshot.prompt}
           </p>
           {assignment.due_at && (
             <p className="form-help">
@@ -726,7 +780,7 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
               글은 제출할 수 있어요.
             </p>
           )}
-          {guideSteps.length>0 && (
+          {guideSteps.length > 0 && (
             <details>
               <summary className="text-link">활동 순서 펼쳐 보기</summary>
               <ol className="guide-list">

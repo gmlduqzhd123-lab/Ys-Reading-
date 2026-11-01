@@ -1,6 +1,11 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import {
+  ConsentBatch,
+  HandoverPanel,
+  type HandoverState,
+} from "./hub/operations-batch";
 import { useRouter } from "next/navigation";
 import {
   accountOperation,
@@ -44,15 +49,19 @@ export function OperationsPanel({
   state,
   asOf,
   initialClassId,
+  handovers,
 }: {
   state: OperationsState;
   asOf: string;
   initialClassId?: string;
+  handovers?: HandoverState | null;
 }) {
   const router = useRouter();
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
-  const [classId, setClassId] = useState(initialClassId ?? state.classes[0]?.id ?? "");
+  const [classId, setClassId] = useState(
+    initialClassId ?? state.classes[0]?.id ?? "",
+  );
   const cls = state.classes.find((c) => c.id === classId);
   const students = state.students.filter((s) => s.classroom_id === classId);
   const [batch, setBatch] = useState<AccountInput | null>(null);
@@ -104,6 +113,14 @@ export function OperationsPanel({
   );
   return (
     <div className="operations-page">
+      <ConsentBatch state={state} />
+      {state.operator && handovers && (
+        <HandoverPanel
+          state={handovers}
+          classes={[]}
+          teachers={state.teachers}
+        />
+      )}
       <div className="workspace-heading">
         <div>
           <span className="eyebrow">CLASSROOM CARE</span>
@@ -150,11 +167,23 @@ export function OperationsPanel({
         <>
           <section className="ops-card">
             <h2>{cls.name} · 학습 시작 준비</h2>
-            <p>계정 {students.length}명 · 비밀번호 변경 대기 {students.filter((s) => s.must_change_password).length}명 · 동의 확인 대기 {students.filter((s) => s.consent_status !== "verified").length}명</p>
-            <p>발급된 학생은 이 학급에 자동 연결됩니다. 별도의 초대 코드 입력 없이 비밀번호 변경과 동의 승인을 마치면 활동을 시작할 수 있어요.</p>
+            <p>
+              계정 {students.length}명 · 비밀번호 변경 대기{" "}
+              {students.filter((s) => s.must_change_password).length}명 · 동의
+              확인 대기{" "}
+              {students.filter((s) => s.consent_status !== "verified").length}명
+            </p>
+            <p>
+              발급된 학생은 이 학급에 자동 연결됩니다. 별도의 초대 코드 입력
+              없이 비밀번호 변경과 동의 승인을 마치면 활동을 시작할 수 있어요.
+            </p>
             <div className="ops-actions">
-              <Link className="button button-outline" href="/app?view=classes">다음: 독서미션 배정</Link>
-              <Link className="button button-outline" href="/hub?tab=economy">학급 보상·상점 준비</Link>
+              <Link className="button button-outline" href="/app?view=classes">
+                다음: 독서미션 배정
+              </Link>
+              <Link className="button button-outline" href="/hub?tab=economy">
+                학급 보상·상점 준비
+              </Link>
             </div>
           </section>
           <section className="ops-card">
@@ -334,7 +363,7 @@ export function OperationsPanel({
                         <div className="ops-actions">
                           <button
                             className="button button-outline"
-                            disabled={busy || s.can_reset===false}
+                            disabled={busy || s.can_reset === false}
                             onClick={() =>
                               setReset({
                                 input: {
@@ -352,7 +381,12 @@ export function OperationsPanel({
                           >
                             초기 비밀번호 재발급
                           </button>
-                          {s.can_reset===false&&<small>비밀번호 재발급은 현재 계정 관리 학급의 담임에게 요청해 주세요.</small>}
+                          {s.can_reset === false && (
+                            <small>
+                              비밀번호 재발급은 현재 계정 관리 학급의 담임에게
+                              요청해 주세요.
+                            </small>
+                          )}
                           <button
                             className="button button-outline"
                             disabled={
@@ -736,7 +770,9 @@ export function OperationsPanel({
                   {preview.data.submissions}건 · 광장 글{" "}
                   {preview.data.plaza_posts}건 · 경제 원장 {preview.data.ledger}
                   건
-                  {" · 역할·저축·제안·전시·선택·공동 배지 "+(preview.data.participation_records??0)+"건"}
+                  {" · 역할·저축·제안·전시·선택·공동 배지 " +
+                    (preview.data.participation_records ?? 0) +
+                    "건"}
                   {preview.data.auth_account ? " · 로그인 계정 삭제 포함" : ""}
                   {!preview.data.retention_eligible
                     ? " · 새 활동이 있어 보관 만료 삭제 불가"

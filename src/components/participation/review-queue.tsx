@@ -1,63 +1,35 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import type { DashboardData } from "@/lib/data";
-import type { HubData } from "@/lib/hub-data";
-import type { ParticipationData } from "@/lib/participation";
+import type { Classroom } from "@/lib/data";
+import type { ReviewState } from "@/lib/learning-queues";
+import { useRouter } from "next/navigation";
 import { feedbackStarters } from "@/lib/participation";
 import { ParticipationForm, TextArea, value } from "./form";
 import { Field } from "@/components/hub/shared";
 export function ReviewQueue({
-  data,
-  hub,
-  extra,
+  state,
+  classes,
 }: {
-  data: DashboardData;
-  hub: HubData;
-  extra: ParticipationData;
+  state: ReviewState;
+  classes: Classroom[];
 }) {
-  const [kind, setKind] = useState("writing"),
-    [classId, setClassId] = useState(""),
-    [selected, setSelected] = useState<string[]>([]),
+  const router = useRouter(),
+    kind = state.kind,
+    classId = state.classroom ?? "",
+    page = state.page - 1,
+    queue = state.rows;
+  const href = (
+    kindValue = kind,
+    classValue = classId,
+    pageValue = state.page,
+  ) =>
+    `/hub?tab=review&reviewKind=${kindValue}&classroom=${classValue}&reviewPage=${pageValue}`;
+  const [selected, setSelected] = useState<string[]>([]),
     [opened, setOpened] = useState<Set<string>>(new Set());
   const [body, setBody] = useState(""),
-    [decision, setDecision] = useState("completed"),
-    [page, setPage] = useState(0);
+    [decision, setDecision] = useState("completed");
   const [notice, setNotice] = useState("");
-  const latest = data.submissions.filter(
-    (s) =>
-      s.status === "submitted" &&
-      !data.submissions.some(
-        (n) =>
-          n.assignment_id === s.assignment_id &&
-          n.student_id === s.student_id &&
-          n.version > s.version,
-      ),
-  );
-  const writing = latest.map((s) => ({
-    ...s,
-    classroom_id:
-      data.assignments.find((a) => a.id === s.assignment_id)?.classroom_id ??
-      "",
-    kind: "writing",
-  }));
-  const reading = hub.logs
-    .filter((l) => l.status === "completed" && !l.verified_at)
-    .map((l) => ({
-      ...l,
-      title: l.book.title,
-      body:
-        l.thought + (l.question ? "\n더 생각해 볼 질문: " + l.question : ""),
-      version: 0,
-      kind: "reading",
-    }));
-  const queue = (kind === "writing" ? writing : reading).filter(
-    (r) => !classId || r.classroom_id === classId,
-  );
-  const reset = () => {
-    setSelected([]);
-    setPage(0);
-  };
   return (
     <div className="review-queue">
       {notice && (
@@ -72,31 +44,15 @@ export function ReviewQueue({
       </p>
       <div className="today-actions">
         <div>
-          <strong>{writing.length}</strong>
+          <strong>{state.totals.writing}</strong>
           <span>새 글·재제출 확인 대기</span>
         </div>
         <div>
-          <strong>
-            {reading.length}
-            {hub.hasNext ? "+" : ""}
-          </strong>
-          <span>이 페이지의 완독 확인 대기</span>
+          <strong>{state.totals.reading}</strong>
+          <span>완독 확인 대기</span>
         </div>
         <div>
-          <strong>
-            {
-              data.submissions.filter(
-                (s) =>
-                  s.status === "revision_requested" &&
-                  !data.submissions.some(
-                    (n) =>
-                      n.assignment_id === s.assignment_id &&
-                      n.student_id === s.student_id &&
-                      n.version > s.version,
-                  ),
-              ).length
-            }
-          </strong>
+          <strong>{state.totals.revision}</strong>
           <span>학생의 고쳐쓰기 기다림</span>
         </div>
       </div>
@@ -106,8 +62,9 @@ export function ReviewQueue({
           <select
             value={kind}
             onChange={(e) => {
-              setKind(e.target.value);
-              reset();
+              router.push(
+                href(e.target.value as "reading" | "writing", classId, 1),
+              );
             }}
           >
             <option value="writing">글쓰기 · 최신 제출만</option>
@@ -119,23 +76,28 @@ export function ReviewQueue({
           <select
             value={classId}
             onChange={(e) => {
-              setClassId(e.target.value);
-              reset();
+              router.push(href(kind, e.target.value, 1));
             }}
           >
-            <option value="">모든 담당 학급</option>
-            {data.classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+            <option value="">진행 중인 담당 학급 전체</option>
+            {classes
+              .filter((c) => c.term_state !== "archived")
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
           </select>
         </label>
       </div>
       {!queue.length && (
         <div className="hub-empty">현재 확인할 기록이 없어요.</div>
       )}
-      {queue.slice(page * 20, page * 20 + 20).map((r) => (
+      <p className="form-help">
+        보관된 학급은 기록 검색에서 조회·내보내기할 수 있어요. 대기 기록만
+        20건씩 불러옵니다.
+      </p>
+      {queue.map((r) => (
         <article key={r.id} className="review-card">
           <details
             onToggle={(e) => {
@@ -144,9 +106,7 @@ export function ReviewQueue({
             }}
           >
             <summary>
-              {hub.students.find((s) => s.id === r.student_id)?.display_name ??
-                "학생"}{" "}
-              · {r.title}
+              {r.student_name} · {r.title}
               {r.version ? ` · ${r.version}번째 글` : " · 독서 기록"}
             </summary>
             <p className="submission-body">{r.body}</p>
@@ -180,23 +140,17 @@ export function ReviewQueue({
         <button
           className="button button-outline"
           disabled={!page}
-          onClick={() => {
-            setPage((p) => p - 1);
-            setSelected([]);
-          }}
+          onClick={() => router.push(href(kind, classId, state.page - 1))}
         >
           이전 묶음
         </button>
         <span>
-          {page + 1}묶음 · {queue.length}건
+          {page + 1}묶음 · 전체 {state.total}건
         </span>
         <button
           className="button button-outline"
-          disabled={(page + 1) * 20 >= queue.length}
-          onClick={() => {
-            setPage((p) => p + 1);
-            setSelected([]);
-          }}
+          disabled={(page + 1) * 20 >= state.total}
+          onClick={() => router.push(href(kind, classId, state.page + 1))}
         >
           다음 묶음
         </button>
@@ -219,7 +173,7 @@ export function ReviewQueue({
                   </option>
                   {[
                     ...feedbackStarters,
-                    ...extra.presets.map((p) => p.body),
+                    ...state.presets.map((p) => p.body),
                   ].map((text, i) => (
                     <option key={i} value={text}>
                       {text.slice(0, 55)}

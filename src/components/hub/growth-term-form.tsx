@@ -52,7 +52,7 @@ export function GrowthTermForm({
         try {
           const data = payload(f);
           if (
-            command === "promote" &&
+            ["promote", "promote_append"].includes(command) &&
             (!Array.isArray(data.students) ||
               data.students.length < 1 ||
               data.students.length > 100)
