@@ -22,6 +22,7 @@ import { saveDraft, submitWork } from "@/app/actions";
 import { VersionComparison } from "@/components/writing-diff";
 import { MissionChoicePicker } from "@/components/participation/mission-choice";
 import { initialWritingState } from "@/lib/writing-state";
+import { DraftRecovery } from "@/components/recovery/draft-recovery";
 import type { Assignment, DashboardData, Submission } from "@/lib/data";
 import {
   formatKoreanDate,
@@ -113,6 +114,7 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
   const submittingRef = useRef(false);
   const navigatingRef = useRef(false);
   const mountedRef = useRef(true);
+  const recoveryReloadRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestRef = useRef<{ payload: string; id: string } | null>(null);
 
@@ -146,8 +148,8 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
     const warnIfUnsaved = (event: BeforeUnloadEvent) => {
       // Read refs at exit time: a stale render must not report a save as complete.
       if (
-        !sameContent(contentRef.current, savedContentRef.current) ||
-        submittingRef.current
+        !recoveryReloadRef.current && (!sameContent(contentRef.current, savedContentRef.current) ||
+        submittingRef.current)
       ) {
         event.preventDefault();
         event.returnValue = "";
@@ -568,6 +570,7 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
         {assignment.success_criteria&&<details className="panel"><summary>이번 활동의 확인 기준</summary><p className="submission-body">{assignment.success_criteria}</p></details>}
 
         <form onSubmit={handleSubmit} aria-busy={isSubmitting || isNavigating}>
+          {canWrite&&<DraftRecovery userId={data.profile.id} assignmentId={assignment.id} revision={revisionRef.current} title={content.title} body={content.body} dirty={!sameContent(content,savedContentRef.current)} onRestore={(title,body)=>{updateContent("title",title);updateContent("body",body);}} onReload={()=>{if(submittingRef.current)return;recoveryReloadRef.current=true;savePausedRef.current=true;if(timerRef.current)clearTimeout(timerRef.current);window.location.reload();}}/>}
           <div className="field">
             <label htmlFor="writing-title">글 제목</label>
             <input

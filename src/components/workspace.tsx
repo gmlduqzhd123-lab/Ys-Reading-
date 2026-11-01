@@ -1,4 +1,5 @@
 "use client";
+import { notifyDraftLogout } from "@/lib/draft-recovery";
 
 import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
@@ -194,6 +195,7 @@ export function Workspace({
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
+              notifyDraftLogout();
               await logout();
             })
           }

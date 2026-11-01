@@ -1,0 +1,22 @@
+name: Bookforest availability
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: bookforest-availability
+  cancel-in-progress: false
+jobs:
+  public-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/check-availability.mjs

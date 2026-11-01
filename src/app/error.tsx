@@ -20,6 +20,7 @@ export default function ErrorBoundary({
         <Link className="button button-outline" href="/">
           책숲으로
         </Link>
+        <Link className="button button-outline" href="/status">연결 상태 점검</Link>
       </div>
     </div>
   );

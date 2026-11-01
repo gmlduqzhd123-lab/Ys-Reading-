@@ -18,6 +18,9 @@ import { EconomyLab } from "@/components/participation/economy-lab";
 import { Exhibitions } from "@/components/participation/exhibitions";
 import { LessonPacks } from "@/components/participation/lesson-packs";
 import { RefreshButton } from "@/components/participation/refresh-button";
+import { ClassOverviewPanel } from "@/components/participation/class-overview";
+import { RecordSearch } from "@/components/participation/record-search";
+import type { ClassOverview,SearchFilters,SearchResult } from "@/lib/classroom-insights";
 export function LearningHub({
   data,
   initialTab,
@@ -25,6 +28,7 @@ export function LearningHub({
   googleNotice,
   participation,
   dashboard,
+  overview, search, filters, searchError,
 }: {
   data: HubData;
   initialTab?: string;
@@ -32,11 +36,13 @@ export function LearningHub({
   googleNotice?: string;
   participation?: ParticipationData | null;
   dashboard?: DashboardData | null;
+  overview?:ClassOverview|null;search?:SearchResult|null;filters:SearchFilters;searchError?:string;
 }) {
   const teacher = data.profile.role === "teacher";
   const tabs = [
     ["today", teacher?"오늘의 교실":"오늘 할 일"],
-    ...(teacher?[["review","학생 기록 확인"],["packs","수업 꾸러미"]]:[]),
+    ...(teacher?[["overview","현황·알림"],["review","학생 기록 확인"],["packs","수업 꾸러미"]]:[]),
+    ["search","기록 검색"],
     ["reading", "나의 책장"],
     ["exports", "기록·글 내보내기"],
     ["growth", "캐릭터·배지"],
@@ -132,6 +138,8 @@ export function LearningHub({
           ) : (
             <>
               {tab === "today" && dashboard && <Today data={dashboard} hub={data}/>}
+              {teacher&&["today","overview"].includes(tab)&&overview&&<ClassOverviewPanel key={filters.classroom+":"+filters.page} data={overview} classroom={filters.classroom} classes={data.classes}/>}
+              {tab==="search"&&<RecordSearch key={JSON.stringify(filters)} data={search??null} filters={filters} error={searchError} classes={data.classes} teacher={teacher}/>}
               {tab === "review" && teacher && dashboard && participation && <ReviewQueue data={dashboard} hub={data} extra={participation}/>}
               {tab === "packs" && teacher && participation && <LessonPacks hub={data} extra={participation}/>}
               {tab === "exhibitions" && participation && <Exhibitions hub={data} extra={participation} google={google}/>}
@@ -146,7 +154,7 @@ export function LearningHub({
               {!teacher && !data.classes.length && tab !== "manage" && (
                 <Management data={data} />
               )}
-              {!["today","packs"].includes(tab)&&<nav className="hub-row" aria-label="기록 페이지">
+              {!["today","packs","overview","search"].includes(tab)&&<nav className="hub-row" aria-label="기록 페이지">
                 {data.page > 1 && (
                   <Link
                     className="button button-outline"

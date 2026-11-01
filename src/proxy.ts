@@ -47,6 +47,7 @@ export const config = {
     "/auth/:path*",
     "/api/books",
     "/api/export",
+    "/api/learning-archive",
     "/api/google/:path*",
   ],
 };

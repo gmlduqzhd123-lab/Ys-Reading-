@@ -1,0 +1,132 @@
+.insights-page {
+  display: grid;
+  gap: 22px;
+}
+.insights-page h2,
+.insights-page h3 {
+  margin: 0 0 12px;
+}
+.insights-page p {
+  line-height: 1.8;
+}
+.insight-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.insight-metrics > div {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px;
+  display: grid;
+  gap: 10px;
+  background: var(--paper);
+}
+.insight-metrics strong {
+  font-size: 1.8rem;
+  color: var(--green);
+}
+.insight-metrics span {
+  color: var(--muted);
+}
+.insight-alerts {
+  list-style: none;
+  padding: 0;
+}
+.insight-alerts li {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+.insight-alerts li > div {
+  flex: 1;
+}
+.insight-alerts small,
+.insight-table small {
+  display: block;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.table-scroll {
+  overflow: auto;
+}
+.insight-table {
+  border-collapse: collapse;
+  min-width: 760px;
+  width: 100%;
+  text-align: left;
+}
+.insight-table th,
+.insight-table td {
+  padding: 14px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.record-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: end;
+}
+.record-filters .button-row {
+  grid-column: 1/-1;
+}
+.search-record {
+  overflow-wrap: anywhere;
+}
+.search-record summary {
+  padding: 16px 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.search-record .button-row {
+  margin-top: 18px;
+}
+.draft-recovery {
+  padding: 16px;
+  border: 1px dashed var(--green);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+.draft-recovery > p {
+  font-size: 13px;
+}
+.connection-banner {
+  background: #fff4df;
+  border-bottom: 1px solid #cfa96d;
+  padding: 16px 24px;
+  line-height: 1.7;
+  color: #4b3616;
+}
+.connection-banner a {
+  text-decoration: underline;
+}
+.connection-banner button {
+  margin-left: 18px;
+  min-height: 36px;
+}
+@media (max-width: 760px) {
+  .insight-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .record-filters {
+    grid-template-columns: 1fr;
+  }
+  .insight-alerts li {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .insight-alerts li .text-link {
+    margin-left: auto;
+  }
+  .insight-metrics > div {
+    padding: 16px;
+  }
+  .insights-page .panel {
+    min-width: 0;
+  }
+  .insight-metrics strong {
+    font-size: 1.45rem;
+  }
+}

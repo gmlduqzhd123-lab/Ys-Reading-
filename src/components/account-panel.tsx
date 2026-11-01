@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Profile } from "@/lib/auth";
 import { accountOperation, operationsCommand } from "@/app/operations/actions";
 import { logout } from "@/app/actions";
+import { notifyDraftLogout } from "@/lib/draft-recovery";
 import { statusLabels, type OperationsState } from "@/lib/operations";
 export function AccountPanel({
   profile,
@@ -45,7 +46,7 @@ export function AccountPanel({
               : "계정을 이용할 수 있어요."}
         </p>
         <div className="ops-actions">
-          <form action={logout}>
+          <form action={logout} onSubmit={notifyDraftLogout}>
             <button className="button button-outline">로그아웃</button>
           </form>
           {ready && (

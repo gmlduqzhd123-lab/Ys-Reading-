@@ -4,6 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, ChevronDown, Leaf, Menu, UserRound, X } from "lucide-react";
 import { ViewSettings } from "@/components/participation/view-settings";
+import { ConnectionBanner } from "@/components/recovery/connection-banner";
 
 const links = [
   { href: "/hub?tab=today", label: "오늘 할 일", active: "today" },
@@ -14,6 +15,7 @@ const links = [
 ];
 const moreLinks = [
   ["/hub?tab=reading", "나의 책장"],
+  ["/hub?tab=search", "기록 검색"], ["/hub?tab=overview", "선생님 현황·알림"], ["/status", "연결 점검·기록 보관"],
   ["/hub?tab=today", "오늘 할 일"], ["/start", "우리 반 시작하기"], ["/hub?tab=packs", "수업 꾸러미"], ["/hub?tab=exhibitions", "작은 작품 전시회"],
   ["/app", "우리 교실"], ["/hub?tab=growth", "캐릭터·배지"],
   ["/hub?tab=exports", "기록·글 내보내기"], ["/hub?tab=manage", "학급 연결·관리"],
@@ -73,6 +75,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <div className="main-column">
+        <ConnectionBanner/>
         <main id="main-content" className="main-content">{children}</main>
         <footer className="page-footer">
           <Link href="/" className="paper-footer-brand">책숲 <span>읽고, 생각하고, 함께 자라요.</span></Link>
