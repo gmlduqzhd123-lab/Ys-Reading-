@@ -15,6 +15,8 @@ export interface OperationsState {
     classroom_id: string;
     active: boolean;
     login_id: string | null;
+    managed_classroom_id?: string|null;
+    can_reset?: boolean;
     last_activity: string | null;
   }[];
   teachers: { id: string; display_name: string; account_active: boolean }[];
@@ -60,6 +62,7 @@ export function operationsError(error: unknown) {
     typeof error === "object" && error && "message" in error
       ? String(error.message)
       : String(error);
+  if (/BF_CLASS_ARCHIVED/.test(m)) return "보관된 학급에는 학생을 새로 발급할 수 없어요. 진행 중인 학급을 선택하거나 학기를 다시 열어 주세요.";
   if (/BF_PASSWORD_WEAK/.test(m))
     return "새 비밀번호는 영문 대·소문자와 숫자를 포함해 12~128자로 입력해 주세요.";
   if (/BF_PASSWORD_CURRENT/.test(m))

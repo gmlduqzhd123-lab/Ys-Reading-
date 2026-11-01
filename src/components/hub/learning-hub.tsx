@@ -21,6 +21,8 @@ import { RefreshButton } from "@/components/participation/refresh-button";
 import { ClassOverviewPanel } from "@/components/participation/class-overview";
 import { RecordSearch } from "@/components/participation/record-search";
 import type { ClassOverview,SearchFilters,SearchResult } from "@/lib/classroom-insights";
+import type {GrowthState,TermState} from "@/lib/growth-terms";
+import {TermPanel} from "./term-panel";
 export function LearningHub({
   data,
   initialTab,
@@ -29,6 +31,7 @@ export function LearningHub({
   participation,
   dashboard,
   overview, search, filters, searchError,
+  growth, terms,
 }: {
   data: HubData;
   initialTab?: string;
@@ -37,6 +40,7 @@ export function LearningHub({
   participation?: ParticipationData | null;
   dashboard?: DashboardData | null;
   overview?:ClassOverview|null;search?:SearchResult|null;filters:SearchFilters;searchError?:string;
+  growth?:GrowthState|null;terms?:TermState|null;
 }) {
   const teacher = data.profile.role === "teacher";
   const tabs = [
@@ -50,6 +54,7 @@ export function LearningHub({
     ["exhibitions", "작은 작품 전시회"],
     ["economy", "경제 교실"],
     ["manage", teacher ? "학급·학년 관리" : "학급 연결"],
+    ["terms", teacher?"학기 종료·진급":"나의 학기"],
   ];
   const tab = tabs.some(([id]) => id === initialTab) ? initialTab! : "today";
   useEffect(() => {
@@ -126,8 +131,9 @@ export function LearningHub({
               조회 설정을 문의해 주세요.
             </div>
           )}
+          {data.classes.some(c=>c.term_state==="archived")&&tab!=="terms"&&<p className="notice">보관된 학급의 기록은 조회·내보내기로 이어집니다. 새 활동은 진행 중인 학급에서 시작해 주세요. <Link href="/hub?tab=terms">학기 상태 확인 →</Link></p>}
           {data.profile.role === "student" &&
-          data.profile.consent_status !== "verified" ? (
+          data.profile.consent_status !== "verified" && tab!=="terms" ? (
             <>
               <div className="notice">
                 참여 동의 확인을 기다리고 있어요. 동의 확인 전에는
@@ -143,18 +149,19 @@ export function LearningHub({
               {tab === "review" && teacher && dashboard && participation && <ReviewQueue data={dashboard} hub={data} extra={participation}/>}
               {tab === "packs" && teacher && participation && <LessonPacks hub={data} extra={participation}/>}
               {tab === "exhibitions" && participation && <Exhibitions hub={data} extra={participation} google={google}/>}
-              {tab === "reading" && <div className="paper-dashboard"><div className="paper-main"><Bookshelf data={data} /></div><PaperGrowth data={data} /></div>}
+              {tab === "reading" && <div className="paper-dashboard"><div className="paper-main"><Bookshelf data={data} /></div><PaperGrowth data={data} growth={growth} /></div>}
               {tab === "exports" && (
                 <Exports key={data.page} data={data} google={google} googleNotice={googleNotice} />
               )}
-              {tab === "growth" && <><Character data={data} />{participation&&<SharedForest hub={data} extra={participation}/>}</>}
+              {tab === "growth" && <><Character data={data} growth={growth}/>{participation&&<SharedForest hub={data} extra={participation}/>}</>}
+              {tab === "terms" && terms && <TermPanel key={terms.selected} state={terms} teacher={teacher}/>}
               {tab === "plaza" && <Plaza data={data} />}
               {tab === "economy" && <>{participation&&<EconomyLab hub={data} extra={participation}/>}<Economy data={data} /></>}
               {tab === "manage" && <Management data={data} />}
               {!teacher && !data.classes.length && tab !== "manage" && (
                 <Management data={data} />
               )}
-              {!["today","packs","overview","search"].includes(tab)&&<nav className="hub-row" aria-label="기록 페이지">
+              {!["today","packs","overview","search","terms"].includes(tab)&&<nav className="hub-row" aria-label="기록 페이지">
                 {data.page > 1 && (
                   <Link
                     className="button button-outline"

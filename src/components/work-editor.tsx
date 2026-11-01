@@ -58,7 +58,7 @@ function runAction<T>(action: () => Promise<T>): Promise<T> {
 }
 
 export function WorkEditor(props: WorkEditorProps) {
-  if (props.assignment.choices?.length && !props.choiceKey && props.data.profile.consent_status === "verified") return <MissionChoicePicker assignment={props.assignment}/>;
+  if (props.assignment.choices?.length && !props.choiceKey && props.data.profile.consent_status === "verified" && props.data.classes.find(c=>c.id===props.assignment.classroom_id)?.term_state!=="archived") return <MissionChoicePicker assignment={props.assignment}/>;
   // A different assignment must not reuse the previous assignment's draft refs.
   return (
     <AssignmentEditor
@@ -118,7 +118,8 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestRef = useRef<{ payload: string; id: string } | null>(null);
 
-  const canWrite =
+  const archived=data.classes.find(c=>c.id===assignment.classroom_id)?.term_state==="archived";
+  const canWrite = !archived &&
     data.profile.role === "student" &&
     data.profile.consent_status === "verified";
   const canWriteRef = useRef(canWrite);
@@ -554,11 +555,11 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
         {!canWrite && (
           <div className="notice">
             <strong>
-              {data.profile.role === "student"
+                {archived ? "보관된 학기의 글이에요. 읽기·내보내기로 추억을 이어가세요." : data.profile.role === "student"
                 ? "보호자 동의 확인을 기다리고 있어요"
                 : "학생 계정에서 글을 쓸 수 있어요"}
             </strong>
-            선생님에게 계정의 참여 준비 상태를 확인해 주세요.
+            {!archived&&"선생님에게 계정의 참여 준비 상태를 확인해 주세요."}
           </div>
         )}
         {assignment.mission_snapshot.requires_revision && (

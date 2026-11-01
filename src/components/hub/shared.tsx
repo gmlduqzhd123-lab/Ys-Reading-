@@ -48,6 +48,9 @@ export function HubForm({
         if (busy.current) return;
         const form = e.currentTarget;
         const values = payload(new FormData(form));
+        if ("classroomId" in values && !values.classroomId) {
+          setOk(false); setMessage("활동할 수 있는 학급을 먼저 연결하거나 학기를 다시 열어 주세요."); return;
+        }
         busy.current = true;
         setPending(true);
         setMessage("");
@@ -142,7 +145,8 @@ export function ClassField({
     <label className="field">
       학급
       <select name={name} required>
-        {classes.map((c) => (
+        {!classes.some(c=>c.term_state!=="archived")&&<option value="">진행 중인 학급 없음</option>}
+        {classes.filter(c=>c.term_state!=="archived").map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}
           </option>

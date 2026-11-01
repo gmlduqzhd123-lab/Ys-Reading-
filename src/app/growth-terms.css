@@ -1,0 +1,242 @@
+.companion-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 56px);
+  padding: 12px 0 28px;
+}
+.character-scene {
+  max-width: 340px;
+  width: 100%;
+  margin: auto;
+}
+.character-scene svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.scene-caption {
+  text-align: center;
+  color: var(--text-muted, #736b73);
+  font-size: 0.8rem;
+  margin: 10px 0;
+}
+.companion-details h3 {
+  font-family: var(--font-literary), serif;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  margin: 12px 0;
+}
+.companion-details progress {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 12px 0;
+  accent-color: #72566e;
+}
+.companion-details p {
+  line-height: 1.8;
+  color: #6c626b;
+}
+.evolution-title {
+  font-size: 1.1rem;
+}
+.evolution-title span {
+  display: inline-block;
+  font-size: 0.75rem;
+  margin-left: 8px;
+  padding: 2px 9px;
+  border: 1px solid #d9cdd5;
+  border-radius: 20px;
+}
+.evolution-track {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0;
+  gap: 8px;
+  margin: 24px 0 0;
+}
+.evolution-track li {
+  border-top: 3px solid #e1d9de;
+  padding-top: 10px;
+  font-size: 0.76rem;
+  color: #776d76;
+}
+.evolution-track li[aria-current="step"] {
+  border-color: #785b74;
+  color: #60425d;
+  font-weight: 700;
+}
+.evolution-track span {
+  display: block;
+  font-size: 0.72rem;
+  margin-bottom: 5px;
+}
+.wardrobe-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  border-top: 1px solid #e7e0e4;
+  padding: 24px 0 8px;
+}
+.wardrobe-grid h3 {
+  font-size: 1rem;
+}
+.wardrobe-list {
+  list-style: none;
+  padding: 0;
+}
+.wardrobe-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #eee7eb;
+  padding: 12px 0;
+  font-size: 0.8rem;
+}
+.wardrobe-list span {
+  color: #776a75;
+  text-align: right;
+}
+.paper-companion .character-scene {
+  max-width: 260px;
+}
+.term-page > .hub-panel,
+.term-page > .panel {
+  margin-bottom: 24px;
+}
+.term-summary {
+  padding: 24px;
+  background: #f4f0f1;
+  border: 1px solid #e4dbe1;
+  border-radius: 16px;
+  margin-top: 20px;
+}
+.term-summary h3 {
+  font-family: var(--font-literary), serif;
+  font-size: 1.5rem;
+  margin: 12px 0;
+}
+.term-state {
+  display: inline-flex;
+  font-size: 0.75rem;
+  border-radius: 30px;
+  padding: 6px 12px;
+  background: #e3e8df;
+  color: #466043;
+}
+.term-state.archived {
+  background: #e9e0e8;
+  color: #6a5266;
+}
+.term-period-fields {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.term-counts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.term-counts > div {
+  border: 1px solid #e6dfe4;
+  border-radius: 12px;
+  padding: 20px;
+}
+.term-counts strong {
+  display: block;
+  font-size: 1.8rem;
+  color: #72566e;
+  margin-bottom: 8px;
+}
+.term-counts span {
+  font-size: 0.82rem;
+  color: #726772;
+}
+.term-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.7;
+  font-size: 0.9rem;
+  margin: 16px 0;
+}
+.term-check input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-top: 4px;
+  accent-color: #72566e;
+}
+.term-student-selection {
+  border: 1px solid #ded4dc;
+  border-radius: 12px;
+  padding: 12px 20px;
+  max-height: 360px;
+  overflow: auto;
+}
+.term-student-selection legend {
+  padding: 0 8px;
+  font-size: 0.85rem;
+}
+.term-roster article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid #e9e1e7;
+}
+.term-roster p {
+  font-size: 0.82rem;
+  color: #756a73;
+  line-height: 1.7;
+}
+.term-page .button-row {
+  flex-wrap: wrap;
+}
+.term-page details {
+  margin-top: 20px;
+}
+.term-page summary {
+  cursor: pointer;
+  padding: 12px 0;
+  color: #72566e;
+}
+@media (max-width: 700px) {
+  .companion-layout {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .character-scene {
+    max-width: 280px;
+  }
+  .wardrobe-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .term-period-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+  .term-counts {
+    grid-template-columns: 1fr 1fr;
+  }
+  .term-roster article {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .term-summary {
+    padding: 18px;
+  }
+  .evolution-track {
+    gap: 6px;
+  }
+  .evolution-track li {
+    font-size: 0.68rem;
+  }
+  .wardrobe-list {
+    margin-bottom: 0;
+  }
+}

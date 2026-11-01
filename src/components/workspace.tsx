@@ -468,14 +468,14 @@ function ClassManagement({ data }: { data: DashboardData }) {
         </section>
         <section className="panel">
           <h2>독서미션 배정</h2>
-          {data.classes.length === 0 ? (
-            <p>먼저 우리 반을 만들어 주세요.</p>
+          {!data.classes.some(c=>c.term_state!=="archived") ? (
+            <p>진행 중인 우리 반을 만들거나 학기를 다시 열어 주세요.</p>
           ) : (
             <Form action={assignMission} submitLabel="미션 배정하기">
               <div className="field">
                 <label htmlFor="assignment-class">학급</label>
                 <select id="assignment-class" name="classroomId" required>
-                  {data.classes.map((c) => (
+                  {data.classes.filter(c=>c.term_state!=="archived").map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>

@@ -8,6 +8,11 @@ export interface Classroom {
   name: string;
   teacher_id: string;
   created_at: string;
+  academic_year?: number|null;
+  semester?: number|null;
+  grade_level?: number|null;
+  term_state?: "open"|"archived";
+  term_revision?: number;
 }
 export interface MissionSnapshot {
   id?: string;

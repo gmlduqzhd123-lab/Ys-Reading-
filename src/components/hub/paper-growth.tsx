@@ -3,10 +3,12 @@ import Link from "next/link";
 import { ArrowUpRight, BookOpen, Leaf } from "lucide-react";
 import type { HubData } from "@/lib/hub-data";
 import { badgeLabels, characterLevel } from "@/lib/hub";
-export function PaperGrowth({ data }: { data: HubData }) {
+import type {GrowthState} from "@/lib/growth-terms";
+import {CharacterScene} from "./character-scene";
+export function PaperGrowth({ data, growth }: { data: HubData;growth?:GrowthState|null }) {
   const teacher = data.profile.role === "teacher";
   const level = characterLevel(data.totals.xp);
-  const cls = data.classes[0];
+  const cls = data.classes.find(c=>c.term_state!=="archived")??data.classes[0];
   const currency = String(data.settings.find((s) => s.classroom_id === cls?.id)?.currency_name ?? "책잎");
   const species = data.character?.species ?? "rabbit";
   return <aside className="paper-growth" aria-label={teacher ? "교실 바로가기" : "나의 작은 성취"}>
@@ -18,7 +20,7 @@ export function PaperGrowth({ data }: { data: HubData }) {
         {cls && <div><strong>{data.totals.balances[cls.id] ?? 0}</strong><span>{currency}</span></div>}
       </div>}
     <div className="paper-companion">
-      {teacher || species === "rabbit"
+      {!teacher&&growth?<CharacterScene species={species} xp={growth.xp} accessory={growth.accessory} background={growth.background}/>:teacher || species === "rabbit"
         ? <Image src="/images/paper-rabbit.png" width={260} height={260} sizes="(max-width: 760px) 180px, 230px" alt="책을 읽는 토끼" />
         : <span className="paper-species" role="img" aria-label={species === "fox" ? "여우" : "부엉이"}>{species === "fox" ? "🦊" : "🦉"}</span>}
       <h3>{teacher ? "생각이 머무는 교실" : (data.character?.nickname ?? "나의 책숲 친구")}</h3>

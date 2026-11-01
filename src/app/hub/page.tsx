@@ -6,6 +6,7 @@ import { loadDashboard } from "@/lib/data";
 import { requireProfile } from "@/lib/auth";
 import { searchSchema } from "@/lib/classroom-insights";
 import { loadOverview, loadRecordSearch } from "@/lib/insights-server";
+import {loadGrowth,loadTerms} from "@/lib/growth-terms-server";
 export const metadata = { title: "나의 책장 · 함께 자라는 책숲" };
 export default async function HubPage({
   searchParams,
@@ -24,12 +25,13 @@ export default async function HubPage({
     "economy",
     "manage",
     "search",
+    "terms",
     ...(profile.role === "teacher" ? ["review", "packs", "overview"] : []),
   ];
   const tab = params.tab && allowed.includes(params.tab) ? params.tab : "today";
   const parsed = searchSchema.safeParse(params);
   const filters = parsed.success ? parsed.data : searchSchema.parse({});
-  const [data, google, participation, dashboard, overview, search] =
+  const [data, google, participation, dashboard, overview, search, growth, terms] =
     await Promise.all([
       loadHub(
         ["search", "overview"].includes(tab) ? 1 : Number(params.page ?? 1),
@@ -50,6 +52,8 @@ export default async function HubPage({
       (profile.consent_status === "verified" || profile.role === "teacher")
         ? loadRecordSearch(filters)
         : Promise.resolve(null),
+      tab==="growth"||(tab==="reading"&&profile.role==="student")?loadGrowth():Promise.resolve(null),
+      tab==="terms"?loadTerms(params.classroom):Promise.resolve(null),
     ]);
   return (
     <LearningHub
@@ -62,6 +66,8 @@ export default async function HubPage({
       overview={overview}
       search={search}
       filters={filters}
+      growth={growth}
+      terms={terms}
       searchError={
         !parsed.success
           ? "검색 조건을 확인해 주세요. 검색어는 100자까지, 시작 날짜는 끝 날짜 이전으로 입력해 주세요."

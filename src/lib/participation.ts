@@ -83,6 +83,8 @@ export function participationError(error: unknown) {
       : typeof error === "object" && error && "message" in error
         ? String(error.message)
         : "";
+  if (/BF_CLASS_ARCHIVED/.test(message)) return "보관된 학기예요. 기록은 조회·내보내기할 수 있어요. 새 활동은 진행 중인 학급을 선택해 주세요.";
+  if (/BF_TERM_CONFIRMATION/.test(message)) return "새 학급의 참여 동의 승인과 선생님의 참여 시작 확인이 필요해요.";
   if (/CHOICE_LOCKED/.test(message))
     return "이미 글쓰기를 시작한 선택은 바꿀 수 없어요. 선택한 활동을 이어가 주세요.";
   if (/CHOICE_REQUIRED/.test(message))

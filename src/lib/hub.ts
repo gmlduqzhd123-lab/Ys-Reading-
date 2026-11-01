@@ -108,6 +108,9 @@ export function hubError(error: unknown) {
       : typeof error === "object" && error && "message" in error
         ? String(error.message)
         : "";
+  if (/BF_CLASS_ARCHIVED/.test(text)) return "보관된 학기예요. 기록 조회·내보내기는 계속할 수 있어요. 새 활동은 진행 중인 학급을 선택해 주세요.";
+  if (/BF_TERM_CONFIRMATION/.test(text)) return "새 학급의 참여 동의 승인과 선생님의 참여 시작 확인이 필요해요.";
+  if (/BF_ITEM_OWNED/.test(text)) return "이미 보유했거나 예약 중인 장식이에요. 캐릭터 꾸미기와 주문 내역을 확인해 주세요.";
   if (
     error instanceof z.ZodError ||
     /INVALID_INPUT|check constraint|invalid input syntax/.test(text)

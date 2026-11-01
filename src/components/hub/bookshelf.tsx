@@ -139,7 +139,7 @@ export function Bookshelf({ data }: { data: HubData }) {
             key={`${edit ? `${edit.id}:${edit.revision}` : JSON.stringify(book)}:${formVersion}`}
             command="reading_save"
             disabled={
-              !data.classes.length || data.profile.consent_status !== "verified"
+                !data.classes.some(c=>c.term_state!=="archived") || data.profile.consent_status !== "verified"
             }
             label={edit ? "독서 기록 수정하기" : "독서 기록 저장하기"}
             onSuccess={() => {
@@ -277,14 +277,15 @@ export function Bookshelf({ data }: { data: HubData }) {
               </small>
               <p className="submission-body">{l.thought}</p>
               {l.question && <p>나의 질문: {l.question}</p>}
-              {teacher && l.status === "completed" && !l.verified_at && (
+              {data.classes.find(c=>c.id===l.classroom_id)?.term_state==="archived"&&<p className="form-help">보관된 학기 · 조회·내보내기 가능</p>}
+              {teacher && l.status === "completed" && !l.verified_at && data.classes.find(c=>c.id===l.classroom_id)?.term_state!=="archived" && (
                 <HubForm
                   command="reading_verify"
                   payload={() => ({ id: l.id })}
                   label="완독 기록 확인·보상 지급"
                 />
               )}
-              {!teacher && !l.verified_at && (
+              {!teacher && !l.verified_at && data.classes.find(c=>c.id===l.classroom_id)?.term_state!=="archived" && (
                 <button
                   className="button button-outline"
                   onClick={() => {

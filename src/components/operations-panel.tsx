@@ -334,7 +334,7 @@ export function OperationsPanel({
                         <div className="ops-actions">
                           <button
                             className="button button-outline"
-                            disabled={busy}
+                            disabled={busy || s.can_reset===false}
                             onClick={() =>
                               setReset({
                                 input: {
@@ -352,6 +352,7 @@ export function OperationsPanel({
                           >
                             초기 비밀번호 재발급
                           </button>
+                          {s.can_reset===false&&<small>비밀번호 재발급은 현재 계정 관리 학급의 담임에게 요청해 주세요.</small>}
                           <button
                             className="button button-outline"
                             disabled={

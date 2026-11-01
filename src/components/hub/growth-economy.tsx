@@ -11,92 +11,111 @@ import {
 } from "@/lib/hub";
 import type { HubData } from "@/lib/hub-data";
 import { ClassField, Empty, Field, HubForm, Panel, string } from "./shared";
-export function Character({ data }: { data: HubData }) {
+import { CharacterStudio } from "./character-studio";
+import type { GrowthState } from "@/lib/growth-terms";
+export function Character({
+  data,
+  growth,
+}: {
+  data: HubData;
+  growth?: GrowthState | null;
+}) {
   const level = characterLevel(data.totals.xp);
   const species = data.character?.species ?? "rabbit";
   const teacher = data.profile.role === "teacher";
   return (
     <>
-      <Panel title="나의 책숲 친구">
-        <div className="character-card">
-          <span
-            className={`character-avatar ${species}`}
-            role="img"
-            aria-label={
-              species === "fox" ? "여우" : species === "owl" ? "부엉이" : "토끼"
-            }
-          >
-            {species === "fox" ? "🦊" : species === "owl" ? "🦉" : "🐰"}
-          </span>
-          <div>
-            <h3>{data.character?.nickname ?? "나의 책숲 친구"}</h3>
-            <strong>
-              레벨 {level.level} · {level.xp} XP
-            </strong>
-            <progress
-              value={level.xp}
-              max={level.next}
-              aria-label="다음 레벨까지의 성장"
-            />
-            <p>
-              다음 레벨까지 {level.next - level.xp} XP · 화폐를 사용해도
-              경험치는 줄지 않아요.
-            </p>
-          </div>
-        </div>
-        {!teacher && (
-          <HubForm
-            command="character_save"
-            payload={(f) => ({
-              nickname: string(f, "nickname"),
-              species: string(f, "species"),
-            })}
-          >
-            <Field
-              name="nickname"
-              label="친구 이름 · 광장 필명"
-              defaultValue={data.character?.nickname ?? "책숲 작가"}
-              maxLength={30}
-            />
-            <label className="field">
-              캐릭터
-              <select name="species" defaultValue={species}>
-                <option value="rabbit">토끼</option>
-                <option value="fox">여우</option>
-                <option value="owl">부엉이</option>
-              </select>
-            </label>
-          </HubForm>
-        )}
-        {!teacher && (
-          <HubForm
-            command="attendance"
-            payload={(f) => ({ classroomId: string(f, "classroomId") })}
-            disabled={!data.classes.length}
-            label="오늘의 책숲 활동 출석"
-          >
-            <ClassField classes={data.classes} />
-            <p className="form-help">
-              한국 날짜 기준 학급마다 하루 한 번만 인정돼요. 학교 출결과는
-              별개입니다.
-            </p>
-          </HubForm>
-        )}
-        <div className="badge-grid">
-          {data.orders
-            .filter(
-              (o) =>
-                o.status === "fulfilled" &&
-                o.kind === "decoration" &&
-                o.student_id === data.profile.id,
-            )
-            .map((o) => (
-              <span className="hub-badge" key={o.id}>
-                ✨ {String(o.item_name)}
+      {growth && (
+        <CharacterStudio key={data.profile.id} data={data} state={growth} />
+      )}
+      {(!teacher || !growth) && (
+        <Panel title="나의 책숲 친구">
+          {!growth && (
+            <div className="character-card">
+              <span
+                className={`character-avatar ${species}`}
+                role="img"
+                aria-label={
+                  species === "fox"
+                    ? "여우"
+                    : species === "owl"
+                      ? "부엉이"
+                      : "토끼"
+                }
+              >
+                {species === "fox" ? "🦊" : species === "owl" ? "🦉" : "🐰"}
               </span>
-            ))}
-        </div>
-      </Panel>
+              <div>
+                <h3>{data.character?.nickname ?? "나의 책숲 친구"}</h3>
+                <strong>
+                  레벨 {level.level} · {level.xp} XP
+                </strong>
+                <progress
+                  value={level.xp}
+                  max={level.next}
+                  aria-label="다음 레벨까지의 성장"
+                />
+                <p>
+                  다음 레벨까지 {level.next - level.xp} XP · 화폐를 사용해도
+                  경험치는 줄지 않아요.
+                </p>
+              </div>
+            </div>
+          )}
+          {!teacher && (
+            <HubForm
+              command="character_save"
+              payload={(f) => ({
+                nickname: string(f, "nickname"),
+                species: string(f, "species"),
+              })}
+            >
+              <Field
+                name="nickname"
+                label="친구 이름 · 광장 필명"
+                defaultValue={data.character?.nickname ?? "책숲 작가"}
+                maxLength={30}
+              />
+              <label className="field">
+                캐릭터
+                <select name="species" defaultValue={species}>
+                  <option value="rabbit">토끼</option>
+                  <option value="fox">여우</option>
+                  <option value="owl">부엉이</option>
+                </select>
+              </label>
+            </HubForm>
+          )}
+          {!teacher && (
+            <HubForm
+              command="attendance"
+              payload={(f) => ({ classroomId: string(f, "classroomId") })}
+              disabled={!data.classes.length}
+              label="오늘의 책숲 활동 출석"
+            >
+              <ClassField classes={data.classes} />
+              <p className="form-help">
+                한국 날짜 기준 학급마다 하루 한 번만 인정돼요. 학교 출결과는
+                별개입니다.
+              </p>
+            </HubForm>
+          )}
+          <div className="badge-grid">
+            {data.orders
+              .filter(
+                (o) =>
+                  o.status === "fulfilled" &&
+                  o.kind === "decoration" &&
+                  o.student_id === data.profile.id,
+              )
+              .map((o) => (
+                <span className="hub-badge" key={o.id}>
+                  ✨ {String(o.item_name)}
+                </span>
+              ))}
+          </div>
+        </Panel>
+      )}
       <Panel title="우리의 배지 수첩">
         {!data.achievements.length && (
           <Empty>독서 기록, 미션, 고쳐쓰기를 통해 첫 배지를 만나 보세요.</Empty>
@@ -146,7 +165,11 @@ export function Character({ data }: { data: HubData }) {
 export function Economy({ data }: { data: HubData }) {
   const teacher = data.profile.role === "teacher";
   const [adjustClassId, setAdjustClassId] = useState(data.classes[0]?.id ?? "");
-  const recipients = classroomStudents(data.students, data.enrollments, adjustClassId);
+  const recipients = classroomStudents(
+    data.students,
+    data.enrollments,
+    adjustClassId,
+  );
   const name = (id: string) =>
     String(
       data.settings.find((s) => s.classroom_id === id)?.currency_name ?? "책잎",
@@ -217,8 +240,27 @@ export function Economy({ data }: { data: HubData }) {
                 <HubForm
                   command="shop_buy"
                   payload={() => ({ id: item.id })}
-                  disabled={!item.active || Number(item.stock) < 1 || (data.totals.balances[item.classroom_id] ?? 0) < Number(item.price)}
-                  label={!item.active ? "판매 중지" : Number(item.stock) < 1 ? "품절" : (data.totals.balances[item.classroom_id] ?? 0) < Number(item.price) ? "학급 화폐 부족" : "구매 예약하기"}
+                  disabled={
+                    data.classes.find((c) => c.id === item.classroom_id)
+                      ?.term_state === "archived" ||
+                    !item.active ||
+                    Number(item.stock) < 1 ||
+                    (data.totals.balances[item.classroom_id] ?? 0) <
+                      Number(item.price)
+                  }
+                  label={
+                    data.classes.find((c) => c.id === item.classroom_id)
+                      ?.term_state === "archived"
+                      ? "보관된 학기"
+                      : !item.active
+                        ? "판매 중지"
+                        : Number(item.stock) < 1
+                          ? "품절"
+                          : (data.totals.balances[item.classroom_id] ?? 0) <
+                              Number(item.price)
+                            ? "학급 화폐 부족"
+                            : "구매 예약하기"
+                  }
                 />
               )}
             </article>
@@ -306,8 +348,16 @@ export function Economy({ data }: { data: HubData }) {
         <Panel title="화폐 지급·조정">
           <label className="field">
             지급할 학급
-            <select value={adjustClassId} required onChange={(e) => setAdjustClassId(e.target.value)}>
-              {data.classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <select
+              value={adjustClassId}
+              required
+              onChange={(e) => setAdjustClassId(e.target.value)}
+            >
+              {data.classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </label>
           <HubForm
@@ -325,15 +375,19 @@ export function Economy({ data }: { data: HubData }) {
               학생
               <select key={adjustClassId} name="studentId" required>
                 <option value="">학생을 선택해 주세요</option>
-                {recipients
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.display_name}
-                    </option>
-                  ))}
+                {recipients.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.display_name}
+                  </option>
+                ))}
               </select>
             </label>
-            {!recipients.length && <p>선택한 학급에 활동 중인 학생이 없습니다. 학생 계정·학급 연결 상태를 확인해 주세요.</p>}
+            {!recipients.length && (
+              <p>
+                선택한 학급에 활동 중인 학생이 없습니다. 학생 계정·학급 연결
+                상태를 확인해 주세요.
+              </p>
+            )}
             <Field
               name="amount"
               label="지급액 · 차감은 음수"
@@ -360,11 +414,7 @@ export function Economy({ data }: { data: HubData }) {
                     ?.display_name ?? "학생"}
                 </small>
               )}
-              <small>
-                {" "}
-                ·{" "}
-                {formatOperationsDate(String(l.created_at))}
-              </small>
+              <small> · {formatOperationsDate(String(l.created_at))}</small>
             </span>
             <strong>
               {Number(l.amount) > 0 ? "+" : ""}

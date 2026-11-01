@@ -114,6 +114,7 @@ describe("Account and record operations: authorization, session cutoff and delet
       "insert into public.enrollments(classroom_id,student_id) values($1,$2),($1,$3),($4,$2),($4,$5)",
       [c, s, peer, c2, other],
     );
+    await db.query("insert into private.managed_accounts(student_id,classroom_id,login_id) values($1,$2,'ops_qa_student')",[s,c]);
     await db.query(
       "insert into public.missions(id,slug,title,theme,grade_band,prompt,description,minutes) values($1,'ops-test','생각','empathy','3-4','생각','질문',10)",
       [mission],
@@ -508,14 +509,14 @@ describe("Account and record operations: authorization, session cutoff and delet
       ).prosecdef,
     ).toBe(false);
   });
-  it("serializes password operations from two different class teachers", async () => {
+  it("serializes password operations from the managing teacher and an operator", async () => {
     await actor(t);
     await one("select public.account_job_begin('reset_password',$1,$2,$3)", [
       { classroomId: c, studentId: s },
       randomUUID(),
       "a".repeat(64),
     ]);
-    await actor(t2);
+    await actor(op);
     await denied(
       "select public.account_job_begin('reset_password',$1,$2,$3)",
       [{ classroomId: c2, studentId: s }, randomUUID(), "b".repeat(64)],
