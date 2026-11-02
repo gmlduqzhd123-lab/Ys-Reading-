@@ -36,7 +36,18 @@ async function result<R extends { data: unknown; error: unknown }>(
   r: R,
   label: string,
 ): Promise<R["data"]> {
-  if (r.error) throw Error(label);
+  if (r.error) {
+    const e = r.error as { code?: string; status?: number };
+    throw Error(
+      label +
+        ":" +
+        String(e.code ?? "unknown")
+          .replace(/[^a-zA-Z0-9_]/g, "")
+          .slice(0, 80) +
+        ":" +
+        (e.status ?? 0),
+    );
+  }
   return r.data;
 }
 const accounts = [];
@@ -72,23 +83,21 @@ execFileSync(
     stdio: ["pipe", "pipe", "pipe"],
   },
 );
-const seeded = await admin
-  .from("missions")
-  .upsert(
-    missions.map((m) => ({
-      id: m.id,
-      slug: m.slug,
-      title: m.title,
-      theme: m.theme,
-      grade_band: m.grade_band,
-      prompt: m.prompt,
-      description: m.description,
-      minutes: m.minutes,
-      requires_revision: m.requires_revision,
-      steps: m.steps,
-      kind: m.kind,
-    })),
-  );
+const seeded = await admin.from("missions").upsert(
+  missions.map((m) => ({
+    id: m.id,
+    slug: m.slug,
+    title: m.title,
+    theme: m.theme,
+    grade_band: m.grade_band,
+    prompt: m.prompt,
+    description: m.description,
+    minutes: m.minutes,
+    requires_revision: m.requires_revision,
+    steps: m.steps,
+    kind: m.kind,
+  })),
+);
 if (seeded.error) throw Error("CI_MISSION_SEED");
 const teacher = createClient(url, key, { auth: { persistSession: false } });
 await result(
