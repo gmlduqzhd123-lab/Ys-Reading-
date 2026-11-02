@@ -1,5 +1,6 @@
 "use client";
 import { GoogleConnectionCheck } from "./google-connection-check";
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { HubData } from "@/lib/hub-data";
@@ -114,6 +115,11 @@ export function Exports({
   }
   return (
     <>
+      <p>
+        <Link className="text-link" href="/account/records">
+          내보낸 사본의 보관·삭제 확인 →
+        </Link>
+      </p>
       {connectionNotice && (
         <p className="notice" role="status">
           {connectionNotice}

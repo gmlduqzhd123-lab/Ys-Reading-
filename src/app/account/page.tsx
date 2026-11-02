@@ -8,7 +8,7 @@ export default async function AccountPage() {
   if (!profile) redirect("/login");
   const client = await createClient();
   const { data } = profile.session_fresh
-    ? await client.rpc("operations_state")
+    ? await client.rpc("account_self_state")
     : { data: null };
   return (
     <AccountPanel

@@ -1,0 +1,34 @@
+name: Bookforest browser journey
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bookforest-browser-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolated-classroom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Start isolated database and Auth
+        run: node scripts/ci-start.mjs
+      - name: Start isolated account worker
+        run: npx --no-install supabase functions serve account-operations --no-verify-jwt > "$RUNNER_TEMP/bookforest-edge.log" 2>&1 &
+      - name: Seed synthetic accounts only
+        run: npx tsx scripts/ci-bootstrap.ts
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npx playwright test
+      - name: Stop isolated services
+        if: always()
+        run: npx --no-install supabase stop --no-backup

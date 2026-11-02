@@ -86,6 +86,41 @@ export async function loadHub(
   };
   const activeTables = new Set(nextTables[activeTab] ?? nextTables.reading);
   const profile = await requireProfile();
+  const needed: Record<string, string[]> = {
+    reading: [
+      "reading_logs",
+      "profiles",
+      ...(profile.role === "student" ? ["drafts", "submissions"] : []),
+    ],
+    exports: ["reading_logs", "submissions", "drafts", "profiles"],
+    growth: [
+      "character_profiles",
+      "class_economy",
+      "activity_events",
+      "achievement_badges",
+      "profiles",
+    ],
+    economy: [
+      "shop_items",
+      "shop_orders",
+      "economy_ledger",
+      "class_economy",
+      "profiles",
+      "enrollments",
+    ],
+    plaza: ["plaza_posts", "submissions", "grade_groups"],
+    exhibitions: ["plaza_posts", "grade_groups"],
+    manage: [
+      "enrollment_requests",
+      "class_invites",
+      "enrollments",
+      "profiles",
+      "grade_groups",
+      "grade_members",
+    ],
+    packs: [],
+    terms: [],
+  };
   const light = ["search", "overview", "today", "review"].includes(activeTab);
   const client = await createClient();
   const tables = [
@@ -111,6 +146,12 @@ export async function loadHub(
   const results = await Promise.all(
     tables.map(async (table) => {
       if (light && table !== "classrooms")
+        return { table, data: [], error: null };
+      if (
+        table !== "classrooms" &&
+        needed[activeTab] &&
+        !needed[activeTab].includes(table)
+      )
         return { table, data: [], error: null };
       const fields =
         table === "grade_groups" ? "id,name,owner_id,created_at" : "*";

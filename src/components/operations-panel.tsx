@@ -7,6 +7,7 @@ import {
   type HandoverState,
 } from "./hub/operations-batch";
 import { useRouter } from "next/navigation";
+import { OperationsNavigation } from "./operations-navigation";
 import {
   accountOperation,
   deletionPreview,
@@ -89,6 +90,8 @@ export function OperationsPanel({
   const name = (id: string) =>
     state.students.find((s) => s.id === id)?.display_name ??
     state.teachers.find((s) => s.id === id)?.display_name ??
+    state.consents.find((s) => s.student_id === id)?.student_name ??
+    state.deletions.find((s) => s.student_id === id)?.student_name ??
     id;
   const chooseStudent = (
     <select name="studentId" required>
@@ -113,6 +116,18 @@ export function OperationsPanel({
   );
   return (
     <div className="operations-page">
+      {state.operator && (
+        <p className="notice">
+          운영자 중요 작업은 최근 15분 안의 2단계 인증이 필요합니다.{" "}
+          <Link href="/account/security">인증앱으로 확인하기 →</Link>
+        </p>
+      )}
+      <OperationsNavigation state={state} />
+      <p>
+        <Link href="/account/records" className="text-link">
+          학교별 동의·보관 기준과 외부 사본 관리 →
+        </Link>
+      </p>
       <ConsentBatch state={state} />
       {state.operator && handovers && (
         <HandoverPanel
@@ -147,6 +162,12 @@ export function OperationsPanel({
           value={classId}
           disabled={busy || Boolean(batch)}
           onChange={(e) => {
+            if (state.pages) {
+              start(() =>
+                router.push("/operations?classroom=" + e.target.value),
+              );
+              return;
+            }
             setClassId(e.target.value);
             setReset(null);
             setPreview(null);

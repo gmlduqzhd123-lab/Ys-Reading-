@@ -27,7 +27,15 @@ async function actor(id: string, sid?: string) {
   await db.exec("reset role;set role authenticated");
   await db.query(
     "select set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",
-    [id, JSON.stringify({ sub: id, session_id: sid })],
+    [
+      id,
+      JSON.stringify({
+        sub: id,
+        session_id: sid,
+        aal: "aal2",
+        amr: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) }],
+      }),
+    ],
   );
 }
 async function owner() {
@@ -114,7 +122,10 @@ describe("Account and record operations: authorization, session cutoff and delet
       "insert into public.enrollments(classroom_id,student_id) values($1,$2),($1,$3),($4,$2),($4,$5)",
       [c, s, peer, c2, other],
     );
-    await db.query("insert into private.managed_accounts(student_id,classroom_id,login_id) values($1,$2,'ops_qa_student')",[s,c]);
+    await db.query(
+      "insert into private.managed_accounts(student_id,classroom_id,login_id) values($1,$2,'ops_qa_student')",
+      [s, c],
+    );
     await db.query(
       "insert into public.missions(id,slug,title,theme,grade_band,prompt,description,minutes) values($1,'ops-test','생각','empathy','3-4','생각','질문',10)",
       [mission],
@@ -297,10 +308,20 @@ describe("Account and record operations: authorization, session cutoff and delet
       to_char(now() at time zone 'Asia/Seoul','YYYY-MM-DD') today,
       to_char((now() at time zone 'Asia/Seoul') + interval '1 day','YYYY-MM-DD') tomorrow`);
     await actor(t);
-    const input = { studentId: s, classroomId: c, method: "paper", reference: "가상 날짜 검증" };
-    await denied("select public.operations_command('consent_request',$1,$2)",
-      [{ ...input, confirmedOn: dates.tomorrow }, randomUUID()], "BF_INVALID_INPUT");
-    expect(await cmd("consent_request", { ...input, confirmedOn: dates.today })).toHaveProperty("id");
+    const input = {
+      studentId: s,
+      classroomId: c,
+      method: "paper",
+      reference: "가상 날짜 검증",
+    };
+    await denied(
+      "select public.operations_command('consent_request',$1,$2)",
+      [{ ...input, confirmedOn: dates.tomorrow }, randomUUID()],
+      "BF_INVALID_INPUT",
+    );
+    expect(
+      await cmd("consent_request", { ...input, confirmedOn: dates.today }),
+    ).toHaveProperty("id");
     expect((await one("show timezone")).TimeZone).toBe("Pacific/Pago_Pago");
   });
   it("requires operator evidence confirmation to verify consent", async () => {

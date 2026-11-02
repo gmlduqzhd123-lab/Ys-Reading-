@@ -3,8 +3,24 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { accountOperation } from "@/app/operations/actions";
 import { parseRosterCsv, rosterCsv, type RosterRow } from "@/lib/roster-import";
-type Credentials = { loginId: string; name: string; password: string };
-type Group = { id: string; students: Credentials[]; completed: number };
+import {
+  issuanceJobs,
+  checkRosterLogins,
+  type IssuanceList,
+} from "@/app/start/actions";
+import { formatOperationsDate } from "@/lib/operations";
+type Credentials = {
+  loginId: string;
+  name: string;
+  password: string;
+  alreadyIssued?: boolean;
+};
+type Group = {
+  id: string;
+  students: Credentials[];
+  completed: number;
+  recover?: boolean;
+};
 function download(name: string, text: string) {
   const url = URL.createObjectURL(
       new Blob([text], { type: "text/csv;charset=utf-8" }),
@@ -30,6 +46,26 @@ export function RosterImporter({
     [busy, setBusy] = useState(false),
     [downloaded, setDownloaded] = useState(false),
     [message, setMessage] = useState("");
+  const [jobs, setJobs] = useState<IssuanceList | null>(null),
+    [jobsPage, setJobsPage] = useState(1),
+    [jobsError, setJobsError] = useState("");
+  useEffect(() => {
+    let active = true;
+    setJobs(null);
+    setJobsError("");
+    if (classId)
+      issuanceJobs(classId, jobsPage)
+        .then((v) => {
+          if (active) setJobs(v);
+        })
+        .catch(() => {
+          if (active)
+            setJobsError("이전 발급 작업을 읽지 못했어요. 다시 시도해 주세요.");
+        });
+    return () => {
+      active = false;
+    };
+  }, [classId, jobsPage, groups]);
   const lock = useRef(false),
     dirty = useRef(false);
   dirty.current = !!groups && !downloaded;
@@ -61,9 +97,12 @@ export function RosterImporter({
     };
   }, []);
   const completed =
-      groups?.flatMap((g) => g.students.slice(0, g.completed)) ?? [],
+      groups?.flatMap((g) =>
+        g.students.slice(0, g.completed).filter((s) => !s.alreadyIssued),
+      ) ?? [],
     total = groups?.reduce((n, g) => n + g.students.length, 0) ?? 0,
-    finished = total > 0 && completed.length === total;
+    issuedCount = groups?.reduce((n, g) => n + g.completed, 0) ?? 0,
+    finished = total > 0 && issuedCount === total;
   return (
     <details className="panel">
       <summary>CSV 명단으로 여러 학생 준비하기</summary>
@@ -73,6 +112,66 @@ export function RosterImporter({
       </p>
       {!groups ? (
         <>
+          <details>
+            <summary>중단된 학생 발급 작업 이어가기</summary>
+            <p>
+              미완료 작업은 서버에 기록됩니다. 새로고침 뒤에도 같은 작업을
+              이어갈 수 있어요. 이미 발급된 계정의 비밀번호는 바꾸지 않습니다.
+              미완료 계정에 새 초기 비밀번호를 준비하며, 기존 안내표를 잃은
+              계정은 계정 관리에서 재발급해 주세요.
+            </p>
+            {jobsError && <p role="status">{jobsError}</p>}
+            {jobs?.jobs.map((j) => (
+              <article key={j.request_id} className="hub-record">
+                <p>
+                  {formatOperationsDate(j.created_at)} · {j.completed}/
+                  {j.students.length}명 · {j.done ? "발급 완료" : "미완료"}
+                </p>
+                {!j.done && (
+                  <button
+                    className="button button-outline"
+                    disabled={busy}
+                    onClick={() => {
+                      setGroups([
+                        {
+                          id: j.request_id,
+                          completed: j.completed,
+                          recover: true,
+                          students: j.students.map((s) => ({
+                            ...s,
+                            alreadyIssued: s.completed,
+                            password:
+                              "Aa7!" + crypto.randomUUID().replaceAll("-", ""),
+                          })),
+                        },
+                      ]);
+                      setDownloaded(false);
+                      onPending?.(true);
+                    }}
+                  >
+                    이 작업 이어서 준비
+                  </button>
+                )}
+              </article>
+            ))}
+            {jobs && (
+              <nav className="hub-row" aria-label="발급 작업 페이지">
+                {jobsPage > 1 && (
+                  <button onClick={() => setJobsPage((p) => p - 1)}>
+                    이전 작업
+                  </button>
+                )}
+                <span>
+                  {jobs.total}건 · {jobs.page}페이지
+                </span>
+                {jobsPage * 20 < jobs.total && (
+                  <button onClick={() => setJobsPage((p) => p + 1)}>
+                    다음 작업
+                  </button>
+                )}
+              </nav>
+            )}
+          </details>
           <button
             className="button button-outline"
             onClick={() =>
@@ -99,7 +198,17 @@ export function RosterImporter({
                 try {
                   if (file.size > 512000)
                     throw Error("파일은 500KB 이하로 준비해 주세요.");
-                  setRows(parseRosterCsv(await file.text(), existing));
+                  const parsed = parseRosterCsv(await file.text(), existing);
+                  if (!parsed.some((r) => r.errors.length)) {
+                    const duplicate = await checkRosterLogins(
+                      classId,
+                      parsed.map((r) => r.loginId),
+                    );
+                    for (const row of parsed)
+                      if (duplicate.includes(row.loginId))
+                        row.errors.push("이미 사용 중인 아이디입니다.");
+                  }
+                  setRows(parsed);
                 } catch (error) {
                   setMessage(
                     error instanceof Error
@@ -174,7 +283,7 @@ export function RosterImporter({
       ) : (
         <>
           <p>
-            {total}명 중 {completed.length}명 완료 · 초기 비밀번호는 이 화면에만
+            {total}명 중 {issuedCount}명 완료 · 새 초기 비밀번호는 이 화면에만
             보관됩니다.
           </p>
           <button
@@ -190,12 +299,21 @@ export function RosterImporter({
                 const current = groups.map((g) => ({ ...g }));
                 for (const g of current) {
                   if (g.completed === g.students.length) continue;
-                  const r = await accountOperation({
-                    kind: "create_students",
-                    requestId: g.id,
-                    classroomId: classId,
-                    students: g.students,
-                  });
+                  const r = await accountOperation(
+                    {
+                      kind: "create_students",
+                      requestId: g.id,
+                      classroomId: classId,
+                      students: g.students.map(
+                        ({ loginId, name, password }) => ({
+                          loginId,
+                          name,
+                          password,
+                        }),
+                      ),
+                    },
+                    g.recover === true,
+                  );
                   g.completed = Math.max(
                     g.completed,
                     Math.min(g.students.length, r.completed ?? 0),

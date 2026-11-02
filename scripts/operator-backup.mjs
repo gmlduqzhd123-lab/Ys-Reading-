@@ -16,9 +16,18 @@ const quote = (s) => "'" + String(s).replaceAll("'", "''") + "'";
 let mcp;
 let lockFile;
 let ownsLock = false;
+const attemptId = randomUUID(),
+  attemptStarted = new Date().toISOString();
+let attemptDirectory;
+const pendingFile = () => path.join(attemptDirectory, "pending-attempts.json");
+async function receipt(row) {
+  const sql = `insert into private.backup_attempts(id,started_at,finished_at,status,error_code) values(${quote(row.id)},${quote(row.started)},${row.finished ? quote(row.finished) : "null"},${quote(row.status)},${row.code ? quote(row.code) : "null"}) on conflict(id) do update set finished_at=excluded.finished_at,status=excluded.status,error_code=excluded.error_code;`;
+  await mcp.call("execute_sql", { query: sql });
+}
 try {
   const directory = defaultVault(),
     key = vaultKey(directory);
+  attemptDirectory = directory;
   lockFile = path.join(directory, "backup.lock");
   if (fs.existsSync(lockFile)) {
     if (Date.now() - fs.statSync(lockFile).mtimeMs < 30 * 60000)
@@ -41,6 +50,16 @@ try {
       typeof check === "string" ? check : (check?.url ?? check?.project_url);
     if (url !== `https://${projectRef}.supabase.co`)
       throw Error("PROJECT_SCOPE_MISMATCH");
+    if (fs.existsSync(pendingFile())) {
+      const pending = JSON.parse(fs.readFileSync(pendingFile(), "utf8"));
+      for (const event of pending) await receipt(event);
+      fs.unlinkSync(pendingFile());
+    }
+    await receipt({
+      id: attemptId,
+      started: attemptStarted,
+      status: "running",
+    });
     const rows = await mcp.call("execute_sql", {
       query: fs.readFileSync(
         path.join(repo, "scripts/operator-snapshot.sql"),
@@ -92,6 +111,37 @@ try {
     await mcp.call("execute_sql", {
       query: `insert into private.backup_runs(id,created_at,verified_at,file_name,bytes,table_count,row_count,snapshot_digest) values(${quote(randomUUID())},now(),now(),${quote(report.file)},${report.bytes},${report.tables},${report.rows},${quote(report.digest)});`,
     });
+  if (mcp)
+    await receipt({
+      id: attemptId,
+      started: attemptStarted,
+      status: "completed",
+      finished: new Date().toISOString(),
+    });
+  // Only completed archives older than 90 days are pruned; keep the newest seven.
+  if (!input) {
+    const archives = fs
+      .readdirSync(directory)
+      .filter((n) =>
+        /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.bfbak$/.test(n),
+      )
+      .sort()
+      .reverse();
+    for (const name of archives.slice(7)) {
+      const old = path.join(directory, name),
+        proof = old + ".verification.json";
+      if (
+        Date.now() - fs.statSync(old).mtimeMs > 90 * 86400000 &&
+        fs.existsSync(proof)
+      ) {
+        const verified = JSON.parse(fs.readFileSync(proof, "utf8"));
+        if (verified.projectRef === projectRef && verified.verified) {
+          fs.unlinkSync(old);
+          fs.unlinkSync(proof);
+        }
+      }
+    }
+  }
   console.log(
     JSON.stringify({
       ok: true,
@@ -107,6 +157,30 @@ try {
   const code = /^[A-Z0-9_]+$/.test(error.message ?? "")
     ? error.message
     : "BACKUP_FAILED";
+  if (ownsLock && attemptDirectory) {
+    const event = {
+      id: attemptId,
+      started: attemptStarted,
+      finished: new Date().toISOString(),
+      status: "failed",
+      code,
+    };
+    try {
+      if (mcp) await receipt(event);
+      else throw Error();
+    } catch {
+      try {
+        const pending = fs.existsSync(pendingFile())
+          ? JSON.parse(fs.readFileSync(pendingFile(), "utf8"))
+          : [];
+        fs.writeFileSync(
+          pendingFile(),
+          JSON.stringify([...pending.slice(-29), event]),
+          { mode: 0o600 },
+        );
+      } catch {}
+    }
+  }
   try {
     const directory = defaultVault();
     if (ownsLock && fs.existsSync(directory))

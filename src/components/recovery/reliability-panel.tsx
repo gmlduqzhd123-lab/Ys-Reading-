@@ -9,7 +9,9 @@ import {
 import { recordLabels } from "@/lib/classroom-insights";
 import { formatOperationsDate } from "@/lib/operations";
 import type { ServiceHealth } from "@/lib/service-health";
+import { monitorLabel, type MonitorState } from "@/lib/monitoring";
 type Availability = {
+  monitor?: MonitorState | null;
   available: boolean;
   status?: string;
   conclusion?: string;
@@ -169,10 +171,34 @@ export function ReliabilityPanel({
           </div>
         )}
         <h3>자동 가용성 점검</h3>
+        <p className="notice" role="status">
+          {monitorLabel(availability?.monitor ?? null)}
+        </p>
+        {availability?.monitor?.checks.map((c) => (
+          <p key={c.source}>
+            {c.source === "supabase-cron" ? "서버 정기 점검" : "운영자 PC 점검"}{" "}
+            · {formatOperationsDate(c.checked_at)} ·{" "}
+            {c.stale ? "점검 신호 확인 필요" : c.healthy ? "정상" : "문제 감지"}
+          </p>
+        ))}
+        {!!availability?.monitor?.incidents.length && (
+          <details>
+            <summary>장애·복구 알림 이력</summary>
+            {availability.monitor.incidents.map((i, n) => (
+              <p key={n}>
+                {formatOperationsDate(i.opened_at)} ·{" "}
+                {i.closed_at
+                  ? `복구 확인 ${formatOperationsDate(i.closed_at)}`
+                  : "문제 감지 · 현재 연결을 다시 확인해 주세요."}{" "}
+                · {i.code}
+              </p>
+            ))}
+          </details>
+        )}
         <p>
-          공개 서버를 시간마다 확인하며, 실패 시 GitHub Actions에 실패 기록이
-          남습니다. GitHub의 실행 알림 설정에 따라 저장소 관리자가 확인할 수
-          있어요.
+          서버에서 5분마다 연결을 점검하고 장애·복구를 기록합니다. 점검 신호가
+          12분 이상 없으면 오래된 상태로 표시해요. GitHub에서도 20분 간격으로
+          독립 점검을 요청하며, 실제 실행은 지연될 수 있습니다.
         </p>
         {availability?.available ? (
           <p>

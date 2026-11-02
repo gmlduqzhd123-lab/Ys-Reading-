@@ -105,6 +105,14 @@ export function termLabel(c: Pick<TermClass, "academic_year" | "semester">) {
     : "학기 미설정";
 }
 export function growthTermError(error: unknown) {
+  if (
+    String(
+      typeof error === "object" && error && "message" in error
+        ? error.message
+        : error,
+    ).includes("BF_MFA_REQUIRED")
+  )
+    return "나의 계정 → 운영자 2단계 인증을 확인한 뒤 다시 진행해 주세요.";
   const code =
     typeof error === "object" && error && "message" in error
       ? String(error.message)

@@ -1,0 +1,2 @@
+-- Original mission content is seeded by the explicit operator/CI seed command.
+-- No users or classroom data are inserted by application startup.

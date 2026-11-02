@@ -46,6 +46,16 @@ export function AccountPanel({
               : "계정을 이용할 수 있어요."}
         </p>
         <div className="ops-actions">
+          {ready && operator && (
+            <Link className="button button-outline" href="/account/security">
+              운영자 2단계 인증
+            </Link>
+          )}
+          {ready && (
+            <Link className="button button-outline" href="/account/records">
+              사본·보관 정책 관리
+            </Link>
+          )}
           <form action={logout} onSubmit={notifyDraftLogout}>
             <button className="button button-outline">로그아웃</button>
           </form>

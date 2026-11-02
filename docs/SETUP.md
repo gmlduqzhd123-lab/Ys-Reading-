@@ -1,5 +1,7 @@
 # 책숲 개발 환경과 운영 준비
 
+> 2026-11-02 최신 운영 설명은 [OPERATIONS-EIGHT.md](OPERATIONS-EIGHT.md)를 우선합니다. 아래 과거의 미완료·미설정 표기는 당시 이력입니다.
+
 2026-10-30 계정 운영 추가: `/operations`에서 담당 교사의 학생 일괄 발급·복구와 동의 근거 확인 요청을 지원한다. `/account`에는 첫 비밀번호 변경·참여 철회·전체 기록 삭제 요청이 있다. 운영자 승인·삭제 실행·학급 인계와 Supabase Edge Function 설정은 [계정·참여·기록 운영](ACCOUNT-OPERATIONS.md)을 우선한다. 기존 비밀키 도구는 초기 성인 교사·운영자 준비에 사용하고, 이후 교사의 웹 계정 발급에는 비밀키를 전달하지 않는다.
 
 2026-10-30 갱신: 지정한 Supabase 프로젝트에 기본·4단계 기능의 DB 구조와 18개 미션을 반영하고, 가상 계정으로 실제 인증·활동·출력 연결을 검사했다. 로컬 `.env.local`은 비공개로 구성했다. Google OAuth 앱 설정, 실제 운영 계정 발급과 동의·보관 정책, 웹 호스팅·실제 수업 검증은 남아 있다. 새 기능의 설정은 [4단계 구현·운영 안내](FOUR-STAGES.md)를 먼저 확인한다. 아래의 2026-10-28 설명은 초기 작성 당시의 상태다.
@@ -24,12 +26,12 @@
 
 `.env.example`을 참고해 `.env.local`을 준비합니다. 값은 문서나 GitHub에 올리지 않습니다.
 
-| 설정 이름 | 용도 |
-| --- | --- |
-| NEXT_PUBLIC_SUPABASE_URL | 개발용 Supabase URL |
-| NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | 브라우저 사용이 허용되는 publishable key |
-| NEXT_PUBLIC_APP_URL | 현재 앱의 URL |
-| SUPABASE_SECRET_KEY | 운영자 계정 생성·콘텐츠 등록 도구에만 쓰는 서버 비밀키 |
+| 설정 이름                            | 용도                                                   |
+| ------------------------------------ | ------------------------------------------------------ |
+| NEXT_PUBLIC_SUPABASE_URL             | 개발용 Supabase URL                                    |
+| NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | 브라우저 사용이 허용되는 publishable key               |
+| NEXT_PUBLIC_APP_URL                  | 현재 앱의 URL                                          |
+| SUPABASE_SECRET_KEY                  | 운영자 계정 생성·콘텐츠 등록 도구에만 쓰는 서버 비밀키 |
 
 웹앱의 일반 읽기·쓰기에는 서버 비밀키를 사용하지 않습니다. 인증된 사용자의 권한과 RLS를 적용합니다. 비밀키는 `NEXT_PUBLIC_` 설정에 절대 넣지 않습니다.
 

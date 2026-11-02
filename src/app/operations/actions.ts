@@ -31,7 +31,7 @@ export async function operationsCommand(
     return { ok: false, message: operationsError(error), data: null };
   }
 }
-export async function accountOperation(value: unknown) {
+export async function accountOperation(value: unknown, resume = false) {
   try {
     const input = parseAccountInput(value);
     const client = await createClient();
@@ -53,7 +53,9 @@ export async function accountOperation(value: unknown) {
           apikey: config.key,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(input),
+        body: JSON.stringify(
+          resume === true ? { ...input, kind: "resume_students" } : input,
+        ),
         cache: "no-store",
         signal: AbortSignal.timeout(55000),
       },

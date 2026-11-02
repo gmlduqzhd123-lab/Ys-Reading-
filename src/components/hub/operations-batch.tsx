@@ -99,9 +99,12 @@ export function ConsentBatch({ state }: { state: OperationsState }) {
           />
           <span>
             {state.students.find((s) => s.id === c.student_id)?.display_name ??
+              c.student_name ??
               "학생"}{" "}
-            · {state.classes.find((x) => x.id === c.classroom_id)?.name} ·{" "}
-            {c.reference} · 확인일 {c.confirmed_on}
+            ·{" "}
+            {state.classes.find((x) => x.id === c.classroom_id)?.name ??
+              c.classroom_name}{" "}
+            · {c.reference} · 확인일 {c.confirmed_on}
           </span>
         </label>
       ))}

@@ -2,6 +2,13 @@ import Link from "next/link";
 import { formatOperationsDate } from "@/lib/operations";
 export interface BackupState {
   asOf: string;
+  attempts?: {
+    id: string;
+    started_at: string;
+    finished_at: string | null;
+    status: string;
+    error_code: string | null;
+  }[];
   runs: {
     id: string;
     created_at: string;
@@ -27,6 +34,27 @@ export function OperatorBackupStatus({ state }: { state: BackupState | null }) {
         선택한 운영자 PC에 계정·권한·학습 기록·경제 원장을 암호화해 보관합니다.
         백업 파일을 다시 복호화하고 별도 PostgreSQL 환경에 복원해 내용·관계·접근
         권한을 확인한 기록만 표시해요.
+      </p>
+      {state?.attempts?.[0] && (
+        <p role="status">
+          최근 실행:{" "}
+          {state.attempts[0].status === "failed"
+            ? "백업 실패 · 운영자 PC에서 원인을 확인해 주세요."
+            : state.attempts[0].status === "running"
+              ? Date.parse(state.asOf) -
+                  Date.parse(state.attempts[0].started_at) >
+                30 * 60000
+                ? "백업 실행 신호가 오래됐어요."
+                : "백업·복원 검사 중"
+              : "백업·복원 검사 완료"}{" "}
+          · {formatOperationsDate(state.attempts[0].started_at)}
+        </p>
+      )}
+      <p>
+        운영자 PC에서 매일 19시와 로그인 시 실행합니다. PC가 켜져 있고 운영자
+        Windows 계정이 로그인돼 있어야 하며, Codex 연결 인증이 만료되면 재인증이
+        필요해요. 복구 키를 별도 암호로 내보내 다른 기기에서 복원할 수 있습니다.
+        복구 키 파일과 암호는 서로 다른 안전한 장소에 보관해 주세요.
       </p>
       <p className="notice" role="status">
         {!state

@@ -4,6 +4,7 @@ import {
   safePlan,
   runAccountJob,
   type Job,
+  mayRecoverUnfinishedAccount,
 } from "../_shared/account-worker.ts";
 
 const headers = {
@@ -37,7 +38,11 @@ Deno.serve(async (req: Request) => {
     const text = await req.text();
     if (text.length > 25000)
       return reply({ ok: false, code: "BF_INVALID_INPUT" }, 400);
-    const input = parseAccountInput(JSON.parse(text));
+    const raw = JSON.parse(text),
+      recover = raw?.kind === "resume_students";
+    const input = parseAccountInput(
+      recover ? { ...raw, kind: "create_students" } : raw,
+    );
     const secret = await crypto.subtle.importKey(
       "raw",
       new TextEncoder().encode(key),
@@ -53,12 +58,15 @@ Deno.serve(async (req: Request) => {
     const fingerprint = Array.from(new Uint8Array(digest), (b) =>
       b.toString(16).padStart(2, "0"),
     ).join("");
-    const { data: job, error } = await userClient.rpc("account_job_begin", {
-      p_kind: input.kind,
-      p_payload: safePlan(input),
-      p_request_id: input.requestId,
-      p_fingerprint: fingerprint,
-    });
+    const { data: job, error } = await userClient.rpc(
+      recover ? "resume_issuance_job" : "account_job_begin",
+      {
+        ...(!recover ? { p_kind: input.kind } : {}),
+        p_payload: safePlan(input),
+        p_request_id: input.requestId,
+        p_fingerprint: fingerprint,
+      },
+    );
     if (error) return reply({ ok: false, code: safeError(error.message) }, 409);
     if (input.kind === "change_password" && !job.done) {
       if (!user.email) return reply({ ok: false, code: "BF_FORBIDDEN" }, 403);
@@ -95,6 +103,19 @@ Deno.serve(async (req: Request) => {
             found.data.user.app_metadata.bookforest_job !== jobId
           )
             throw new Error("BF_FORBIDDEN");
+          if (recover) {
+            const p = await admin
+              .from("profiles")
+              .select("role,account_active,consent_status,security_cutoff")
+              .eq("id", id)
+              .maybeSingle();
+            if (p.error || !mayRecoverUnfinishedAccount(p.data))
+              throw Error("BF_FORBIDDEN");
+            const changed = await admin.auth.admin.updateUserById(id, {
+              password,
+            });
+            if (changed.error) throw changed.error;
+          }
           return;
         }
         const { error } = await admin.auth.admin.createUser({
@@ -149,7 +170,7 @@ Deno.serve(async (req: Request) => {
 });
 function safeError(value: string) {
   return (
-    /BF_(INVALID_INPUT|PASSWORD_WEAK|PASSWORD_DIFFERENT|ACCOUNT_BLOCKED|IDEMPOTENCY_CONFLICT|BUSY|FORBIDDEN|NOT_FOUND|LOGIN_TAKEN)/.exec(
+    /BF_(INVALID_INPUT|PASSWORD_WEAK|PASSWORD_DIFFERENT|ACCOUNT_BLOCKED|IDEMPOTENCY_CONFLICT|BUSY|FORBIDDEN|NOT_FOUND|LOGIN_TAKEN|MFA_REQUIRED|CLASS_ARCHIVED)/.exec(
       value,
     )?.[0] ?? "BF_OPERATION_FAILED"
   );

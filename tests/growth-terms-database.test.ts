@@ -25,7 +25,17 @@ async function one(sql: string, args: unknown[] = []): Promise<any> {
 }
 async function actor(id: string) {
   await db.exec("reset role;set role authenticated");
-  await db.query("select set_config('request.jwt.claim.sub',$1,true)", [id]);
+  await db.query(
+    "select set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",
+    [
+      id,
+      JSON.stringify({
+        sub: id,
+        aal: "aal2",
+        amr: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) }],
+      }),
+    ],
+  );
 }
 async function owner() {
   await db.exec("reset role");

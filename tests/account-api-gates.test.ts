@@ -19,6 +19,7 @@ vi.mock("@/lib/google-drive", () => ({
   googleExport: vi.fn(),
 }));
 vi.mock("@/lib/book-search", () => ({ searchBooks: state.search }));
+vi.mock("@/lib/export-receipts", () => ({ recordExport: vi.fn() }));
 vi.mock("@/lib/export-documents", () => ({
   exportSchema: { parse: vi.fn() },
   loadExportBundle: state.load,
@@ -93,15 +94,27 @@ describe("external API gates after account/session changes", () => {
     expect(state.start).toHaveBeenCalledWith("teacher");
   });
   it("returns a canceled OAuth flow to exports without exposing its state", async () => {
-    const r = await callback(new NextRequest("http://127.0.0.1:3086/api/google/callback?error=access_denied&state=opaque-state"));
+    const r = await callback(
+      new NextRequest(
+        "http://127.0.0.1:3086/api/google/callback?error=access_denied&state=opaque-state",
+      ),
+    );
     expect(state.cancel).toHaveBeenCalledWith("teacher", "opaque-state");
     expect(r.status).toBe(307);
-    expect(r.headers.get("location")).toBe("http://127.0.0.1:3086/hub?tab=exports&google=cancelled");
+    expect(r.headers.get("location")).toBe(
+      "http://127.0.0.1:3086/hub?tab=exports&google=cancelled",
+    );
   });
   it("returns an expired callback to a safe reconnect page", async () => {
     state.callback.mockRejectedValue(new Error("GOOGLE_STATE_INVALID"));
-    const r = await callback(new NextRequest("http://127.0.0.1:3086/api/google/callback?code=private-code&state=opaque-state"));
-    expect(r.headers.get("location")).toBe("http://127.0.0.1:3086/hub?tab=exports&google=expired");
+    const r = await callback(
+      new NextRequest(
+        "http://127.0.0.1:3086/api/google/callback?code=private-code&state=opaque-state",
+      ),
+    );
+    expect(r.headers.get("location")).toBe(
+      "http://127.0.0.1:3086/hub?tab=exports&google=expired",
+    );
     expect(r.headers.get("location")).not.toContain("private-code");
   });
 });

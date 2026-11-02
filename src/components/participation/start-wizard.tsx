@@ -11,6 +11,7 @@ import { missions } from "@/lib/missions";
 import { responseChoices } from "@/lib/participation";
 import { ParticipationForm, value } from "./form";
 import { RosterImporter } from "./roster-importer";
+import { startRoster } from "@/app/start/actions";
 function downloadAccounts(rows: NonNullable<AccountInput["students"]>) {
   const cell = (text: string) =>
     `"${(/^[\s]*[=+\-@]/.test(text) ? "'" : "") + text.replaceAll('"', '""')}"`;
@@ -33,11 +34,9 @@ function downloadAccounts(rows: NonNullable<AccountInput["students"]>) {
 }
 export function StartWizard({
   data,
-  state,
   origin,
 }: {
-  data: DashboardData;
-  state: OperationsState;
+  data: Pick<DashboardData, "classes">;
   origin: string;
 }) {
   const router = useRouter(),
@@ -60,6 +59,26 @@ export function StartWizard({
     [downloaded, setDownloaded] = useState(false),
     [qr, setQr] = useState("");
   const [importPending, setImportPending] = useState(false);
+  const [roster, setRoster] = useState<{
+    total: number;
+    existing: string[];
+  } | null>(null);
+  useEffect(() => {
+    let active = true;
+    setRoster(null);
+    if (classId)
+      startRoster(classId)
+        .then((v) => {
+          if (active) setRoster(v);
+        })
+        .catch(() => {
+          if (active)
+            setMessage("학생 명단을 읽지 못했어요. 연결을 확인해 주세요.");
+        });
+    return () => {
+      active = false;
+    };
+  }, [classId, data]);
   const batchRef = useRef(batch);
   batchRef.current = batch;
   const url = classId
@@ -125,7 +144,6 @@ export function StartWizard({
       document.removeEventListener("click", protect, true);
     };
   }, []);
-  const enrolled = state.students.filter((s) => s.classroom_id === classId);
   return (
     <div className="participation-page">
       <span className="eyebrow">FIRST DAY IN BOOKFOREST</span>
@@ -206,15 +224,15 @@ export function StartWizard({
         <section className="panel">
           <h2>2. 학생 별칭으로 계정을 준비해요</h2>
           <p>
-            이 학급에 이미 발급된 학생 {enrolled.length}명입니다. 아래에는
-            추가할 학생만 입력하세요. 한 줄에 한 명, 최대 30명입니다.
+            {roster
+              ? `이 학급에 이미 발급된 학생 ${roster.total}명입니다.`
+              : "학급 명단을 확인하고 있어요."}{" "}
+            아래에는 추가할 학생만 입력하세요. 한 줄에 한 명, 최대 30명입니다.
           </p>
           {!batch && (
             <RosterImporter
               classId={classId}
-              existing={state.students.flatMap((s) =>
-                s.login_id ? [s.login_id] : [],
-              )}
+              existing={roster?.existing ?? []}
               onPending={setImportPending}
             />
           )}

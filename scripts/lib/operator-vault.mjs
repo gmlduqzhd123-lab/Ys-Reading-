@@ -98,7 +98,7 @@ export function defaultVault() {
     projectRef,
   );
 }
-export function vaultKey(directory) {
+export function ensureVault(directory) {
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   if (process.platform === "win32") {
     const identity = spawnSync("whoami.exe", [], {
@@ -119,6 +119,9 @@ export function vaultKey(directory) {
     );
     if (r.status !== 0) throw Error("BACKUP_FOLDER_ACL_FAILED");
   }
+}
+export function vaultKey(directory) {
+  ensureVault(directory);
   const file = path.join(directory, "operator-key.dpapi");
   if (fs.existsSync(file)) return protectLocalKey(fs.readFileSync(file), true);
   const key = randomBytes(32);

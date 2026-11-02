@@ -1,4 +1,20 @@
 // Pure worker: provider calls are injectable so retries and partial failures can be tested.
+export function mayRecoverUnfinishedAccount(
+  p: {
+    role: string;
+    account_active: boolean;
+    consent_status: string;
+    security_cutoff: string | null;
+  } | null,
+) {
+  return (
+    !!p &&
+    p.role === "student" &&
+    p.account_active &&
+    p.consent_status === "pending" &&
+    p.security_cutoff === null
+  );
+}
 export type AccountKind =
   | "create_students"
   | "reset_password"

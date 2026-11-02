@@ -1,4 +1,18 @@
 export interface OperationsState {
+  selected?: string | null;
+  pages?: {
+    studentPage: number;
+    consentPage: number;
+    deletionPage: number;
+    auditPage: number;
+    q: string;
+  };
+  totals?: {
+    students: number;
+    consents: number;
+    deletions: number;
+    audit: number;
+  };
   operator: boolean;
   classes: {
     id: string;
@@ -15,7 +29,7 @@ export interface OperationsState {
     classroom_id: string;
     active: boolean;
     login_id: string | null;
-    managed_classroom_id?: string|null;
+    managed_classroom_id?: string | null;
     can_reset?: boolean;
     last_activity: string | null;
   }[];
@@ -23,6 +37,8 @@ export interface OperationsState {
   groups?: { id: string; name: string; owner_id: string }[];
   teacher_requests: { user_id: string; display_name: string; status: string }[];
   consents: {
+    student_name?: string;
+    classroom_name?: string;
     id: string;
     student_id: string;
     classroom_id: string;
@@ -32,6 +48,7 @@ export interface OperationsState {
     status: string;
   }[];
   deletions: {
+    student_name?: string;
     id: string;
     student_id: string;
     classroom_id: string | null;
@@ -62,7 +79,10 @@ export function operationsError(error: unknown) {
     typeof error === "object" && error && "message" in error
       ? String(error.message)
       : String(error);
-  if (/BF_CLASS_ARCHIVED/.test(m)) return "보관된 학급에는 학생을 새로 발급할 수 없어요. 진행 중인 학급을 선택하거나 학기를 다시 열어 주세요.";
+  if (/BF_MFA_REQUIRED/.test(m))
+    return "운영자 2단계 인증을 먼저 확인해 주세요. 나의 계정 → 운영자 2단계 인증에서 확인한 뒤 15분 안에 다시 진행하세요.";
+  if (/BF_CLASS_ARCHIVED/.test(m))
+    return "보관된 학급에는 학생을 새로 발급할 수 없어요. 진행 중인 학급을 선택하거나 학기를 다시 열어 주세요.";
   if (/BF_PASSWORD_WEAK/.test(m))
     return "새 비밀번호는 영문 대·소문자와 숫자를 포함해 12~128자로 입력해 주세요.";
   if (/BF_PASSWORD_CURRENT/.test(m))

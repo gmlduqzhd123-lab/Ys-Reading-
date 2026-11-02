@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ViewSettings } from "@/components/participation/view-settings";
 import { ConnectionBanner } from "@/components/recovery/connection-banner";
+import { ServiceAlert } from "@/components/recovery/service-alert";
 
 const links = [
   { href: "/hub?tab=today", label: "오늘 할 일", active: "today" },
@@ -32,6 +33,7 @@ const moreLinks = [
   ["/app", "우리 교실"],
   ["/hub?tab=growth", "캐릭터·배지"],
   ["/hub?tab=exports", "기록·글 내보내기"],
+  ["/reports", "학기 성장 보고서"],
   ["/hub?tab=manage", "학급 연결·관리"],
   ["/studio", "책숲 놀이터"],
   ["/guide", "책숲 사용 안내"],
@@ -173,6 +175,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
       <div className="main-column">
         <ConnectionBanner />
+        <ServiceAlert />
         <main id="main-content" className="main-content">
           {children}
         </main>
