@@ -1,13 +1,24 @@
 import { spawn } from "node:child_process";
 import readline from "node:readline";
+import { existsSync } from "node:fs";
 // Native project-scoped MCP credentials stay in Codex. Never print tool payloads.
 export async function nativeMcp() {
-  const child = spawn("codex", ["app-server"], {
+  const binary = process.env.BOOKFOREST_CODEX_BINARY || "codex";
+  if (process.env.BOOKFOREST_CODEX_BINARY && !existsSync(binary))
+    throw Error("MCP_AUTH_REQUIRED");
+  const child = spawn(binary, ["app-server"], {
     stdio: ["pipe", "pipe", "pipe"],
     windowsHide: true,
   });
   let sequence = 0;
   const pending = new Map();
+  child.once("error", () => {
+    for (const p of pending.values()) {
+      clearTimeout(p.timer);
+      p.reject(Error("MCP_UNAVAILABLE"));
+    }
+    pending.clear();
+  });
   child.stderr.on("data", () => {});
   const lines = readline.createInterface({ input: child.stdout });
   lines.on("line", (line) => {

@@ -11,11 +11,13 @@ import {
   decryptBackup,
 } from "./lib/operator-vault.mjs";
 import { prepareBackup, verifyRestore } from "./lib/operator-restore.mjs";
+import { acquireBackupLock } from "./lib/backup-lock.mjs";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const quote = (s) => "'" + String(s).replaceAll("'", "''") + "'";
 let mcp;
 let lockFile;
 let ownsLock = false;
+let releaseLock;
 const attemptId = randomUUID(),
   attemptStarted = new Date().toISOString();
 let attemptDirectory;
@@ -29,12 +31,7 @@ try {
     key = vaultKey(directory);
   attemptDirectory = directory;
   lockFile = path.join(directory, "backup.lock");
-  if (fs.existsSync(lockFile)) {
-    if (Date.now() - fs.statSync(lockFile).mtimeMs < 30 * 60000)
-      throw Error("BACKUP_ALREADY_RUNNING");
-    fs.unlinkSync(lockFile);
-  }
-  fs.writeFileSync(lockFile, String(process.pid), { flag: "wx", mode: 0o600 });
+  releaseLock = acquireBackupLock(lockFile);
   ownsLock = true;
   const input = process.argv.find((s) => s.startsWith("--verify="));
   let backup, file;
@@ -198,5 +195,5 @@ try {
   process.exitCode = 1;
 } finally {
   mcp?.close();
-  if (ownsLock && lockFile && fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+  releaseLock?.();
 }

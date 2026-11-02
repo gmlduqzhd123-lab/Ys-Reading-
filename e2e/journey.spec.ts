@@ -202,6 +202,12 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await expect(
     teacher.getByText("CI 새싹의 책숲 성장 기록", { exact: true }).first(),
   ).toBeVisible();
+  for (const page of [student, teacher]) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(391);
+  }
   await tc.close();
   await oc.close();
   await sc.close();
