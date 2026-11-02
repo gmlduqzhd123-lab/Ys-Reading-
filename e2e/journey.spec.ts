@@ -147,7 +147,9 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   ).toBeVisible();
   const after = await learner.rpc("hub_summary");
   expect(after.data.balances[fixture.classroom]).toBe(balance - 3);
-  await expect(student.getByText("CI 별 상품")).toBeVisible();
+  await expect(
+    student.getByRole("heading", { name: "CI 별 상품", exact: true }),
+  ).toBeVisible();
   await teacher.goto(
     "/reports?classroom=" +
       fixture.classroom +
