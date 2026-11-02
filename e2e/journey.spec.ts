@@ -59,9 +59,7 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await student.goto("/hub?tab=reading#reading-editor");
   await student.getByLabel("책 제목", { exact: true }).fill("CI 함께 읽은 책");
   await student.getByLabel("저자", { exact: true }).fill("CI 저자");
-  await student
-    .getByLabel("독서 상태", { exact: true })
-    .selectOption("completed");
+  await student.getByLabel("독서 상태").selectOption("completed");
   await student
     .getByLabel("기억에 남는 장면과 나의 생각", { exact: true })
     .fill("친구를 도와주는 장면을 읽고 나도 먼저 손을 내밀기로 했습니다.");

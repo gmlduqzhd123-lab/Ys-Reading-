@@ -14,6 +14,7 @@ export default defineConfig({
   globalTimeout: 10 * 60000,
   reporter: "list",
   use: {
+    actionTimeout: 15000,
     baseURL: "http://127.0.0.1:3096",
     trace: "off",
     screenshot: "off",
