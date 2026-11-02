@@ -180,13 +180,27 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   const fileEvent = teacher.waitForEvent("download");
   await teacher.getByRole("button", { name: "Word 저장", exact: true }).click();
   expect((await fileEvent).suggestedFilename()).toBe("bookforest-growth.docx");
+  const popupEvent = teacher.waitForEvent("popup");
+  await teacher
+    .getByRole("button", { name: "인쇄 · PDF 저장", exact: true })
+    .click();
+  const printPage = await popupEvent;
+  await expect(
+    printPage.getByRole("heading", {
+      name: "CI 새싹의 책숲 성장 기록",
+      exact: true,
+    }),
+  ).toBeVisible();
+  const pdf = await printPage.pdf({ format: "A4", printBackground: true });
+  expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  await printPage.close();
   await student.goto("/reports");
   await expect(
     student.getByRole("heading", { name: "CI 새싹의 책숲 성장 기록 · 1판" }),
   ).toBeVisible();
   await teacher.goto("/account/records");
   await expect(
-    teacher.getByText("CI 새싹의 책숲 성장 기록", { exact: true }),
+    teacher.getByText("CI 새싹의 책숲 성장 기록", { exact: true }).first(),
   ).toBeVisible();
   await tc.close();
   await oc.close();

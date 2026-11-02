@@ -210,6 +210,12 @@ export function ReportArchive({
         setUrl(d.url);
         setMessage("Google 파일을 만들었어요. 파일의 공유 범위를 확인하세요.");
       } else {
+        if (format === "print" && popup) {
+          popup.location.href =
+            "/api/reports/print?id=" + encodeURIComponent(report.id);
+          setMessage("새 창의 인쇄 버튼에서 PDF 저장을 선택하세요.");
+          return;
+        }
         const blob = await r.blob(),
           href = URL.createObjectURL(blob);
         if (popup) {
@@ -223,7 +229,9 @@ export function ReportArchive({
             (format === "docx" ? "docx" : format === "csv" ? "csv" : "html");
           a.click();
           setMessage(
-            "보고서 파일을 준비했어요. 다운로드 또는 저장 위치를 확인하세요.",
+            format === "print"
+              ? "새 창이 차단되어 인쇄용 HTML을 준비했어요. 파일을 열어 인쇄·PDF 저장을 이용하세요."
+              : "보고서 파일을 준비했어요. 다운로드 또는 저장 위치를 확인하세요.",
           );
         }
         setTimeout(() => URL.revokeObjectURL(href), 60000);

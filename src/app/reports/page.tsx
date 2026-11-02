@@ -177,14 +177,7 @@ export default async function ReportsPage({
       {state && (
         <>
           <ReportComposer
-            key={JSON.stringify([
-              cls,
-              student,
-              from,
-              until,
-              worksPage,
-              state.latestVersion,
-            ])}
+            key={JSON.stringify([cls, student, from, until, worksPage])}
             state={state}
           />
           <nav className="hub-inline" aria-label="대표 작품 페이지">
