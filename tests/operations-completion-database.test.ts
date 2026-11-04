@@ -114,7 +114,7 @@ it("keeps a restored service held when newer consent and deletion decisions conf
     "select private.operator_privacy_checkpoint() v",
   );
   checkpoint.rows[0].v.profiles.find((x: any) => x.id === student).consent =
-    "withdrawn";
+    "pending";
   await db.exec("update private.recovery_state set held=true");
   const result = (
     await db.query<{ v: any }>(

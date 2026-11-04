@@ -390,7 +390,7 @@ try {
   if (mfa.error) throw Error("RESTORED_MFA_FAILED");
   stage = "privacy-reconciliation";
   sql(
-    "update public.profiles set consent_status='withdrawn' where id='" +
+    "update public.profiles set consent_status='pending' where id='" +
       fixture.student.id +
       "'",
   );
