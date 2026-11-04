@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { createPoolRetryFetch } from "../src/lib/supabase/pool-retry";
 if (process.env.GITHUB_ACTIONS !== "true" || process.env.BOOKFOREST_E2E !== "1")
   throw Error("ISOLATED_CI_ONLY");
 const f = JSON.parse(fs.readFileSync("e2e/.runtime/fixtures.json", "utf8"));
@@ -13,8 +14,11 @@ const cfg = JSON.parse(
     stdio: ["ignore", "pipe", "pipe"],
   }),
 );
+let poolWaitRetries = 0;
+const requestFetch = createPoolRetryFetch(undefined, () => poolWaitRetries++);
 const admin = createClient(f.url, cfg.SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
+  global: { fetch: requestFetch },
 });
 const classroomIds = [f.classroom, randomUUID(), randomUUID()],
   assignmentIds = [f.assignment, randomUUID(), randomUUID()];
@@ -85,6 +89,7 @@ const durations = await Promise.all(
   users.map(async (u, i) => {
     const c = createClient(f.url, f.key, {
         auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: requestFetch },
       }),
       started = performance.now();
     valid(
@@ -181,6 +186,7 @@ console.log(
     duplicateRecords: 0,
     foreignRecords: 0,
     flowP95Ms: p95,
+    poolWaitRetries,
     schoolHardwareVerified: false,
   }),
 );
