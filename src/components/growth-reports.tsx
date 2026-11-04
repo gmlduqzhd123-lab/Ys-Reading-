@@ -211,7 +211,7 @@ export function ReportBatch({
       <p role="status" aria-live="polite">
         {busy
           ? "선택한 학급의 명단과 보고서를 처리하고 있어요. 완료될 때까지 이 화면을 유지해 주세요."
-          : message}
+          : ""}
       </p>
       <p>
         한 번에 30명까지 활동 수치를 확인합니다. 학생에게 자동으로 공개하지

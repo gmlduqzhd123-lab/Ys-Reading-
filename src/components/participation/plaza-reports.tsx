@@ -38,6 +38,10 @@ export function ReportPost({ post }: { post: string }) {
               request: request.current,
             });
             setMessage(r.message);
+          } catch {
+            setMessage(
+              "연결을 확인하지 못했어요. 내용을 유지한 채 다시 요청해 주세요.",
+            );
           } finally {
             setBusy(false);
           }
@@ -136,6 +140,10 @@ export function PlazaReports({ state }: { state: PlazaReportState }) {
                         request: crypto.randomUUID(),
                       });
                       setMessage(v.message);
+                    } catch {
+                      setMessage(
+                        "검토 결과를 확인하지 못했어요. 기록을 다시 불러와 확인해 주세요.",
+                      );
                     } finally {
                       setBusy(false);
                     }
