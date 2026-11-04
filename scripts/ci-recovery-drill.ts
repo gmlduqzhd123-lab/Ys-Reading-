@@ -98,9 +98,8 @@ try {
     throw Error("RESTORE_TARGET_NOT_EMPTY");
   sql("create database " + targetDb + " template template0");
   created = true;
-  // The target is a newly-created database. --clean attempts to drop policies on
-  // absent tables even with --if-exists. Restore into empty schemas instead.
-  sql("drop schema public", targetDb);
+  // The target is newly created. Keep initdb's public schema: pg_dump does not
+  // recreate it. --clean would try dropping policies on absent tables.
   stage = "database-extensions";
   sql(
     'create schema if not exists extensions;create extension if not exists pgcrypto with schema extensions;create extension if not exists "uuid-ossp" with schema extensions',
