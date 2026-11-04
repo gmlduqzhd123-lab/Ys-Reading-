@@ -99,7 +99,7 @@ try {
   sql("create database " + targetDb + " template template0");
   created = true;
   sql(
-    "create schema if not exists extensions;create extension if not exists pgcrypto with schema extensions",
+    'create schema if not exists extensions;create extension if not exists pgcrypto with schema extensions;create extension if not exists "uuid-ossp" with schema extensions',
     targetDb,
   );
   const dump = docker([
@@ -271,7 +271,21 @@ try {
       productionBackupTransferred: false,
     }),
   );
-} catch {
+} catch (error) {
+  const stderr = String((error as { stderr?: unknown }).stderr ?? "");
+  const safeLine = stderr
+    .split(/\r?\n/)
+    .find((line) =>
+      /ERROR: (schema|relation|type|function|extension|role|permission denied|must be owner|cannot)/.test(
+        line,
+      ),
+    );
+  if (safeLine)
+    console.error(
+      safeLine
+        .slice(0, 240)
+        .replace(/(postgres(?:ql)?:\/\/)[^\s]+/gi, "$1[redacted]"),
+    );
   console.error(
     "CI_RECOVERY_FAILED_" + stage.toUpperCase().replace(/[^A-Z0-9_]/g, "_"),
   );

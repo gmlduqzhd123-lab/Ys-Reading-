@@ -6,8 +6,24 @@ import { resolveBackupCodex } from "./lib/backup-runtime.mjs";
 const directory = defaultVault(),
   log = path.join(directory, "scheduled-status.json");
 try {
+  const trace = path.resolve(
+    import.meta.dirname,
+    "../work/scheduled-node.json",
+  );
+  if (fs.existsSync(path.dirname(trace)))
+    fs.writeFileSync(
+      trace,
+      JSON.stringify({
+        startedAt: new Date().toISOString(),
+        localData: process.env.LOCALAPPDATA,
+      }),
+    );
+} catch {}
+try {
   ensureVault(directory);
-  const codex = resolveBackupCodex({override:process.argv.find((v) => v.startsWith("--codex="))?.slice(8)});
+  const codex = resolveBackupCodex({
+    override: process.argv.find((v) => v.startsWith("--codex="))?.slice(8),
+  });
   fs.writeFileSync(
     log,
     JSON.stringify({
