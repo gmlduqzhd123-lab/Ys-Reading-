@@ -90,7 +90,7 @@ try {
   const receipt = JSON.parse(portable.stdout.trim());
   if (!receipt.verified || !receipt.portableKeyVerified)
     throw Error("PORTABLE_VERIFY_FAILED");
-  stage = "native-restore";
+  stage = "create-database";
   if (
     sql("select count(*) from pg_database where datname='" + targetDb + "'") !==
     "0"
@@ -98,10 +98,12 @@ try {
     throw Error("RESTORE_TARGET_NOT_EMPTY");
   sql("create database " + targetDb + " template template0");
   created = true;
+  stage = "database-extensions";
   sql(
     'create schema if not exists extensions;create extension if not exists pgcrypto with schema extensions;create extension if not exists "uuid-ossp" with schema extensions',
     targetDb,
   );
+  stage = "native-dump";
   const dump = docker([
     "exec",
     dbContainer,
@@ -116,6 +118,7 @@ try {
     "--schema=private",
     "--schema=auth",
   ]);
+  stage = "native-restore";
   docker(
     [
       "exec",
@@ -133,10 +136,20 @@ try {
     ],
     dump,
   );
+  stage = "native-counts";
   const countSql =
     "select jsonb_build_object('profiles',(select count(*) from public.profiles),'reading',(select count(*) from public.reading_logs),'submissions',(select count(*) from public.submissions),'ledger',(select count(*) from public.economy_ledger),'staff',(select count(*) from private.classroom_staff))::text";
-  if (sql(countSql) !== sql(countSql, targetDb))
+  const sourceCounts = sql(countSql),
+    restoredCounts = sql(countSql, targetDb);
+  if (sourceCounts !== restoredCounts) {
+    console.error(
+      JSON.stringify({
+        sourceCounts: JSON.parse(sourceCounts),
+        restoredCounts: JSON.parse(restoredCounts),
+      }),
+    );
     throw Error("NATIVE_RESTORE_COUNT_MISMATCH");
+  }
   // A recovery is a fresh login, never a continuation of old sessions.
   sql(
     "truncate auth.sessions cascade;grant usage,create on schema auth to supabase_auth_admin;grant all on all tables in schema auth to supabase_auth_admin;grant all on all sequences in schema auth to supabase_auth_admin;",
@@ -276,7 +289,7 @@ try {
   const safeLine = stderr
     .split(/\r?\n/)
     .find((line) =>
-      /ERROR: (schema|relation|type|function|extension|role|permission denied|must be owner|cannot)/.test(
+      /ERROR:\s+(schema|relation|type|function|extension|role|column|permission denied|must be owner|cannot|syntax|unrecognized)/.test(
         line,
       ),
     );
@@ -286,6 +299,8 @@ try {
         .slice(0, 240)
         .replace(/(postgres(?:ql)?:\/\/)[^\s]+/gi, "$1[redacted]"),
     );
+  const safeCode = String((error as { message?: unknown }).message ?? "");
+  if (/^[A-Z][A-Z0-9_]{2,100}$/.test(safeCode)) console.error(safeCode);
   console.error(
     "CI_RECOVERY_FAILED_" + stage.toUpperCase().replace(/[^A-Z0-9_]/g, "_"),
   );

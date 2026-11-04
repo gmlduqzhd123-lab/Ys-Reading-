@@ -90,11 +90,11 @@ export function protectLocalKey(key, unprotect = false) {
   return Buffer.from(r.stdout.trim(), "base64");
 }
 export function defaultVault() {
-  if (!process.env.LOCALAPPDATA) throw Error("LOCALAPPDATA_REQUIRED");
+  if (!process.env.USERPROFILE) throw Error("WINDOWS_PROFILE_REQUIRED");
   return path.join(
-    process.env.LOCALAPPDATA,
-    "Bookforest",
-    "OperatorBackups",
+    process.env.USERPROFILE,
+    "Documents",
+    "Bookforest-OperatorBackups",
     projectRef,
   );
 }

@@ -1,6 +1,7 @@
 # 책숲 장애 복구
 
 1. 운영자 PC에서 예약 백업의 최근 성공 시각과 복호화·복원 검사 결과를 확인합니다.
+   기본 위치는 Windows 사용자 문서 폴더의 `Bookforest-OperatorBackups/<project-ref>`입니다. Codex 앱과 Windows 예약 작업이 같은 파일·복구 키를 사용하도록 AppData 가상화 영역 밖에 보관합니다. 폴더 접근은 운영자 Windows 계정과 SYSTEM으로 제한합니다. 기존 AppData 백업은 삭제하지 않고 보존합니다.
 2. PowerShell에서 `scripts/Recovery-Kit-Window.ps1`을 실행합니다. 외부 보관 폴더를 선택하고 본인만 아는 20자 이상 암호를 입력합니다. 채팅에 암호를 보내지 않습니다. 콘솔 방식은 `scripts/Prepare-Recovery-Kit.ps1`입니다.
 3. 만들어진 암호화 폴더를 승인된 외부 장치에 복사합니다. 암호는 별도 장소에 보관합니다. 동일 PC 폴더에 생성한 것만으로 외부 보관 완료로 판단하지 않습니다.
 4. 다른 PC의 동일 소스와 Node 환경에서 `scripts/Prepare-Recovery-Kit.ps1 -Mode verify`를 실행합니다. 복구 폴더와 암호로 검증합니다. Linux에서도 같은 검증 모듈은 DPAPI 없이 실행할 수 있습니다.

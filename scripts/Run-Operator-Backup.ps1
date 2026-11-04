@@ -1,6 +1,6 @@
 param([string]$NodePath,[string]$CodexPath)
 $ErrorActionPreference='Stop'
-$taskStatus=Join-Path $env:LOCALAPPDATA 'Bookforest/OperatorBackups/rbtqtkjnqtcnljvabisa/scheduled-status.json'
+$taskStatus=Join-Path $env:USERPROFILE 'Documents/Bookforest-OperatorBackups/rbtqtkjnqtcnljvabisa/scheduled-status.json'
 function Write-TaskStatus([string]$status,[string]$code) {
   $value=@{ok=$false;status=$status;checkedAt=[DateTime]::UtcNow.ToString('o');code=$code}
   [IO.File]::WriteAllText($taskStatus,($value|ConvertTo-Json -Compress))
