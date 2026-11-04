@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CollaborationState } from "@/lib/collaboration";
 import { collaborationCommand } from "@/app/collaboration/actions";
@@ -19,6 +19,8 @@ export function CollaborationPanel({
     [code, setCode] = useState(""),
     [school, setSchool] = useState("");
   const keys = useRef<Record<string, string>>({});
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
   const cls = state.classes.find((c) => c.id === classroom);
   async function run(command: string, payload: Record<string, unknown>) {
     if (busy) return;
@@ -47,7 +49,11 @@ export function CollaborationPanel({
     }
   }
   return (
-    <>
+    <fieldset
+      disabled={!interactive || busy}
+      aria-label="교사 협업 작업"
+      style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+    >
       <section className="panel">
         <h2>교사 초대 받기</h2>
         <p>
@@ -455,6 +461,6 @@ export function CollaborationPanel({
           {message}
         </p>
       )}
-    </>
+    </fieldset>
   );
 }

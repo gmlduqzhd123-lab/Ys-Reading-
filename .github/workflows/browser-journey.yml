@@ -25,6 +25,7 @@ jobs:
       - name: Start isolated account worker
         run: npx --no-install supabase functions serve account-operations --no-verify-jwt > "$RUNNER_TEMP/bookforest-edge.log" 2>&1 &
       - name: Seed synthetic accounts only
+        id: fixtures
         run: npx tsx scripts/ci-bootstrap.ts
       - name: Verify database and worker compatibility
         run: node scripts/check-release-contract.mjs
@@ -37,14 +38,14 @@ jobs:
         run: npx playwright test --project webkit-mobile
       - name: Verify 90 concurrent student flows across three classes
         id: load
-        if: always() && steps.classroom.outcome == 'success' && !cancelled()
+        if: always() && steps.fixtures.outcome == 'success' && !cancelled()
         run: npx tsx scripts/ci-concurrency.ts
       - name: Verify delegated teacher and account worker permissions
         id: collaboration
         if: always() && steps.load.outcome == 'success' && !cancelled()
         run: npx tsx scripts/ci-collaboration.ts
       - name: Verify portable backup and independent Auth restore
-        if: always() && steps.collaboration.outcome == 'success' && !cancelled()
+        if: always() && steps.classroom.outcome == 'success' && steps.collaboration.outcome == 'success' && !cancelled()
         run: npx tsx scripts/ci-recovery-drill.ts
       - name: Stop isolated services
         if: always()
