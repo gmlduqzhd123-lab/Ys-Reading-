@@ -154,7 +154,9 @@ try {
   // This is the disposable local database container, where supabase_admin is
   // available. Restore owners and ACLs intact; postgres cannot change default
   // privileges owned by the Auth/Storage administration roles.
-  if (sql("select rolsuper from pg_roles where rolname='supabase_admin'") !== "t")
+  if (
+    sql("select rolsuper from pg_roles where rolname='supabase_admin'") !== "t"
+  )
     throw Error("ISOLATED_RESTORE_SUPERUSER_REQUIRED");
   docker(
     [
@@ -221,6 +223,16 @@ try {
     dbUrl.pathname = "/" + targetDb;
     const vars = env.filter((x) => !x.startsWith(dbKey + "="));
     vars.push(dbKey + "=" + dbUrl.toString());
+    if (source === restContainer) {
+      // This application restores/exposes public only. The CLI also exposes
+      // graphql_public, whose extension is outside this scoped dump. Do not
+      // inherit that absent schema or source database role configuration.
+      for (const setting of ["PGRST_DB_SCHEMAS", "PGRST_DB_CONFIG"]) {
+        const index = vars.findIndex((x) => x.startsWith(setting + "="));
+        if (index >= 0) vars.splice(index, 1);
+      }
+      vars.push("PGRST_DB_SCHEMAS=public", "PGRST_DB_CONFIG=false");
+    }
     const envFile = path.resolve("e2e/.runtime/" + name + ".env");
     fs.writeFileSync(envFile, vars.join("\n"), { mode: 0o600 });
     envFiles.push(envFile);
@@ -254,6 +266,37 @@ try {
     await new Promise((r) => setTimeout(r, 500));
   }
   if (!ready) throw Error("RESTORED_AUTH_NOT_READY");
+  stage = "restored-api-ready";
+  let apiReady = false,
+    apiStatus = 0,
+    apiCode: string | null = null;
+  for (let i = 0; i < 40; i++) {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:55432/rpc/service_release_contract",
+        {
+          headers: { Authorization: "Bearer " + config.ANON_KEY },
+        },
+      );
+      const value = await response.json();
+      apiStatus = response.status;
+      apiCode =
+        typeof value?.code === "string" && /^[A-Z0-9]{5,12}$/.test(value.code)
+          ? value.code
+          : null;
+      if (response.ok && value?.protocol === 2) {
+        apiReady = true;
+        break;
+      }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!apiReady) {
+    console.error(
+      JSON.stringify({ restoredApiStatus: apiStatus, code: apiCode }),
+    );
+    throw Error("RESTORED_API_NOT_READY");
+  }
   const authFetch: typeof fetch = (input, init) =>
     fetch(String(input).replace("/auth/v1/", "/"), init);
   const restored = createClient("http://127.0.0.1:55431", config.ANON_KEY, {
@@ -282,8 +325,19 @@ try {
     !Array.isArray(rows) ||
     rows.length !== 1 ||
     rows.some((x) => x.student_id !== fixture.student.id)
-  )
+  ) {
+    console.error(
+      JSON.stringify({
+        restoredReadStatus: read.status,
+        rowCount: Array.isArray(rows) ? rows.length : null,
+        code:
+          typeof rows?.code === "string" && /^[A-Z0-9]{5,12}$/.test(rows.code)
+            ? rows.code
+            : null,
+      }),
+    );
     throw Error("RESTORED_RLS_FAILED");
+  }
   const reportRead = await fetch(
       "http://127.0.0.1:55432/term_reports?select=id,student_id,published_at",
       { headers },
