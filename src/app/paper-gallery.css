@@ -67,6 +67,7 @@ select:focus-visible, summary:focus-visible, .learning-hub :focus-visible {
 .paper-text-link:hover { text-decoration: underline; text-underline-offset: 5px; }
 .button-row { align-items: center; gap: 22px; }
 .eyebrow { font: 9px Georgia, serif; color: var(--green); letter-spacing: .16em; }
+.back-link { color: var(--green); }
 .paper-home-grid, .paper-dashboard { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 46px; }
 .paper-home-main, .paper-main { min-width: 0; }
 .paper-home-intro { padding: 18px 0 39px; }
