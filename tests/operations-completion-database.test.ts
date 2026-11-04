@@ -87,6 +87,10 @@ it("fences simultaneous export jobs, source changes, another user and uncertain 
   expect(
     (await rpc("google_export_job", ["reserve", key, hash])).result.id,
   ).toBe("file_1");
+  await rpc("google_export_job", ["uncertain", key, hash, resumed.lease]);
+  expect((await rpc("google_export_job", ["reserve", key, hash])).state).toBe(
+    "complete",
+  );
   await asUser(db, student);
   expect(
     await forbidden(db, () => rpc("google_export_job", ["reserve", key, hash])),
