@@ -129,14 +129,16 @@ export default async function ReportsPage({
                 ))}
               </select>
             </label>
-            <label className="field">
-              학생 이름·아이디 찾기
-              <input
-                name="q"
-                defaultValue={workspace.pages?.q}
-                maxLength={80}
-              />
-            </label>
+            {!delegatedData && (
+              <label className="field">
+                학생 이름·아이디 찾기
+                <input
+                  name="q"
+                  defaultValue={workspace.pages?.q}
+                  maxLength={80}
+                />
+              </label>
+            )}
             <button className="button button-outline">학급·명단 확인</button>
           </form>
           <p>

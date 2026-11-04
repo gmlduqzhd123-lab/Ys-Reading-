@@ -33,6 +33,8 @@ jobs:
       - run: npx playwright test
       - name: Verify 30 concurrent synthetic student flows
         run: npx tsx scripts/ci-concurrency.ts
+      - name: Verify delegated teacher and account worker permissions
+        run: npx tsx scripts/ci-collaboration.ts
       - name: Verify portable backup and independent Auth restore
         run: npx tsx scripts/ci-recovery-drill.ts
       - name: Stop isolated services

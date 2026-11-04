@@ -186,10 +186,12 @@ export function ReportBatch({
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [confirmed, setConfirmed] = useState(false);
+  const [outcomes, setOutcomes] = useState<Record<string, boolean>>({});
   const request = useRef(crypto.randomUUID());
   async function preview(after?: string) {
     setBusy(true);
     setConfirmed(false);
+    setOutcomes({});
     try {
       const r = await previewReportBatch({ classroom, from, until, after });
       setItems(r.data);
@@ -235,6 +237,10 @@ export function ReportBatch({
             />
             {item.name} · 독서 {item.counts.readingLogs}건 · 완료 글{" "}
             {item.counts.completedMissions}편 · 다음 {item.version + 1}판
+            {item.student in outcomes &&
+              (outcomes[item.student]
+                ? " · 초안 생성 완료"
+                : " · 다시 불러와 확인 필요")}
           </label>
         ))}
         {!!items.length && (
@@ -271,6 +277,9 @@ export function ReportBatch({
                       "명 · 재확인 " +
                       r.data.filter((x) => !x.ok).length +
                       "명",
+                  );
+                  setOutcomes(
+                    Object.fromEntries(r.data.map((x) => [x.student, x.ok])),
                   );
                   if (r.ok) {
                     setConfirmed(false);
