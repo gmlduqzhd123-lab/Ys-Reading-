@@ -269,8 +269,13 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
     .getByRole("button", { name: "이 계정으로 초대 수락", exact: true })
     .click();
   await expect(
+    operator.getByText("처리했어요. 현재 학급과 권한을 다시 확인해 주세요.", {
+      exact: true,
+    }),
+  ).toBeVisible({ timeout: 20000 });
+  await expect(
     operator.getByRole("heading", { name: "담당 학급 기록 읽기" }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20000 });
   await expect(
     operator.getByText("CI 새싹 · CI 함께 읽은 책", { exact: false }),
   ).toBeVisible();

@@ -120,6 +120,29 @@ try {
     "--schema=private",
     "--schema=auth",
   ]);
+  // Explicit schema selection may emit CREATE SCHEMA public. Keep initdb's
+  // namespace and restore its ACL/comment, skipping only that creation entry.
+  const toc = docker(
+    ["exec", "-i", dbContainer, "pg_restore", "--list"],
+    dump,
+  ).toString("utf8");
+  const publicSchemaEntry = /^\d+;\s+\d+\s+\d+\s+SCHEMA\s+-\s+public\s+/;
+  const entries = toc.split(/\r?\n/);
+  if (entries.filter((line) => publicSchemaEntry.test(line)).length > 1)
+    throw Error("RESTORE_SCHEMA_MANIFEST_INVALID");
+  const tocFile = path.resolve("e2e/.runtime/native-recovery.list");
+  fs.writeFileSync(
+    tocFile,
+    entries
+      .map((line) => (publicSchemaEntry.test(line) ? ";" + line : line))
+      .join("\n"),
+    { mode: 0o600 },
+  );
+  docker([
+    "cp",
+    tocFile,
+    dbContainer + ":/tmp/bookforest-native-recovery.list",
+  ]);
   stage = "native-restore";
   docker(
     [
@@ -132,6 +155,7 @@ try {
       "-d",
       targetDb,
       "--no-owner",
+      "--use-list=/tmp/bookforest-native-recovery.list",
       "--exit-on-error",
     ],
     dump,
