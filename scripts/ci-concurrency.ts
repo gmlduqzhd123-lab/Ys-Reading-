@@ -69,8 +69,17 @@ execFileSync(
 const date = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Asia/Seoul",
 }).format(new Date());
-function valid(r: { error: unknown }, label: string) {
-  if (r.error) throw Error(label);
+function valid(r: { error: unknown; status?: number }, label: string) {
+  if (!r.error) return;
+  const error = r.error as { code?: string; message?: string };
+  // Only error classifications belong in CI logs, never payloads or record text.
+  const code = String(error.code ?? "UNKNOWN")
+    .replace(/[^A-Za-z0-9_]/g, "")
+    .slice(0, 40);
+  const reason = /^BF_[A-Z0-9_]+$/.test(error.message ?? "")
+    ? error.message
+    : "";
+  throw Error([label, code, r.status ?? 0, reason].join(":"));
 }
 const durations = await Promise.all(
   users.map(async (u, i) => {
