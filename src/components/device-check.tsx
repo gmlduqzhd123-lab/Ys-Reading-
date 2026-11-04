@@ -29,7 +29,7 @@ export function DeviceCheck() {
     let storage = false,
       health = false;
     const started = performance.now(),
-      key = "bookforest-device-check-" + crypto.randomUUID();
+      key = "bookforest-device-check-" + Date.now();
     try {
       localStorage.setItem(key, "test");
       storage = localStorage.getItem(key) === "test";
@@ -47,7 +47,7 @@ export function DeviceCheck() {
       checkedAt: new Date().toISOString(),
       secure: window.isSecureContext,
       storage,
-      crypto: !!crypto.subtle,
+      crypto: !!globalThis.crypto?.subtle,
       online: navigator.onLine,
       health,
       latencyMs: Math.round(performance.now() - started),

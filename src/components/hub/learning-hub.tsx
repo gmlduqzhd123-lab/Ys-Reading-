@@ -60,26 +60,63 @@ export function LearningHub({
   terms?: TermState | null;
 }) {
   const teacher = data.profile.role === "teacher";
+  const owns = teacher && (data.staffClasses?.some((c) => c.owner) ?? true);
+  const canRead = !teacher || (data.staffClasses?.some((c) => c.read) ?? true);
+  const canReview =
+    teacher && (data.staffClasses?.some((c) => c.review) ?? true);
   const tabs = [
     ["today", teacher ? "오늘의 교실" : "오늘 할 일"],
     ...(teacher
       ? [
           ["overview", "현황·알림"],
-          ["review", "학생 기록 확인"],
-          ["packs", "수업 꾸러미"],
+          ...(canReview ? [["review", "학생 기록 확인"]] : []),
+          ...(owns ? [["packs", "수업 꾸러미"]] : []),
         ]
       : []),
-    ["search", "기록 검색"],
-    ["reading", "나의 책장"],
-    ["exports", "기록·글 내보내기"],
-    ["growth", "캐릭터·배지"],
-    ["plaza", "학급 광장"],
-    ["exhibitions", "작은 작품 전시회"],
-    ["economy", "경제 교실"],
-    ["manage", teacher ? "학급·학년 관리" : "학급 연결"],
-    ["terms", teacher ? "학기 종료·진급" : "나의 학기"],
+    ...(canRead
+      ? [
+          ["search", "기록 검색"],
+          ["reading", "나의 책장"],
+          ["exports", "기록·글 내보내기"],
+        ]
+      : []),
+    ...(!teacher || owns
+      ? [
+          ["growth", "캐릭터·배지"],
+          ["plaza", "학급 광장"],
+          ["exhibitions", "작은 작품 전시회"],
+          ["economy", "경제 교실"],
+          ["manage", teacher ? "학급·학년 관리" : "학급 연결"],
+          ["terms", teacher ? "학기 종료·진급" : "나의 학기"],
+        ]
+      : []),
   ];
   const tab = tabs.some(([id]) => id === initialTab) ? initialTab! : "today";
+  if (teacher && data.staffClasses) {
+    const permitted = new Set(
+      data.staffClasses
+        .filter((c) =>
+          [
+            "economy",
+            "manage",
+            "terms",
+            "packs",
+            "growth",
+            "plaza",
+            "exhibitions",
+          ].includes(tab)
+            ? c.owner
+            : tab === "review"
+              ? c.review
+              : c.read,
+        )
+        .map((c) => c.id),
+    );
+    data = {
+      ...data,
+      classes: data.classes.filter((c) => permitted.has(c.id)),
+    };
+  }
   useEffect(() => {
     const guard = (e: MouseEvent) => {
       if (
@@ -219,6 +256,8 @@ export function LearningHub({
               )}
               {teacher && ["today", "overview"].includes(tab) && overview && (
                 <ClassOverviewPanel
+                  owns={owns}
+                  canReview={canReview}
                   key={filters.classroom + ":" + filters.page}
                   data={overview}
                   classroom={filters.classroom}

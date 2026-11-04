@@ -1,9 +1,20 @@
 import fs from "node:fs";
-import { incidentDecision, marker } from "./lib/incident-notification.mjs";
+import {
+  incidentDecision,
+  marker as serviceMarker,
+  backupMarker,
+} from "./lib/incident-notification.mjs";
+const backup = process.argv[2] === "--backup",
+  marker = backup ? backupMarker : serviceMarker;
 const repo = "gmlduqzhd123-lab/Ys-Reading-";
 if (process.env.GITHUB_REPOSITORY !== repo || !process.env.GITHUB_TOKEN)
   throw Error("NOTIFICATION_CONTEXT_REQUIRED");
-const receipt = JSON.parse(fs.readFileSync("availability-result.json", "utf8"));
+const receipt = JSON.parse(
+  fs.readFileSync(
+    backup ? "backup-result.json" : "availability-result.json",
+    "utf8",
+  ),
+);
 if (typeof receipt.healthy !== "boolean") throw Error("PROBE_RECEIPT_REQUIRED");
 async function api(route, method = "GET", body) {
   const r = await fetch("https://api.github.com/repos/" + repo + route, {
@@ -25,15 +36,20 @@ for (let page = 1; page <= 10; page++) {
   if (chunk.length < 100) break;
   if (page === 10) throw Error("ISSUE_SCAN_LIMIT");
 }
-const decision = incidentDecision(receipt.healthy, issues);
+const decision = incidentDecision(receipt.healthy, issues, marker);
 const run =
   "https://github.com/" + repo + "/actions/runs/" + process.env.GITHUB_RUN_ID;
 if (decision.create)
   await api("/issues", "POST", {
-    title: "[책숲 운영 알림] 서비스 연결 확인 필요",
+    title: backup
+      ? "[책숲 운영 알림] 전체 백업 확인 필요"
+      : "[책숲 운영 알림] 서비스 연결 확인 필요",
     body:
       marker +
-      "\n\n@gmlduqzhd123-lab 서비스 연결 또는 서버 정기 점검 신호에 문제가 확인되었습니다.\n\n[서비스 상태](https://reading-blush-zeta.vercel.app/status) · [독립 점검 실행](" +
+      (backup
+        ? "\n\n@gmlduqzhd123-lab 전체 백업이 실패했거나 최근 복원 검증 신호가 없습니다. 운영자 PC의 전원·로그인·Codex 인증과 백업 상태를 확인해 주세요.\n\n"
+        : "\n\n@gmlduqzhd123-lab 서비스 연결 또는 서버 정기 점검 신호에 문제가 확인되었습니다.\n\n") +
+      "[서비스 상태](https://reading-blush-zeta.vercel.app/status) · [독립 점검 실행](" +
       run +
       ")" +
       (typeof receipt.errorId === "string" &&
@@ -45,7 +61,9 @@ if (decision.create)
 for (const number of decision.close) {
   await api("/issues/" + number + "/comments", "POST", {
     body:
-      "서비스와 서버 정기 점검 신호의 회복을 확인했습니다. [점검 실행](" +
+      (backup
+        ? "새 전체 백업의 복원 검증 성공을 확인했습니다. [점검 실행]("
+        : "서비스와 서버 정기 점검 신호의 회복을 확인했습니다. [점검 실행](") +
       run +
       ")",
   });

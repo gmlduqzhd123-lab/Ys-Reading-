@@ -76,6 +76,16 @@ try {
         ),
       }));
     backup = prepareBackup(snapshot, files);
+    const privacyRows = await mcp.call("execute_sql", {
+      query: "select private.operator_privacy_checkpoint() checkpoint",
+    });
+    if (!privacyRows?.[0]?.checkpoint)
+      throw Error("PRIVACY_CHECKPOINT_READ_FAILED");
+    fs.writeFileSync(
+      path.join(directory, "privacy-current.bfguard"),
+      encryptBackup({ projectRef, checkpoint: privacyRows[0].checkpoint }, key),
+      { mode: 0o600 },
+    );
     file = path.join(
       directory,
       `${new Date().toISOString().replace(/[:.]/g, "-")}.bfbak`,
@@ -87,6 +97,15 @@ try {
   }
   const restored = await verifyRestore(
     decryptBackup(fs.readFileSync(file, "utf8"), key),
+    fs.existsSync(path.join(directory, "privacy-current.bfguard"))
+      ? decryptBackup(
+          fs.readFileSync(
+            path.join(directory, "privacy-current.bfguard"),
+            "utf8",
+          ),
+          key,
+        )
+      : null,
   );
   const report = {
     ...restored,

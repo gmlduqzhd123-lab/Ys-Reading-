@@ -333,6 +333,61 @@ describe("Learning hub: tenant boundaries, immutable rewards and transactions", 
       (await db.query("select * from public.plaza_posts")).rows,
     ).toHaveLength(1);
   });
+  it("keeps reports private, deduplicates retries, denies other teachers and records the owner hiding a post", async () => {
+    const sub = await completed();
+    await actor(s);
+    const post = await command("plaza_share", { id: sub.id, consent: true });
+    await actor(t);
+    await command("plaza_moderate", { id: post.id, status: "published" });
+    const report = async (
+      action: string,
+      payload: unknown,
+      key = randomUUID(),
+    ) =>
+      (
+        await one("select public.plaza_report_command($1,$2,$3) value", [
+          action,
+          payload,
+          key,
+        ])
+      ).value;
+    await actor(peer);
+    const key = randomUUID(),
+      payload = {
+        post: post.id,
+        reason: "privacy",
+        note: "이름이 보이는지 확인해 주세요.",
+      };
+    const r = await report("report", payload, key);
+    expect((await report("report", payload, key)).id).toBe(r.id);
+    await actor(outsider);
+    expect(
+      (await one("select public.plaza_report_state(1) value")).value.rows,
+    ).toHaveLength(0);
+    await actor(t2);
+    await db.exec("savepoint no_review");
+    await expect(report("hide", { id: r.id, revision: 1 })).rejects.toThrow(
+      "BF_FORBIDDEN",
+    );
+    await db.exec("rollback to savepoint no_review");
+    await actor(t);
+    expect(
+      (await one("select public.plaza_report_state(1) value")).value.rows,
+    ).toHaveLength(1);
+    await report("hide", { id: r.id, revision: 1 });
+    await actor(peer);
+    expect(
+      (await one("select public.plaza_report_state(1) value")).value.rows[0]
+        .status,
+    ).toBe("hidden");
+    expect(
+      (
+        await db.query("select id from public.plaza_posts where id=$1", [
+          post.id,
+        ])
+      ).rows,
+    ).toHaveLength(0);
+  });
   it("allows approved grade classmates to submit their own completed work to a shared activity", async () => {
     await actor(t2);
     const group = await command("group_create", {

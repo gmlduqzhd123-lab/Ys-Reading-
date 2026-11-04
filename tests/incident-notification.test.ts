@@ -2,6 +2,7 @@ import { it, expect } from "vitest";
 import {
   incidentDecision,
   marker,
+  backupMarker,
   monitorHealthy,
 } from "../scripts/lib/incident-notification.mjs";
 it("deduplicates bot owned notifications and never modifies user issues", () => {
@@ -12,6 +13,14 @@ it("deduplicates bot owned notifications and never modifies user issues", () => 
   expect(incidentDecision(false, issues)).toEqual({ create: false, close: [] });
   expect(incidentDecision(true, issues)).toEqual({ create: false, close: [2] });
   expect(incidentDecision(false, []).create).toBe(true);
+});
+it("keeps service recovery separate from unresolved backup incidents", () => {
+  const issues = [
+    { number: 1, state: "open", user: { type: "Bot" }, body: marker },
+    { number: 2, state: "open", user: { type: "Bot" }, body: backupMarker },
+  ];
+  expect(incidentDecision(true, issues).close).toEqual([1]);
+  expect(incidentDecision(true, issues, backupMarker).close).toEqual([2]);
 });
 it("requires recent independent server heartbeat before recovery", () => {
   const now = Date.now(),

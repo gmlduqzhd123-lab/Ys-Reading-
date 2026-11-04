@@ -16,8 +16,11 @@ const cfg = JSON.parse(
 const admin = createClient(f.url, cfg.SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+const classroomIds = [f.classroom, randomUUID(), randomUUID()],
+  assignmentIds = [f.assignment, randomUUID(), randomUUID()];
 const users: { id: string; email: string; password: string }[] = [];
-for (let i = 0; i < 30; i++) {
+const studentCount = 90;
+for (let i = 0; i < studentCount; i++) {
   const email = "ci.load." + randomUUID() + "@example.com",
     password = "Load-CI-Only-" + randomUUID() + "aA!";
   const r = await admin.auth.admin.createUser({
@@ -30,11 +33,22 @@ for (let i = 0; i < 30; i++) {
   users.push({ id: r.data.user.id, email, password });
 }
 const sql =
+  classroomIds
+    .slice(1)
+    .map(
+      (id, i) =>
+        `insert into public.classrooms(id,name,teacher_id) values('${id}','CI 동시 학급 ${i + 2}','${f.accounts[1].id}');insert into public.assignments(id,classroom_id,mission_id,mission_snapshot) select '${assignmentIds[i + 1]}','${id}',mission_id,mission_snapshot from public.assignments where id='${f.assignment}';`,
+    )
+    .join("") +
   "update public.profiles set consent_status='verified' where id in (" +
   users.map((x) => "'" + x.id + "'").join(",") +
   ");insert into public.enrollments(classroom_id,student_id) values " +
-  users.map((x) => "('" + f.classroom + "','" + x.id + "')").join(",") +
-  ";";
+  users
+    .map((x, i) => "('" + classroomIds[i % 3] + "','" + x.id + "')")
+    .join(",") +
+  ";insert into public.reading_logs(classroom_id,student_id,book,read_on,status,thought) select e.classroom_id,e.student_id,'{\"title\":\"CI 과거 도서\"}'::jsonb,'2025-01-01'::date+g*10,'completed','기간별 조회용 합성 기록' from public.enrollments e cross join generate_series(1,30)g where e.student_id in (" +
+  users.map((x) => "'" + x.id + "'").join(",") +
+  ");";
 execFileSync(
   "docker",
   [
@@ -70,7 +84,7 @@ const durations = await Promise.all(
     );
     const request = randomUUID(),
       payload = {
-        classroomId: f.classroom,
+        classroomId: classroomIds[i % 3],
         book: { title: "CI 동시사용 책", author: "합성 자료" },
         readOn: date,
         status: "completed",
@@ -94,7 +108,7 @@ const durations = await Promise.all(
       body =
         "함께 읽고 생각을 나누었습니다. 이 글은 동시 사용 검사를 위한 합성 문장입니다.";
     const args = {
-      p_assignment_id: f.assignment,
+      p_assignment_id: assignmentIds[i % 3],
       p_title: title,
       p_body: body,
       p_request_id: submit,
@@ -108,7 +122,7 @@ const durations = await Promise.all(
     if (a.data.id !== b.data.id) throw Error("CI_LOAD_SUBMISSION_DUPLICATE");
     const attendance = {
       p_command: "attendance",
-      p_payload: { classroomId: f.classroom },
+      p_payload: { classroomId: classroomIds[i % 3] },
       p_request_id: randomUUID(),
     };
     valid(await c.rpc("hub_command", attendance), "CI_LOAD_ATTENDANCE");
@@ -129,6 +143,7 @@ const ids = users.map((x) => x.id);
 const readings = await admin
     .from("reading_logs")
     .select("id")
+    .eq("book->>title", "CI 동시사용 책")
     .in("student_id", ids),
   submissions = await admin
     .from("submissions")
@@ -140,7 +155,7 @@ const readings = await admin
     .eq("kind", "attendance")
     .in("student_id", ids);
 for (const r of [readings, submissions, events])
-  if (r.error || r.data.length !== 30)
+  if (r.error || r.data.length !== studentCount)
     throw Error("CI_LOAD_PERSISTENCE_MISMATCH");
 durations.sort((a, b) => a - b);
 const p95 = Math.round(durations[Math.ceil(durations.length * 0.95) - 1]);
@@ -148,10 +163,12 @@ if (p95 > 60000) throw Error("CI_LOAD_LATENCY_BUDGET");
 console.log(
   JSON.stringify({
     environment: "isolated-github-runner",
-    concurrentStudents: 30,
-    readings: 30,
-    submissions: 30,
-    attendance: 30,
+    concurrentStudents: studentCount,
+    classrooms: 3,
+    historicalReadings: studentCount * 30,
+    readings: studentCount,
+    submissions: studentCount,
+    attendance: studentCount,
     duplicateRecords: 0,
     foreignRecords: 0,
     flowP95Ms: p95,

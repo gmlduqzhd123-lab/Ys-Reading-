@@ -30,6 +30,8 @@ try {
     d.protocol !== 2 ||
     !d.reportReview ||
     !d.scopedStaff ||
+    !d.operationsCompletion ||
+    !d.exportJobs ||
     v.service !== "bookforest-account-worker" ||
     v.protocol < d.minimumWorkerProtocol
   )

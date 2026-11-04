@@ -280,6 +280,16 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
     operator.getByText("CI 새싹 · CI 함께 읽은 책", { exact: false }),
   ).toBeVisible();
   await teacher.reload();
+  await operator.goto("/hub?tab=overview&classroom=" + fixture.classroom);
+  await expect(
+    operator.getByRole("heading", { name: "우리 반 현황·알림", exact: true }),
+  ).toBeVisible();
+  await operator.goto(
+    "/hub?tab=search&classroom=" + fixture.classroom + "&q=CI",
+  );
+  await expect(
+    operator.getByText("CI 함께 읽은 책", { exact: false }).first(),
+  ).toBeVisible();
   await teacher
     .getByRole("button", { name: "공동교사 권한 취소", exact: true })
     .click();
@@ -294,6 +304,59 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(391);
   }
+  const studentApi = createClient(fixture.url, fixture.key, {
+      auth: { persistSession: false },
+    }),
+    teacherApi = createClient(fixture.url, fixture.key, {
+      auth: { persistSession: false },
+    });
+  await studentApi.auth.signInWithPassword({
+    email: fixture.student.loginId + "@students.bookforest.invalid",
+    password: fixture.student.password,
+  });
+  await teacherApi.auth.signInWithPassword({
+    email: fixture.accounts[1].email,
+    password: fixture.accounts[1].password,
+  });
+  const work = await studentApi
+    .from("submissions")
+    .select("id")
+    .eq("status", "completed")
+    .limit(1)
+    .single();
+  const shared = await studentApi.rpc("hub_command", {
+    p_command: "plaza_share",
+    p_payload: { id: work.data!.id, consent: true },
+    p_request_id: crypto.randomUUID(),
+  });
+  expect(shared.error).toBeNull();
+  const published = await teacherApi.rpc("hub_command", {
+    p_command: "plaza_moderate",
+    p_payload: { id: shared.data.id, status: "published" },
+    p_request_id: crypto.randomUUID(),
+  });
+  expect(published.error).toBeNull();
+  await student.goto("/hub?tab=plaza");
+  await student.getByText("이 작품을 선생님께 알리기", { exact: true }).click();
+  await student
+    .getByLabel("선생님께 전할 말 · 선택")
+    .fill("합성 작품의 공개 범위를 확인해 주세요.");
+  await student
+    .getByRole("button", { name: "선생님께 확인 요청", exact: true })
+    .click();
+  await expect(
+    student.getByText("담당 선생님에게 확인을 요청했어요.", { exact: true }),
+  ).toBeVisible();
+  await teacher.goto("/hub?tab=plaza");
+  teacher.once("dialog", (dialog) => dialog.accept());
+  await teacher
+    .getByRole("button", { name: "게시 중단·검토 완료", exact: true })
+    .click();
+  await expect(
+    teacher.getByText("검토 결과를 기록했어요.", { exact: true }),
+  ).toBeVisible();
+  await student.reload();
+  await expect(student.getByText(/검토 완료·게시 중단/)).toBeVisible();
   await tc.close();
   await oc.close();
   await sc.close();

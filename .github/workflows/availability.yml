@@ -29,3 +29,12 @@ jobs:
         run: node scripts/notify-incident.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      - name: Check independent backup heartbeat
+        if: always() && !cancelled()
+        id: backup
+        run: node scripts/check-backup.mjs
+      - name: Notify backup incident and recovery
+        if: always() && steps.backup.outcome != 'skipped' && !cancelled()
+        run: node scripts/notify-incident.mjs --backup
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

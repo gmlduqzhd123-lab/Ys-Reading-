@@ -12,6 +12,7 @@ export default async function StartPage() {
   const result = await client
     .from("classrooms")
     .select("*")
+    .eq("teacher_id", profile.id)
     .order("created_at", { ascending: false })
     .limit(1000);
   if (result.error || !result.data)
@@ -21,6 +22,7 @@ export default async function StartPage() {
   ).origin;
   return (
     <StartWizard
+      userId={profile.id}
       data={{ classes: result.data as Classroom[] }}
       origin={origin}
     />

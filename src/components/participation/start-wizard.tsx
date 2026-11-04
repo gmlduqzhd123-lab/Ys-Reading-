@@ -12,6 +12,7 @@ import { responseChoices } from "@/lib/participation";
 import { ParticipationForm, value } from "./form";
 import { RosterImporter } from "./roster-importer";
 import { startRoster } from "@/app/start/actions";
+import { readStartProgress } from "@/lib/start-progress";
 function downloadAccounts(rows: NonNullable<AccountInput["students"]>) {
   const cell = (text: string) =>
     `"${(/^[\s]*[=+\-@]/.test(text) ? "'" : "") + text.replaceAll('"', '""')}"`;
@@ -33,9 +34,11 @@ function downloadAccounts(rows: NonNullable<AccountInput["students"]>) {
   setTimeout(() => URL.revokeObjectURL(href), 10000);
 }
 export function StartWizard({
+  userId,
   data,
   origin,
 }: {
+  userId: string;
   data: Pick<DashboardData, "classes">;
   origin: string;
 }) {
@@ -59,6 +62,44 @@ export function StartWizard({
     [downloaded, setDownloaded] = useState(false),
     [qr, setQr] = useState("");
   const [importPending, setImportPending] = useState(false);
+  const [resumeReady, setResumeReady] = useState(false);
+  const progressKey = "bookforest-start:" + userId;
+  useEffect(() => {
+    try {
+      const saved = readStartProgress(
+        sessionStorage.getItem(progressKey),
+        userId,
+        data.classes
+          .filter((c) => c.term_state !== "archived")
+          .map((c) => c.id),
+      );
+      if (saved) {
+        setClassId(saved.classroom);
+        setStep(saved.step);
+        setMessage(
+          "지난 학급 준비를 이어서 보여드려요. 초기 비밀번호는 보관하지 않으므로 안내표를 잃었다면 발급 재개·재발급을 확인해 주세요.",
+        );
+      }
+    } catch {}
+    setResumeReady(true);
+    // Initial server classes validate the restored classroom, never stored credentials.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+  useEffect(() => {
+    if (!resumeReady || !classId) return;
+    try {
+      sessionStorage.setItem(
+        progressKey,
+        JSON.stringify({
+          version: 1,
+          user: userId,
+          classroom: classId,
+          step,
+          savedAt: Date.now(),
+        }),
+      );
+    } catch {}
+  }, [resumeReady, classId, step, progressKey, userId]);
   const [roster, setRoster] = useState<{
     total: number;
     existing: string[];

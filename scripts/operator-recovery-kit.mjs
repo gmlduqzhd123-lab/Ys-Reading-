@@ -54,6 +54,9 @@ try {
       flag: "wx",
       mode: 0o600,
     });
+    const guard = path.join(vault, "privacy-current.bfguard");
+    if (!fs.existsSync(guard)) throw Error("PRIVACY_CHECKPOINT_REQUIRED");
+    fs.copyFileSync(guard, path.join(folder, "privacy-current.bfguard"));
     const wrapped = wrapRecoveryKey(key, passphrase);
     if (digest(unwrapRecoveryKey(wrapped, passphrase)) !== digest(key))
       throw Error("RECOVERY_KEY_VERIFY_FAILED");
@@ -105,7 +108,12 @@ try {
       fs.readFileSync(path.join(directory, "backup.bfbak"), "utf8"),
       key,
     );
-    const verified = await verifyRestore(backup);
+    const guardFile = path.join(directory, "privacy-current.bfguard");
+    if (!fs.existsSync(guardFile)) throw Error("PRIVACY_CHECKPOINT_REQUIRED");
+    const verified = await verifyRestore(
+      backup,
+      decryptBackup(fs.readFileSync(guardFile, "utf8"), key),
+    );
     console.log(
       JSON.stringify({
         ...verified,

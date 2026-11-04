@@ -31,7 +31,7 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium webkit
       - run: npx playwright test
-      - name: Verify 30 concurrent synthetic student flows
+      - name: Verify 90 concurrent student flows across three classes
         run: npx tsx scripts/ci-concurrency.ts
       - name: Verify delegated teacher and account worker permissions
         run: npx tsx scripts/ci-collaboration.ts

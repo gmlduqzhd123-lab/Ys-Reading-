@@ -82,6 +82,31 @@ describe("scoped staff permissions and handover", () => {
   afterAll(() => db.close());
   beforeEach(() => db.exec("begin"));
   afterEach(() => db.exec("rollback;reset role"));
+  it("connects delegated readers to search, overview and personal notice reads, then revokes all three", async () => {
+    await invite(reader, ["read"]);
+    const search = () =>
+      rpc("record_search", ["reading", cls, null, "", null, null, "", 1]);
+    expect((await search()).rows).toHaveLength(1);
+    expect((await rpc("teacher_overview", [cls, 1])).classes[0].reading).toBe(
+      1,
+    );
+    await rpc("teacher_notices_read", [cls, new Date().toISOString()]);
+    expect((await rpc("teacher_overview", [cls, 1])).unread).toBe(0);
+    expect(
+      await forbidden(db, () => rpc("teacher_overview", [foreign, 1])),
+    ).toContain("BF_FORBIDDEN");
+    await asUser(db, admin);
+    expect(await forbidden(db, search)).toContain("BF_FORBIDDEN");
+    await asUser(db, owner);
+    await command("revoke_staff", {
+      classroom: cls,
+      target: reader,
+      revision: 1,
+    });
+    await asUser(db, reader);
+    expect(await forbidden(db, search)).toContain("BF_FORBIDDEN");
+    expect((await rpc("teacher_overview", [null, 1])).classes).toHaveLength(0);
+  });
   it("binds invitation to an approved teacher, rejects students and another recipient, expires and revokes", async () => {
     await asUser(db, owner);
     expect(

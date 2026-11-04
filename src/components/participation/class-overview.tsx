@@ -16,10 +16,14 @@ export function ClassOverviewPanel({
   data,
   classroom,
   classes,
+  canReview = true,
+  owns = true,
 }: {
   data: ClassOverview;
   classroom: string;
   classes: { id: string; name: string }[];
+  canReview?: boolean;
+  owns?: boolean;
 }) {
   const [notice, setNotice] = useState(""),
     [busy, start] = useTransition();
@@ -64,12 +68,16 @@ export function ClassOverviewPanel({
         <Link href="/start" className="button button-primary">
           우리 반 시작하기
         </Link>
-        <Link href="/hub?tab=review" className="button button-outline">
-          학생 기록 확인
-        </Link>
-        <Link href="/hub?tab=packs" className="button button-outline">
-          수업 꾸러미
-        </Link>
+        {canReview && (
+          <Link href="/hub?tab=review" className="button button-outline">
+            학생 기록 확인
+          </Link>
+        )}
+        {owns && (
+          <Link href="/hub?tab=packs" className="button button-outline">
+            수업 꾸러미
+          </Link>
+        )}
       </div>
       <form action="/hub" className="hub-inline">
         <input type="hidden" name="tab" value="overview" />

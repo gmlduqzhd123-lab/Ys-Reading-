@@ -76,6 +76,19 @@ try {
     wrapRecoveryKey(key, passphrase),
     { mode: 0o600 },
   );
+  fs.writeFileSync(
+    path.join(directory, "privacy-current.bfguard"),
+    encryptBackup(
+      {
+        projectRef: "rbtqtkjnqtcnljvabisa",
+        checkpoint: JSON.parse(
+          sql("select private.operator_privacy_checkpoint()::text"),
+        ),
+      },
+      key,
+    ),
+    { mode: 0o600 },
+  );
   const portable = spawnSync(
     process.execPath,
     ["scripts/operator-recovery-kit.mjs", "verify"],
@@ -375,6 +388,28 @@ try {
     code: totp(fixture.operatorSecret),
   });
   if (mfa.error) throw Error("RESTORED_MFA_FAILED");
+  stage = "privacy-reconciliation";
+  sql(
+    "update public.profiles set consent_status='withdrawn' where id='" +
+      fixture.student.id +
+      "'",
+  );
+  const checkpoint = sql("select private.operator_privacy_checkpoint()::text");
+  sql(
+    "update private.recovery_state set held=true;select private.recovery_apply_checkpoint('" +
+      checkpoint.replaceAll("'", "''") +
+      "'::jsonb)",
+    targetDb,
+  );
+  const heldRead = await fetch(
+    "http://127.0.0.1:55432/reading_logs?select=id",
+    { headers },
+  );
+  const heldRows = await heldRead.json();
+  if (!heldRead.ok || !Array.isArray(heldRows) || heldRows.length !== 0)
+    throw Error("RESTORED_PRIVACY_RECONCILIATION_FAILED");
+  if (sql("select held from private.recovery_state", targetDb) !== "t")
+    throw Error("RESTORED_CUTOVER_NOT_HELD");
   console.log(
     JSON.stringify({
       environment: "isolated-github-runner",
@@ -384,6 +419,8 @@ try {
       restoredMfa: true,
       restoredStudentRls: true,
       restoredReportRls: true,
+      laterConsentWithdrawalApplied: true,
+      cutoverHeldForPrivacyReview: true,
       anonymousDenied: true,
       productionBackupTransferred: false,
     }),

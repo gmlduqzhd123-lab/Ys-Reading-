@@ -4,6 +4,7 @@ import Link from "next/link";
 import { koreanDay } from "@/lib/hub";
 import type { HubData } from "@/lib/hub-data";
 import { ClassField, Empty, Field, HubForm, Panel, string } from "./shared";
+import { ReportPost } from "@/components/participation/plaza-reports";
 export function Plaza({ data }: { data: HubData }) {
   const [query, setQuery] = useState("");
   const teacher = data.profile.role === "teacher";
@@ -45,6 +46,7 @@ export function Plaza({ data }: { data: HubData }) {
                 })}
               </small>
               <p className="submission-body">{String(p.body)}</p>
+              {p.status === "published" && <ReportPost post={p.id} />}
               {teacher &&
                 data.classes.some(
                   (c) =>
@@ -162,23 +164,26 @@ export function Management({ data }: { data: HubData }) {
         {data.classes.length > 0 && (
           <>
             <p>연결된 학급: {data.classes.map((c) => c.name).join(", ")}</p>
-            <Link className="button button-outline" href="/app?view=missions">배정받은 독서미션 보기</Link>
+            <Link className="button button-outline" href="/app?view=missions">
+              배정받은 독서미션 보기
+            </Link>
           </>
         )}
         <p>
           선생님이 발급한 학생 계정은 해당 학급에 자동 연결됩니다. 초대 코드를
-          다시 입력할 필요 없이 비밀번호 변경과 참여 동의 승인을 마치면 활동할 수 있어요.
+          다시 입력할 필요 없이 비밀번호 변경과 참여 동의 승인을 마치면 활동할
+          수 있어요.
         </p>
         <details>
           <summary>초대 코드로 다른 학급에 연결 신청</summary>
           <p>담당 선생님이 별도로 초대 코드를 안내한 경우에만 신청해 주세요.</p>
-        <HubForm
-          command="join_class"
-          payload={(f) => ({ code: string(f, "code") })}
-          label="학급 연결 신청"
-        >
-          <Field name="code" label="학급 초대 코드" maxLength={36} />
-        </HubForm>
+          <HubForm
+            command="join_class"
+            payload={(f) => ({ code: string(f, "code") })}
+            label="학급 연결 신청"
+          >
+            <Field name="code" label="학급 초대 코드" maxLength={36} />
+          </HubForm>
         </details>
         {data.requests.map((r) => (
           <p key={r.id}>

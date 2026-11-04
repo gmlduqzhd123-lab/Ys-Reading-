@@ -1,4 +1,10 @@
 import { loadHub } from "@/lib/hub-data";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import {
+  PlazaReports,
+  type PlazaReportState,
+} from "@/components/participation/plaza-reports";
 import { LearningHub } from "@/components/hub/learning-hub";
 import { googleConnectionState } from "@/lib/google-drive";
 import { loadParticipation } from "@/lib/participation-data";
@@ -38,8 +44,33 @@ export default async function HubPage({
   const tab = params.tab && allowed.includes(params.tab) ? params.tab : "today";
   const parsed = searchSchema.safeParse(params);
   const filters = parsed.success ? parsed.data : searchSchema.parse({});
+  const data = await loadHub(
+    ["search", "overview"].includes(tab) ? 1 : Number(params.page ?? 1),
+    tab,
+  );
+  if (profile.role === "teacher") {
+    const staff = data.staffClasses ?? [],
+      owns = staff.some((c) => c.owner),
+      canRead = staff.some((c) => c.read),
+      canReview = staff.some((c) => c.review);
+    if (
+      (!owns &&
+        [
+          "growth",
+          "plaza",
+          "exhibitions",
+          "economy",
+          "manage",
+          "terms",
+          "packs",
+        ].includes(tab)) ||
+      (!canRead &&
+        ["reading", "search", "exports", "overview"].includes(tab)) ||
+      (!canReview && tab === "review")
+    )
+      redirect("/collaboration");
+  }
   const [
-    data,
     google,
     participation,
     studentToday,
@@ -50,10 +81,6 @@ export default async function HubPage({
     reviewQueue,
     handovers,
   ] = await Promise.all([
-    loadHub(
-      ["search", "overview"].includes(tab) ? 1 : Number(params.page ?? 1),
-      tab,
-    ),
     googleConnectionState(),
     ["growth", "economy", "exhibitions", "packs"].includes(tab)
       ? loadParticipation()
@@ -86,26 +113,41 @@ export default async function HubPage({
       ? loadHandovers()
       : Promise.resolve(null),
   ]);
+  let plazaReports: PlazaReportState | null = null;
+  if (
+    tab === "plaza" &&
+    (profile.role === "teacher" || profile.consent_status === "verified")
+  ) {
+    const c = await createClient(),
+      r = await c.rpc("plaza_report_state", {
+        p_page: Math.max(1, Math.min(100000, Number(params.reportPage) || 1)),
+      });
+    if (r.error) throw Error("광장 확인 요청을 읽지 못했어요.");
+    plazaReports = r.data;
+  }
   return (
-    <LearningHub
-      data={data}
-      initialTab={tab}
-      google={google}
-      googleNotice={params.google}
-      participation={participation}
-      studentToday={studentToday}
-      reviewQueue={reviewQueue}
-      handovers={handovers}
-      overview={overview}
-      search={search}
-      filters={filters}
-      growth={growth}
-      terms={terms}
-      searchError={
-        !parsed.success
-          ? "검색 조건을 확인해 주세요. 검색어는 100자까지, 시작 날짜는 끝 날짜 이전으로 입력해 주세요."
-          : undefined
-      }
-    />
+    <>
+      <LearningHub
+        data={data}
+        initialTab={tab}
+        google={google}
+        googleNotice={params.google}
+        participation={participation}
+        studentToday={studentToday}
+        reviewQueue={reviewQueue}
+        handovers={handovers}
+        overview={overview}
+        search={search}
+        filters={filters}
+        growth={growth}
+        terms={terms}
+        searchError={
+          !parsed.success
+            ? "검색 조건을 확인해 주세요. 검색어는 100자까지, 시작 날짜는 끝 날짜 이전으로 입력해 주세요."
+            : undefined
+        }
+      />
+      {plazaReports && <PlazaReports state={plazaReports} />}
+    </>
   );
 }

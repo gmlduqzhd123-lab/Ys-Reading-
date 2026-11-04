@@ -28,7 +28,7 @@ export default defineConfig({
     },
     {
       name: "webkit-mobile",
-      testMatch: "responsive.spec.ts",
+      testMatch: /(?:responsive|mobile-learning)\.spec\.ts/,
       use: { ...devices["iPhone 13"] },
     },
   ],

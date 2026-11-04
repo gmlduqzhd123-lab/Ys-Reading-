@@ -116,41 +116,26 @@ export async function previewReportBatch(input: unknown) {
     const p = await requireProfile();
     if (p.role !== "teacher") throw Error("BF_FORBIDDEN");
     const c = await createClient();
-    let query = c
-      .from("enrollments")
-      .select("student_id")
-      .eq("classroom_id", v.classroom)
-      .eq("active", true)
-      .order("student_id")
-      .limit(31);
-    if (v.after) query = query.gt("student_id", v.after);
-    const students = await query;
-    if (students.error) throw students.error;
-    const data = [];
-    for (const s of (students.data ?? []).slice(0, 30)) {
-      const r = await c.rpc("growth_report_state", {
-        p_classroom: v.classroom,
-        p_student: s.student_id,
-        p_from: v.from,
-        p_until: v.until,
-        p_page: 1,
-      });
-      if (r.error) throw r.error;
-      const state = r.data as import("@/lib/growth-report").ReportState;
-      data.push({
-        student: s.student_id,
-        name: state.student.name,
-        token: state.sourceToken,
-        version: state.latestVersion,
-        counts: state.counts,
-        title: state.student.name + "의 책숲 성장 기록",
-        note: "",
-      });
-    }
+    const r = await c.rpc("report_batch_preview", {
+      p_classroom: v.classroom,
+      p_from: v.from,
+      p_until: v.until,
+      p_after: v.after ?? null,
+    });
+    if (r.error) throw r.error;
+    const data = r.data.data as {
+      student: string;
+      name: string;
+      token: string;
+      version: number;
+      counts: import("@/lib/growth-report").ReportState["counts"];
+      title: string;
+      note: string;
+    }[];
     return {
       ok: true,
       data,
-      next: (students.data?.length ?? 0) > 30 ? data.at(-1)?.student : null,
+      next: r.data.next as string | null,
       message:
         "학생별 수치를 확인한 후 초안을 만드세요. 의견과 대표 작품은 개별 검토에서 추가합니다.",
     };

@@ -24,17 +24,14 @@ const links = [
 const moreLinks = [
   ["/hub?tab=reading", "나의 책장"],
   ["/hub?tab=search", "기록 검색"],
-  ["/hub?tab=overview", "선생님 현황·알림"],
   ["/status", "연결 점검·기록 보관"],
   ["/hub?tab=today", "오늘 할 일"],
-  ["/start", "우리 반 시작하기"],
-  ["/hub?tab=packs", "수업 꾸러미"],
   ["/hub?tab=exhibitions", "작은 작품 전시회"],
   ["/app", "우리 교실"],
   ["/hub?tab=growth", "캐릭터·배지"],
   ["/hub?tab=exports", "기록·글 내보내기"],
   ["/reports", "학기 성장 보고서"],
-  ["/hub?tab=manage", "학급 연결·관리"],
+  ["/hub?tab=today", "나의 학급과 할 일"],
   ["/studio", "책숲 놀이터"],
   ["/guide", "책숲 사용 안내"],
 ];

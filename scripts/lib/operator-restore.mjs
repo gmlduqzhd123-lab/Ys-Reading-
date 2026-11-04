@@ -1,5 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { digest, canonical, projectRef } from "./operator-vault.mjs";
+import { applyPrivacyCheckpoint } from "./privacy-checkpoint.mjs";
 const ident = (s) => '"' + s.replaceAll('"', '""') + '"',
   literal = (s) => "'" + s.replaceAll("'", "''") + "'";
 const table = (s, t) => ident(s) + "." + ident(t),
@@ -34,7 +35,7 @@ export function prepareBackup(input, files) {
     sha256: digest(snapshot),
   };
 }
-export async function verifyRestore(backup) {
+export async function verifyRestore(backup, checkpoint = null) {
   if (
     backup.format !== "bookforest-operator-backup" ||
     backup.version !== 1 ||
@@ -104,6 +105,19 @@ export async function verifyRestore(backup) {
         );
     }
     await db.exec("set session_replication_role=origin");
+    // Identity values are copied explicitly. Advance each restored identity's
+    // own sequence before privacy reconciliation can append audit events.
+    for (const name of tables) {
+      const [s, t] = name.split(".");
+      const identities = await db.query(
+        "select column_name from information_schema.columns where table_schema=$1 and table_name=$2 and is_identity='YES'",
+        [s, t],
+      );
+      for (const c of identities.rows)
+        await db.exec(
+          `select setval(pg_get_serial_sequence(${literal(s + "." + t)},${literal(c.column_name)}),greatest(coalesce((select max(${ident(c.column_name)}) from ${table(s, t)}),0)+1,1),false)`,
+        );
+    }
     stage = "relations";
     for (const c of backup.snapshot.schema.constraints ?? [])
       if (c.type === "f") {
@@ -171,6 +185,11 @@ export async function verifyRestore(backup) {
       if (!denied) throw Error("ANONYMOUS_DATA_EXPOSED");
     }
     await db.exec("reset role");
+    let privacy = null;
+    if (checkpoint) {
+      stage = "privacy";
+      privacy = await applyPrivacyCheckpoint(db, checkpoint, backup.createdAt);
+    }
     return {
       verified: true,
       engine: "PGlite PostgreSQL",
@@ -183,6 +202,8 @@ export async function verifyRestore(backup) {
       functions: backup.snapshot.schema.functions.length,
       checkedAt: new Date().toISOString(),
       digest: backup.sha256,
+      privacyReconciliation: privacy,
+      operationalCutoverVerified: false,
     };
   } catch (error) {
     const code = String(error.code ?? error.message ?? "RESTORE_FAILED");

@@ -21,6 +21,7 @@ export type ReadingLog = HubRow & {
   verified_at: string | null;
 };
 export interface HubData {
+  staffClasses?: import("./collaboration").StaffClass[];
   profile: Profile;
   classes: Classroom[];
   logs: ReadingLog[];
@@ -123,6 +124,15 @@ export async function loadHub(
   };
   const light = ["search", "overview", "today", "review"].includes(activeTab);
   const client = await createClient();
+  const staff =
+    profile.role === "teacher"
+      ? await client.rpc("collaboration_state", {
+          p_classroom: null,
+          p_page: 1,
+        })
+      : null;
+  if (staff?.error)
+    throw Error("맡은 학급 권한을 읽지 못했어요. 다시 확인해 주세요.");
   const tables = [
     "classrooms",
     "reading_logs",
@@ -189,6 +199,7 @@ export async function loadHub(
       "성장·지갑 합계를 불러오지 못했습니다. 새 데이터베이스 구성을 확인해 주세요.",
     );
   return {
+    staffClasses: staff?.data?.classes,
     profile,
     classes: rows("classrooms") as unknown as Classroom[],
     logs: rows("reading_logs") as ReadingLog[],

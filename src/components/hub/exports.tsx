@@ -305,6 +305,41 @@ export function Exports({
                   >
                     이 브라우저 연결 해제
                   </button>
+                  <button
+                    className="button button-outline"
+                    disabled={busy}
+                    onClick={async () => {
+                      if (
+                        !window.confirm(
+                          "책숲의 Google 접근 권한을 회수할까요? 다른 브라우저의 책숲 연결도 다시 승인이 필요할 수 있으며, 이미 만든 문서는 유지됩니다.",
+                        )
+                      )
+                        return;
+                      setBusy(true);
+                      try {
+                        const r = await fetch("/api/google/disconnect", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ revoke: true }),
+                        });
+                        if (!r.ok) throw Error((await r.json()).error);
+                        setMessage(
+                          "Google 접근 권한을 회수했어요. 기존 문서는 유지됩니다.",
+                        );
+                        router.refresh();
+                      } catch (e) {
+                        setMessage(
+                          e instanceof Error
+                            ? e.message
+                            : "권한 회수를 확인하지 못했어요.",
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Google 접근 권한 회수
+                  </button>
                 </div>
               </>
             )}

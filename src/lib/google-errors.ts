@@ -18,6 +18,24 @@ export function googleCallbackNotice(
 }
 export function googleExportFailure(error: unknown) {
   const code = error instanceof Error ? error.message : "";
+  if (
+    [
+      "GOOGLE_EXPORT_BUSY",
+      "GOOGLE_EXPORT_PENDING",
+      "GOOGLE_EXPORT_JOB_FAILED",
+    ].includes(code)
+  )
+    return {
+      status: code === "GOOGLE_EXPORT_JOB_FAILED" ? 503 : 409,
+      body: {
+        code,
+        requiresReconnect: false,
+        error:
+          code === "GOOGLE_EXPORT_PENDING"
+            ? "Google에서 파일 생성 결과를 확인 중이에요. 같은 내보내기를 다시 확인해 주세요. 중복 생성을 막기 위해 새 파일을 자동으로 만들지 않습니다. 계속 확인되지 않으면 Drive의 책숲 기록 폴더와 문의용 요청 번호를 확인해 주세요."
+            : "같은 내보내기를 처리 중이에요. 선택을 유지한 채 잠시 후 다시 확인해 주세요.",
+      },
+    };
   if (code === "GOOGLE_CONNECT_REQUIRED")
     return {
       status: 401,

@@ -227,6 +227,34 @@ await result(
   "CI_MFA_VERIFY",
 );
 fs.mkdirSync("e2e/.runtime", { recursive: true, mode: 0o700 });
+const mobileLogin = "mobile" + randomUUID().replaceAll("-", "").slice(0, 12);
+const mobileUser = await admin.auth.admin.createUser({
+  email: mobileLogin + "@students.bookforest.invalid",
+  password: nextPassword,
+  email_confirm: true,
+  user_metadata: { display_name: "CI 모바일 학생" },
+});
+if (mobileUser.error || !mobileUser.data.user) throw Error("CI_MOBILE_ACCOUNT");
+execFileSync(
+  "docker",
+  [
+    "exec",
+    "-i",
+    "supabase_db_bookforest",
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    "postgres",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-q",
+  ],
+  {
+    input: `update public.profiles set consent_status='verified',must_change_password=false where id='${mobileUser.data.user.id}';insert into public.enrollments(classroom_id,student_id) values('${cls.id}','${mobileUser.data.user.id}');`,
+    stdio: ["pipe", "pipe", "pipe"],
+  },
+);
 fs.writeFileSync(
   "e2e/.runtime/fixtures.json",
   JSON.stringify({
@@ -234,6 +262,11 @@ fs.writeFileSync(
     key,
     accounts,
     student: { loginId, password: nextPassword, id: studentId },
+    mobile: {
+      loginId: mobileLogin,
+      password: nextPassword,
+      id: mobileUser.data.user.id,
+    },
     classroom: cls.id,
     assignment: assignment.id,
     operatorSecret: enrollment.data.totp.secret,

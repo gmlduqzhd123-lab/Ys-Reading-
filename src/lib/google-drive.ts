@@ -6,6 +6,7 @@ import { accountReady } from "./account-access";
 import { seal, unseal } from "./token-box";
 import { docxBytes, type ExportBundle } from "./export-documents";
 import { xlsxBytes } from "./export-spreadsheet";
+import { exportJob } from "./google-export-jobs";
 const TOKEN = "bookforest_google",
   STATE = "bookforest_google_state";
 interface GoogleToken {
@@ -257,73 +258,120 @@ export async function googleExport(
   spreadsheet: boolean,
   requestId: string,
 ) {
-  const token = await access(uid);
   const fingerprint = createHash("sha256")
     .update(JSON.stringify({ bundle, spreadsheet }))
     .digest("hex");
-  const query = new URLSearchParams({
-    q: `trashed=false and appProperties has { key='bookforest_request' and value='${requestId}' }`,
-    fields: "files(id,webViewLink,appProperties)",
-  });
-  const existing = await drive(token, `drive/v3/files?${query}`);
-  if (existing.files?.[0]) {
-    if (existing.files[0].appProperties?.fingerprint !== fingerprint)
-      throw new Error("BF_IDEMPOTENCY_CONFLICT");
-    return existing.files[0];
+  const job = await exportJob("reserve", requestId, fingerprint);
+  if (job.state === "complete" && job.result) return job.result;
+  let posting = false;
+  try {
+    const token = await access(uid);
+    const query = new URLSearchParams({
+      q: `trashed=false and appProperties has { key='bookforest_request' and value='${requestId}' }`,
+      fields: "files(id,webViewLink,appProperties)",
+    });
+    const existing = await drive(token, `drive/v3/files?${query}`);
+    if (existing.files?.[0]) {
+      if (existing.files[0].appProperties?.fingerprint !== fingerprint)
+        throw new Error("BF_IDEMPOTENCY_CONFLICT");
+      await exportJob(
+        "complete",
+        requestId,
+        fingerprint,
+        job.lease,
+        existing.files[0],
+      );
+      return existing.files[0];
+    }
+    if (job.state === "uncertain") throw Error("GOOGLE_EXPORT_PENDING");
+    const folderQuery = new URLSearchParams({
+      q: "trashed=false and mimeType='application/vnd.google-apps.folder' and appProperties has { key='bookforest_folder' and value='true' }",
+      fields: "files(id)",
+    });
+    const folders = await drive(token, `drive/v3/files?${folderQuery}`);
+    const folder =
+      folders.files?.[0] ??
+      (await drive(token, "drive/v3/files?fields=id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "책숲 기록",
+          mimeType: "application/vnd.google-apps.folder",
+          appProperties: { bookforest_folder: "true" },
+        }),
+      }));
+    const boundary = `bookforest_${randomBytes(16).toString("hex")}`;
+    const type = spreadsheet
+      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    const metadata = {
+      name: bundle.title,
+      mimeType: spreadsheet
+        ? "application/vnd.google-apps.spreadsheet"
+        : "application/vnd.google-apps.document",
+      parents: [folder.id],
+      appProperties: { bookforest_request: requestId, fingerprint },
+    };
+    const content = spreadsheet
+      ? await xlsxBytes(bundle)
+      : await docxBytes(bundle);
+    if (content.length > 4 * 1024 * 1024) throw new Error("EXPORT_TOO_LARGE");
+    const body = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${type}\r\n\r\n`,
+      ),
+      content,
+      Buffer.from(`\r\n--${boundary}--`),
+    ]);
+    await exportJob("posting", requestId, fingerprint, job.lease);
+    posting = true;
+    const result = await drive(
+      token,
+      "upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+      {
+        method: "POST",
+        headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
+        body,
+      },
+    );
+    if (typeof result.id !== "string" || typeof result.webViewLink !== "string")
+      throw new Error("GOOGLE_DRIVE_FAILED");
+    await exportJob("complete", requestId, fingerprint, job.lease, result);
+    return result;
+  } catch (error) {
+    const definite =
+      error instanceof Error &&
+      [
+        "GOOGLE_DRIVE_QUOTA",
+        "GOOGLE_DRIVE_FORBIDDEN",
+        "GOOGLE_CONNECT_REQUIRED",
+      ].includes(error.message);
+    await exportJob(
+      (posting && !definite) || job.state === "uncertain"
+        ? "uncertain"
+        : "retry",
+      requestId,
+      fingerprint,
+      job.lease,
+    ).catch(() => {});
+    throw error;
   }
-  const folderQuery = new URLSearchParams({
-    q: "trashed=false and mimeType='application/vnd.google-apps.folder' and appProperties has { key='bookforest_folder' and value='true' }",
-    fields: "files(id)",
-  });
-  const folders = await drive(token, `drive/v3/files?${folderQuery}`);
-  const folder =
-    folders.files?.[0] ??
-    (await drive(token, "drive/v3/files?fields=id", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "책숲 기록",
-        mimeType: "application/vnd.google-apps.folder",
-        appProperties: { bookforest_folder: "true" },
-      }),
-    }));
-  const boundary = `bookforest_${randomBytes(16).toString("hex")}`;
-  const type = spreadsheet
-    ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  const metadata = {
-    name: bundle.title,
-    mimeType: spreadsheet
-      ? "application/vnd.google-apps.spreadsheet"
-      : "application/vnd.google-apps.document",
-    parents: [folder.id],
-    appProperties: { bookforest_request: requestId, fingerprint },
-  };
-  const content = spreadsheet
-    ? await xlsxBytes(bundle)
-    : await docxBytes(bundle);
-  if (content.length > 4 * 1024 * 1024) throw new Error("EXPORT_TOO_LARGE");
-  const body = Buffer.concat([
-    Buffer.from(
-      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${type}\r\n\r\n`,
-    ),
-    content,
-    Buffer.from(`\r\n--${boundary}--`),
-  ]);
-  const result = await drive(
-    token,
-    "upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
-    {
-      method: "POST",
-      headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
-      body,
-    },
-  );
-  if (typeof result.id !== "string" || typeof result.webViewLink !== "string")
-    throw new Error("GOOGLE_DRIVE_FAILED");
-  return result;
 }
 export async function googleDisconnect() {
   (await cookies()).delete(TOKEN);
   (await cookies()).delete(STATE);
+}
+export async function googleRevoke(uid: string) {
+  const token = await access(uid);
+  const r = await fetch("https://oauth2.googleapis.com/revoke", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      token: token.refresh_token ?? token.access_token,
+    }),
+    signal: AbortSignal.timeout(15000),
+    cache: "no-store",
+  });
+  if (!r.ok) throw Error("GOOGLE_REVOKE_FAILED");
+  await googleDisconnect();
 }

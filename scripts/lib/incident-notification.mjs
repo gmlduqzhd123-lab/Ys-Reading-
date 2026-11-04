@@ -1,11 +1,12 @@
 // Public, bounded health metadata only. Never include API responses or exception text.
 export const marker = "<!-- bookforest-service-incident-v1 -->";
-export function incidentDecision(healthy, issues) {
+export const backupMarker = "<!-- bookforest-backup-incident-v1 -->";
+export function incidentDecision(healthy, issues, selectedMarker = marker) {
   const owned = issues.filter(
     (i) =>
       i.state === "open" &&
       i.user?.type === "Bot" &&
-      i.body?.startsWith(marker),
+      i.body?.startsWith(selectedMarker),
   );
   return {
     create: !healthy && owned.length === 0,

@@ -6,6 +6,13 @@ const state = vi.hoisted(() => ({
   fetch: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/google-export-jobs", () => ({
+  exportJob: vi.fn(async (action: string) =>
+    action === "reserve"
+      ? { state: "reserved", lease: "fixture-lease" }
+      : { ok: true },
+  ),
+}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) =>
@@ -32,8 +39,10 @@ import {
   googleCancel,
   googleExport,
   verifyGoogleConnection,
+  googleRevoke,
 } from "@/lib/google-drive";
 import { unseal } from "@/lib/token-box";
+import { exportJob } from "@/lib/google-export-jobs";
 import { googleCallbackNotice, googleExportFailure } from "@/lib/google-errors";
 const key = Buffer.alloc(32, 7);
 const bundle = {
@@ -42,6 +51,11 @@ const bundle = {
 };
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 beforeEach(() => {
+  vi.mocked(exportJob)
+    .mockReset()
+    .mockImplementation(async (action) =>
+      action === "reserve" ? { state: "reserved", lease: "fixture-lease" } : {},
+    );
   state.values.clear();
   state.options.clear();
   state.fetch.mockReset();
@@ -78,6 +92,48 @@ async function connected() {
   state.fetch.mockClear();
 }
 describe("Google OAuth and Drive lifecycle", () => {
+  it("reconciles uncertain work without creating another file", async () => {
+    await connected();
+    vi.mocked(exportJob).mockResolvedValueOnce({
+      state: "uncertain",
+      lease: "fixture-lease",
+    });
+    state.fetch.mockResolvedValueOnce(json({ files: [] }));
+    await expect(
+      googleExport("teacher-a", bundle, false, "request"),
+    ).rejects.toThrow("GOOGLE_EXPORT_PENDING");
+    expect(state.fetch).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(exportJob).mock.calls.at(-1)?.[0]).toBe("uncertain");
+  });
+  it("marks an upload timeout uncertain instead of authorizing a second upload", async () => {
+    await connected();
+    state.fetch
+      .mockResolvedValueOnce(json({ files: [] }))
+      .mockResolvedValueOnce(json({ files: [{ id: "folder" }] }))
+      .mockRejectedValueOnce(new TypeError("offline"));
+    await expect(
+      googleExport("teacher-a", bundle, true, "request"),
+    ).rejects.toThrow("GOOGLE_DRIVE_BUSY");
+    expect(vi.mocked(exportJob).mock.calls.map((x) => x[0])).toEqual([
+      "reserve",
+      "posting",
+      "uncertain",
+    ]);
+  });
+  it("keeps the connection when revocation fails, and clears it only after Google confirms", async () => {
+    await connected();
+    state.fetch.mockResolvedValueOnce(json({}, 503));
+    await expect(googleRevoke("teacher-a")).rejects.toThrow(
+      "GOOGLE_REVOKE_FAILED",
+    );
+    expect(state.values.has("bookforest_google")).toBe(true);
+    state.fetch.mockResolvedValueOnce(json({}));
+    await googleRevoke("teacher-a");
+    expect(state.values.has("bookforest_google")).toBe(false);
+    expect(state.fetch.mock.calls.at(-1)![0]).toBe(
+      "https://oauth2.googleapis.com/revoke",
+    );
+  });
   it("checks the real Drive response and refreshes an expired access token", async () => {
     await connected();
     vi.setSystemTime(Date.now() + 3601000);

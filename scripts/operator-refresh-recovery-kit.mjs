@@ -49,6 +49,9 @@ try {
   const next = backupFile + ".updating";
   fs.writeFileSync(next, raw, { flag: "wx", mode: 0o600 });
   fs.renameSync(next, backupFile);
+  const guard = path.join(vault, "privacy-current.bfguard");
+  if (!fs.existsSync(guard)) throw Error("PRIVACY_CHECKPOINT_REQUIRED");
+  fs.copyFileSync(guard, path.join(directory, "privacy-current.bfguard"));
   if (fs.readFileSync(keyFile, "utf8") !== wrapped)
     throw Error("RECOVERY_KEY_CHANGED");
   fs.writeFileSync(
