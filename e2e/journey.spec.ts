@@ -74,6 +74,10 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   ).toBeVisible();
   await student.goto("/app/work/" + fixture.assignment);
   await student
+    .getByRole("checkbox", { name: "이 탭에 미저장 글 임시보관", exact: true })
+    .check();
+  await sc.setOffline(true);
+  await student
     .getByLabel("글 제목", { exact: true })
     .fill("CI 생각을 나눈 글");
   await student
@@ -81,6 +85,21 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
     .fill(
       "책 속 친구의 마음을 생각했습니다. 서로의 생각을 듣고 도움을 주면 함께 성장할 수 있습니다.",
     );
+  const recoveryDownload = student.waitForEvent("download");
+  await student
+    .getByRole("button", { name: "지금 쓴 글 파일로 보관", exact: true })
+    .click();
+  const recoveryFile = await recoveryDownload,
+    recoveryPath = await recoveryFile.path();
+  expect(fs.readFileSync(recoveryPath!, "utf8")).toContain("책 속 친구의 마음");
+  await sc.setOffline(false);
+  await student.getByRole("button", { name: /^(다시|지금) 저장하기$/ }).click();
+  await expect(
+    student
+      .getByRole("status")
+      .filter({ hasText: /저장했어요|저장 완료|저장됨/ })
+      .first(),
+  ).toBeVisible();
   await student
     .getByRole("button", { name: "선생님께 제출하기", exact: true })
     .click();
@@ -166,9 +185,6 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
     .getByLabel("선생님의 관찰과 응원")
     .fill("원문을 읽고 친구의 마음을 담은 표현을 확인했습니다.");
   await teacher
-    .getByRole("checkbox", { name: "저장한 판을 이 학생에게 공개합니다" })
-    .check();
-  await teacher
     .getByRole("checkbox", {
       name: "활동 수치·선택한 원문·관찰 의견과 공개 범위를 직접 확인했습니다",
     })
@@ -177,7 +193,39 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
     .getByRole("button", { name: "확인한 보고서 새 판 저장", exact: true })
     .click();
   await expect(
-    teacher.getByText("확인한 보고서를 새 판으로 저장했어요.", { exact: true }),
+    teacher.getByText(
+      "보고서 초안을 새 판으로 저장했어요. 내용을 검토한 뒤 공개할 수 있습니다.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await student.goto("/reports");
+  await expect(
+    student.getByRole("heading", { name: "CI 새싹의 책숲 성장 기록 · 1판" }),
+  ).toHaveCount(0);
+  await teacher
+    .getByRole("checkbox", {
+      name: "CI 새싹의 책숲 성장 기록 1판의 원문·수치·의견과 학생 공개 범위를 확인했습니다",
+    })
+    .check();
+  await teacher
+    .getByRole("button", { name: "이 판 검토 완료", exact: true })
+    .click();
+  await expect(
+    teacher.getByText(
+      "검토를 완료했어요. 공개 범위를 확인한 뒤 학생에게 공개하세요.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await teacher
+    .getByRole("checkbox", {
+      name: "CI 새싹의 책숲 성장 기록 1판의 원문·수치·의견과 학생 공개 범위를 확인했습니다",
+    })
+    .check();
+  await teacher
+    .getByRole("button", { name: "학생에게 공개", exact: true })
+    .click();
+  await expect(
+    teacher.getByText("학생에게 공개했어요.", { exact: true }),
   ).toBeVisible();
   const fileEvent = teacher.waitForEvent("download");
   await teacher.getByRole("button", { name: "Word 저장", exact: true }).click();
@@ -204,6 +252,37 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await expect(
     teacher.getByText("CI 새싹의 책숲 성장 기록", { exact: true }).first(),
   ).toBeVisible();
+  await teacher.goto("/collaboration?classroom=" + fixture.classroom);
+  await teacher
+    .getByLabel("초대할 승인 교사의 이메일", { exact: true })
+    .fill(fixture.accounts[0].email);
+  await teacher
+    .getByRole("button", { name: "선택한 권한으로 교사 초대", exact: true })
+    .click();
+  const inviteCode = await teacher
+    .getByLabel("이번 초대 코드", { exact: true })
+    .inputValue();
+  expect(inviteCode).toMatch(/^[a-f0-9]{64}$/);
+  await operator.goto("/collaboration");
+  await operator.getByLabel("초대 코드", { exact: true }).fill(inviteCode);
+  await operator
+    .getByRole("button", { name: "이 계정으로 초대 수락", exact: true })
+    .click();
+  await expect(
+    operator.getByRole("heading", { name: "담당 학급 기록 읽기" }),
+  ).toBeVisible();
+  await expect(
+    operator.getByText("CI 새싹 · CI 함께 읽은 책", { exact: false }),
+  ).toBeVisible();
+  await teacher.reload();
+  await teacher
+    .getByRole("button", { name: "공동교사 권한 취소", exact: true })
+    .click();
+  await expect(teacher.getByText(/CI operator.*취소됨/)).toBeVisible();
+  await operator.reload();
+  await expect(
+    operator.getByRole("heading", { name: "담당 학급 기록 읽기" }),
+  ).toHaveCount(0);
   for (const page of [student, teacher]) {
     await page.setViewportSize({ width: 390, height: 844 });
     expect(

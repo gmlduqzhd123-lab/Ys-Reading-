@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { defaultVault, ensureVault } from "./lib/operator-vault.mjs";
+import { resolveBackupCodex } from "./lib/backup-runtime.mjs";
 const directory = defaultVault(),
   log = path.join(directory, "scheduled-status.json");
 try {
   ensureVault(directory);
-  const codex = process.argv.find((v) => v.startsWith("--codex="))?.slice(8);
-  if (!codex || !fs.existsSync(codex)) throw Error("BACKUP_CODEX_UNAVAILABLE");
+  const codex = resolveBackupCodex({override:process.argv.find((v) => v.startsWith("--codex="))?.slice(8)});
   fs.writeFileSync(
     log,
     JSON.stringify({
@@ -25,6 +25,7 @@ try {
       encoding: "utf8",
       windowsHide: true,
       maxBuffer: 1024 * 1024,
+      timeout: 25 * 60 * 1000,
     },
   );
   let result;

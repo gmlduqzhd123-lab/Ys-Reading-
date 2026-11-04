@@ -39,8 +39,11 @@ export interface GrowthReport {
   published_at: string | null;
   created_at: string;
   snapshot: ReportSnapshot;
+  review_state?: "draft" | "reviewed" | "published" | "withdrawn";
+  review_revision?: number;
 }
 export interface ReportState extends ReportSnapshot {
+  sourceToken: string;
   page: number;
   candidateTotal: number;
   latestVersion: number;

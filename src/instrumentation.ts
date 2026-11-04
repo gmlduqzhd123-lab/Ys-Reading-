@@ -1,6 +1,7 @@
 import type { Instrumentation } from "next";
+import { safeErrorDigest } from "@/lib/diagnostics";
 export const onRequestError: Instrumentation.onRequestError = async (
-  _error,
+  error,
   _request,
   context,
 ) => {
@@ -9,6 +10,7 @@ export const onRequestError: Instrumentation.onRequestError = async (
   console.error(
     JSON.stringify({
       event: "bookforest_server_error",
+      errorId: safeErrorDigest(error),
       type: allowed.includes(context.routeType) ? context.routeType : "unknown",
       at: new Date().toISOString(),
     }),

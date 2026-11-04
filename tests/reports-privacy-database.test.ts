@@ -212,6 +212,15 @@ describe("Reviewed reports and privacy operations", () => {
     ).toContain("BF_REPORT_IMMUTABLE");
     await asUser(db, t);
     expect((await create({ version: 1, publish: false })).version).toBe(2);
+    expect(
+      (
+        await db.query(
+          "select id from public.term_reports where published_at is not null",
+        )
+      ).rows,
+    ).toHaveLength(0);
+    await rpc("report_review_command", [r.id, "review", 1, randomUUID()]);
+    await rpc("report_review_command", [r.id, "publish", 2, randomUUID()]);
     await asUser(db, s);
     expect(
       (await db.query("select id from public.term_reports")).rows,
@@ -224,6 +233,8 @@ describe("Reviewed reports and privacy operations", () => {
   it("blocks published report access after withdrawal", async () => {
     await asUser(db, t);
     const r = await create();
+    await rpc("report_review_command", [r.id, "review", 1, randomUUID()]);
+    await rpc("report_review_command", [r.id, "publish", 2, randomUUID()]);
     await db.exec("reset role");
     await db.query(
       "update public.profiles set consent_status='pending' where id=$1",
@@ -245,6 +256,102 @@ describe("Reviewed reports and privacy operations", () => {
         ]),
       ),
     ).toContain("BF_FORBIDDEN");
+  });
+  it("blocks stale reviewed sources, invalid transitions, and grants immediate withdrawal", async () => {
+    await asUser(db, t);
+    const state = await rpc("growth_report_state", [c, s, null, null, 1]);
+    const args = [
+      c,
+      s,
+      null,
+      null,
+      [],
+      "새 초안",
+      "",
+      0,
+      randomUUID(),
+      state.sourceToken,
+    ];
+    const r = await rpc("create_reviewed_report", args);
+    expect(
+      await forbidden(db, () =>
+        rpc("report_review_command", [r.id, "publish", 1, randomUUID()]),
+      ),
+    ).toContain("BF_REPORT_TRANSITION");
+    const key = randomUUID(),
+      reviewed = await rpc("report_review_command", [r.id, "review", 1, key]);
+    expect(
+      await rpc("report_review_command", [r.id, "review", 1, key]),
+    ).toEqual(reviewed);
+    await asUser(db, other);
+    expect(
+      await forbidden(db, () =>
+        rpc("report_review_command", [r.id, "publish", 2, randomUUID()]),
+      ),
+    ).toContain("BF_FORBIDDEN");
+    await asUser(db, t);
+    await rpc("report_review_command", [r.id, "publish", 2, randomUUID()]);
+    await asUser(db, s);
+    expect(
+      (await db.query("select id from public.term_reports")).rows,
+    ).toHaveLength(1);
+    await asUser(db, t);
+    await rpc("report_review_command", [r.id, "withdraw", 3, randomUUID()]);
+    await asUser(db, s);
+    expect(
+      (await db.query("select id from public.term_reports")).rows,
+    ).toHaveLength(0);
+    await db.exec("reset role");
+    await db.query(
+      "update public.reading_logs set thought='검토 뒤 변경' where id=$1",
+      [log],
+    );
+    await asUser(db, t);
+    expect(
+      await forbidden(db, () =>
+        rpc("report_review_command", [r.id, "review", 4, randomUUID()]),
+      ),
+    ).toContain("BF_REPORT_SOURCE_CHANGED");
+    expect(await rpc("create_reviewed_report", args)).toEqual(r);
+    args[8] = randomUUID();
+    expect(
+      await forbidden(db, () => rpc("create_reviewed_report", args)),
+    ).toContain("BF_REPORT_SOURCE_CHANGED");
+  });
+  it("creates private drafts in a bounded batch and reports each conflict without duplicating retries", async () => {
+    await asUser(db, t);
+    expect(await forbidden(db,()=>rpc("batch_report_drafts",[c,null,null,null,randomUUID()]))).toContain("BF_INVALID_INPUT");
+    const state = await rpc("growth_report_state", [c, s, null, null, 1]);
+    const key = randomUUID(),
+      items = [
+        {
+          student: s,
+          title: "함께 만든 초안",
+          note: "",
+          version: 0,
+          token: state.sourceToken,
+        },
+        {
+          student: peer,
+          title: "다른 학급",
+          note: "",
+          version: 0,
+          token: "0".repeat(64),
+        },
+      ];
+    const args = [c, null, null, items, key];
+    const r = await rpc("batch_report_drafts", args);
+    expect(r.map((x: any) => x.ok)).toEqual(
+      expect.arrayContaining([true, false]),
+    );
+    expect(await rpc("batch_report_drafts", args)).toEqual(r);
+    expect(
+      (
+        await db.query(
+          "select id from public.term_reports where published_at is not null",
+        )
+      ).rows,
+    ).toHaveLength(0);
   });
   it("limits receipts to visible sources and protects private inventory revisions", async () => {
     await asUser(db, t);

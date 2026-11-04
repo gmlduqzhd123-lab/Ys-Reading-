@@ -134,6 +134,11 @@ export function LearningHub({
         </div>
         <div className="button-row">
           <RefreshButton />
+          {teacher && (
+            <Link className="button button-outline" href="/collaboration">
+              교사 협업·학교 운영
+            </Link>
+          )}
           {!teacher &&
             tab === "reading" &&
             data.profile.consent_status === "verified" && (
@@ -295,9 +300,14 @@ export function LearningHub({
               {!teacher && !data.classes.length && tab !== "manage" && (
                 <Management data={data} />
               )}
-              {!["today", "packs", "overview", "search", "terms", "review"].includes(
-                tab,
-              ) && (
+              {![
+                "today",
+                "packs",
+                "overview",
+                "search",
+                "terms",
+                "review",
+              ].includes(tab) && (
                 <nav className="hub-row" aria-label="기록 페이지">
                   {data.page > 1 && (
                     <Link

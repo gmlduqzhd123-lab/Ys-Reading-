@@ -12,6 +12,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   public-service:
+    permissions:
+      contents: read
+      issues: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -20,3 +23,9 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: node scripts/check-availability.mjs
+        id: probe
+      - name: Notify one incident and its recovery
+        if: always() && steps.probe.outcome != 'skipped' && !cancelled()
+        run: node scripts/notify-incident.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

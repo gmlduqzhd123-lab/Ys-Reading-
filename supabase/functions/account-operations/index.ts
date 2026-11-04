@@ -13,6 +13,14 @@ const headers = {
 };
 // This endpoint validates the bearer user itself. It never accepts a claimed actor ID.
 Deno.serve(async (req: Request) => {
+  if (
+    req.method === "GET" &&
+    new URL(req.url).searchParams.get("health") === "1"
+  )
+    return new Response(
+      JSON.stringify({ service: "bookforest-account-worker", protocol: 2 }),
+      { status: 200, headers },
+    );
   if (req.method !== "POST")
     return new Response(null, { status: 405, headers });
   const authorization = req.headers.get("authorization") ?? "";

@@ -2,7 +2,12 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createReport } from "@/app/reports/actions";
+import {
+  createReport,
+  reviewReport,
+  previewReportBatch,
+  saveReportBatch,
+} from "@/app/reports/actions";
 import {
   reportCounts,
   type GrowthReport,
@@ -14,7 +19,6 @@ export function ReportComposer({ state }: { state: ReportState }) {
     [note, setNote] = useState(""),
     [works, setWorks] = useState<string[]>([]),
     [confirmed, setConfirmed] = useState(false),
-    [publish, setPublish] = useState(false),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const request = useRef(crypto.randomUUID());
@@ -106,17 +110,10 @@ export function ReportComposer({ state }: { state: ReportState }) {
             }}
           />
         </label>
-        <label className="hub-check">
-          <input
-            type="checkbox"
-            checked={publish}
-            onChange={(e) => {
-              setPublish(e.target.checked);
-              changed();
-            }}
-          />
-          저장한 판을 이 학생에게 공개합니다
-        </label>
+        <p>
+          초안은 선생님만 봅니다. 저장 후 내용 검토와 학생 공개를 따로
+          진행합니다.
+        </p>
         <label className="hub-check">
           <input
             type="checkbox"
@@ -140,7 +137,8 @@ export function ReportComposer({ state }: { state: ReportState }) {
                 works,
                 title,
                 note,
-                publish,
+                publish: false,
+                sourceToken: state.sourceToken,
                 confirmed,
                 version: state.latestVersion,
                 requestId: request.current,
@@ -171,6 +169,144 @@ export function ReportComposer({ state }: { state: ReportState }) {
     </section>
   );
 }
+export function ReportBatch({
+  classroom,
+  from,
+  until,
+}: {
+  classroom: string;
+  from: string | null;
+  until: string | null;
+}) {
+  type Item = Awaited<ReturnType<typeof previewReportBatch>>["data"][number];
+  const router = useRouter(),
+    [items, setItems] = useState<Item[]>([]),
+    [selected, setSelected] = useState<string[]>([]),
+    [next, setNext] = useState<string | null>(null),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false),
+    [confirmed, setConfirmed] = useState(false);
+  const request = useRef(crypto.randomUUID());
+  async function preview(after?: string) {
+    setBusy(true);
+    setConfirmed(false);
+    try {
+      const r = await previewReportBatch({ classroom, from, until, after });
+      setItems(r.data);
+      setSelected(r.data.map((x) => x.student));
+      setNext(r.next ?? null);
+      setMessage(r.message);
+      request.current = crypto.randomUUID();
+    } catch {
+      setMessage("명단을 불러오지 못했어요.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="panel">
+      <h2>학급 보고서 초안 함께 만들기</h2>
+      <p>
+        한 번에 30명까지 활동 수치를 확인합니다. 학생에게 자동으로 공개하지
+        않습니다.
+      </p>
+      <button
+        className="button button-outline"
+        disabled={busy}
+        onClick={() => void preview()}
+      >
+        일괄 생성 명단·수치 미리 보기
+      </button>
+      <fieldset disabled={busy}>
+        {items.map((item) => (
+          <label className="hub-check" key={item.student}>
+            <input
+              type="checkbox"
+              checked={selected.includes(item.student)}
+              onChange={(e) => {
+                setSelected((old) =>
+                  e.target.checked
+                    ? [...old, item.student]
+                    : old.filter((x) => x !== item.student),
+                );
+                setConfirmed(false);
+                request.current = crypto.randomUUID();
+              }}
+            />
+            {item.name} · 독서 {item.counts.readingLogs}건 · 완료 글{" "}
+            {item.counts.completedMissions}편 · 다음 {item.version + 1}판
+          </label>
+        ))}
+        {!!items.length && (
+          <>
+            <label className="hub-check">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+              />
+              선택한 학생과 기간·수치를 확인했으며 개별 검토 전에는 공개하지
+              않습니다
+            </label>
+            <button
+              className="button button-primary"
+              disabled={!confirmed || !selected.length}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const r = await saveReportBatch({
+                    classroom,
+                    from,
+                    until,
+                    items: items
+                      .filter((x) => selected.includes(x.student))
+                      .map(({ name: _, counts: __, ...x }) => x),
+                    requestId: request.current,
+                    confirmed: true,
+                  });
+                  setMessage(
+                    r.message +
+                      " 성공 " +
+                      r.data.filter((x) => x.ok).length +
+                      "명 · 재확인 " +
+                      r.data.filter((x) => !x.ok).length +
+                      "명",
+                  );
+                  if (r.ok) {
+                    setConfirmed(false);
+                    router.refresh();
+                  }
+                } catch {
+                  setMessage(
+                    "연결을 확인하고 같은 요청으로 다시 시도해 주세요.",
+                  );
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              선택한 학생 초안 만들기
+            </button>
+          </>
+        )}
+      </fieldset>
+      {next && (
+        <button
+          className="button button-outline"
+          disabled={busy}
+          onClick={() => void preview(next)}
+        >
+          다음 30명 미리 보기
+        </button>
+      )}
+      {message && (
+        <p className="notice" role="status">
+          {message}
+        </p>
+      )}
+    </section>
+  );
+}
 export function ReportArchive({
   reports,
   teacher,
@@ -178,6 +314,8 @@ export function ReportArchive({
   reports: GrowthReport[];
   teacher: boolean;
 }) {
+  const router = useRouter(),
+    [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(""),
     [message, setMessage] = useState(""),
     [url, setUrl] = useState("");
@@ -302,6 +440,78 @@ export function ReportArchive({
               </div>
             ))}
           </details>
+          {teacher && (
+            <div>
+              <p>
+                상태:{" "}
+                {
+                  {
+                    draft: "초안",
+                    reviewed: "검토 완료",
+                    published: "학생 공개",
+                    withdrawn: "공개 취소",
+                  }[r.review_state ?? (r.published_at ? "published" : "draft")]
+                }
+              </p>
+              <label className="hub-check">
+                <input
+                  type="checkbox"
+                  checked={!!confirmed[r.id]}
+                  onChange={(e) =>
+                    setConfirmed((old) => ({
+                      ...old,
+                      [r.id]: e.target.checked,
+                    }))
+                  }
+                />
+                {r.title} {r.version}판의 원문·수치·의견과 학생 공개 범위를
+                확인했습니다
+              </label>
+              <button
+                className="button button-outline"
+                disabled={!!busy || !confirmed[r.id]}
+                onClick={async () => {
+                  const action =
+                    r.review_state === "published"
+                      ? "withdraw"
+                      : r.review_state === "reviewed"
+                        ? "publish"
+                        : "review";
+                  const key =
+                    r.id + ":" + action + ":" + (r.review_revision ?? 1);
+                  keys.current[key] ??= crypto.randomUUID();
+                  setBusy(r.id);
+                  setMessage("");
+                  try {
+                    const result = await reviewReport({
+                      id: r.id,
+                      action,
+                      revision: r.review_revision ?? 1,
+                      requestId: keys.current[key],
+                      confirmed: true,
+                    });
+                    setMessage(result.message);
+                    if (result.ok) {
+                      setConfirmed((old) => ({ ...old, [r.id]: false }));
+                      router.refresh();
+                    }
+                  } catch {
+                    setMessage(
+                      "연결이 끊겼어요. 같은 작업으로 다시 시도해 주세요.",
+                    );
+                  } finally {
+                    setBusy("");
+                  }
+                }}
+              >
+                {r.review_state === "published"
+                  ? "학생 공개 취소"
+                  : r.review_state === "reviewed"
+                    ? "학생에게 공개"
+                    : "이 판 검토 완료"}
+              </button>
+            </div>
+          )}
           <div className="hub-inline">
             {[
               ["docx", "Word 저장"],

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { refreshMonitor } from "@/lib/monitoring";
 export async function GET() {
   let monitor = null;
   try {
     const client = await createClient();
     const result = await client.rpc("service_monitor_status");
-    if (!result.error) monitor = result.data;
+    if (!result.error) monitor = refreshMonitor(result.data);
   } catch {}
   try {
     const r = await fetch(

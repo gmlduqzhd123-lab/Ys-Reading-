@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
+import { refreshMonitor } from "@/lib/monitoring";
 export async function GET() {
   const config = getSupabaseConfig();
   if (!config)
@@ -12,15 +13,15 @@ export async function GET() {
       method: "POST",
       headers: { apikey: config.key, "Content-Type": "application/json" },
       body: "{}",
-      next: { revalidate: 60 },
+      cache: "no-store",
       signal: AbortSignal.timeout(5000),
     });
     if (!r.ok) throw Error("UNAVAILABLE");
     return NextResponse.json(
-      { monitor: await r.json() },
+      { monitor: refreshMonitor(await r.json()) },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30",
+          "Cache-Control": "no-store",
         },
       },
     );

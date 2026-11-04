@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
-for (const path of ["/", "/login", "/guide", "/privacy", "/status"])
+for (const path of [
+  "/",
+  "/login",
+  "/guide",
+  "/privacy",
+  "/status",
+  "/device-check",
+])
   test("mobile WebKit " + path, async ({ page }) => {
     await page.goto(path);
     await expect(page.locator("main")).toBeVisible();

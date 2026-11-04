@@ -9,7 +9,11 @@ import {
 import { recordLabels } from "@/lib/classroom-insights";
 import { formatOperationsDate } from "@/lib/operations";
 import type { ServiceHealth } from "@/lib/service-health";
-import { monitorLabel, type MonitorState } from "@/lib/monitoring";
+import {
+  monitorLabel,
+  monitorCheckStale,
+  type MonitorState,
+} from "@/lib/monitoring";
 type Availability = {
   monitor?: MonitorState | null;
   available: boolean;
@@ -30,6 +34,7 @@ export function ReliabilityPanel({
     [availability, setAvailability] = useState<Availability | null>(null),
     [checking, setChecking] = useState(false),
     [healthError, setHealthError] = useState("");
+  const [now, setNow] = useState(Date.now);
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [archive, setArchive] = useState<LearningArchive | null>(null),
@@ -38,6 +43,16 @@ export function ReliabilityPanel({
   async function check() {
     setChecking(true);
     setHealthError("");
+    const availabilityRequest = fetch("/api/availability", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    })
+      .then((r) => {
+        if (!r.ok) throw Error();
+        return r.json();
+      })
+      .then(setAvailability)
+      .catch(() => setAvailability({ available: false }));
     try {
       const r = await fetch("/api/health?deep=1", {
         cache: "no-store",
@@ -52,18 +67,26 @@ export function ReliabilityPanel({
         "점검 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.",
       );
     } finally {
+      await availabilityRequest;
       setChecking(false);
+      setNow(Date.now());
     }
   }
   useEffect(() => {
     void check();
-    void fetch("/api/availability", {
-      cache: "no-store",
-      signal: AbortSignal.timeout(7000),
-    })
-      .then((r) => r.json())
-      .then(setAvailability)
-      .catch(() => setAvailability({ available: false }));
+    const tick = setInterval(() => setNow(Date.now()), 30000);
+    const resume = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    window.addEventListener("online", resume);
+    window.addEventListener("focus", resume);
+    document.addEventListener("visibilitychange", resume);
+    return () => {
+      clearInterval(tick);
+      window.removeEventListener("online", resume);
+      window.removeEventListener("focus", resume);
+      document.removeEventListener("visibilitychange", resume);
+    };
   }, []);
   async function createBackup(form: HTMLFormElement) {
     const fd = new FormData(form),
@@ -172,13 +195,17 @@ export function ReliabilityPanel({
         )}
         <h3>자동 가용성 점검</h3>
         <p className="notice" role="status">
-          {monitorLabel(availability?.monitor ?? null)}
+          {monitorLabel(availability?.monitor ?? null, now)}
         </p>
         {availability?.monitor?.checks.map((c) => (
           <p key={c.source}>
             {c.source === "supabase-cron" ? "서버 정기 점검" : "운영자 PC 점검"}{" "}
             · {formatOperationsDate(c.checked_at)} ·{" "}
-            {c.stale ? "점검 신호 확인 필요" : c.healthy ? "정상" : "문제 감지"}
+            {monitorCheckStale(c, now)
+              ? "점검 신호 확인 필요"
+              : c.healthy
+                ? "정상"
+                : "문제 감지"}
           </p>
         ))}
         {!!availability?.monitor?.incidents.length && (

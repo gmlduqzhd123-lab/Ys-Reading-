@@ -10,9 +10,11 @@ import { Field } from "@/components/hub/shared";
 export function ReviewQueue({
   state,
   classes,
+  basePath = "/hub?tab=review",
 }: {
   state: ReviewState;
   classes: Classroom[];
+  basePath?: string;
 }) {
   const router = useRouter(),
     kind = state.kind,
@@ -24,7 +26,7 @@ export function ReviewQueue({
     classValue = classId,
     pageValue = state.page,
   ) =>
-    `/hub?tab=review&reviewKind=${kindValue}&classroom=${classValue}&reviewPage=${pageValue}`;
+    `${basePath}&reviewKind=${kindValue}&classroom=${classValue}&reviewPage=${pageValue}`;
   const [selected, setSelected] = useState<string[]>([]),
     [opened, setOpened] = useState<Set<string>>(new Set());
   const [body, setBody] = useState(""),

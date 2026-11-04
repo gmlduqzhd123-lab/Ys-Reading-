@@ -16,7 +16,7 @@ export function OperatorMfa() {
     const c = createClient(),
       [f, s] = await Promise.all([
         c.auth.mfa.listFactors(),
-        c.rpc("operator_security_state"),
+        c.rpc("staff_security_state"),
       ]);
     if (f.error || s.error)
       throw Error("인증 정보를 읽지 못했어요. 다시 로그인해 주세요.");
@@ -34,6 +34,16 @@ export function OperatorMfa() {
   }
   useEffect(() => {
     load().catch((e) => setMessage(e.message));
+    const refresh = () => {
+      if (document.visibilityState === "visible")
+        load().catch(() => setRecent(false));
+    };
+    const timer = setInterval(refresh, 30000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
   async function run(fn: () => Promise<void>) {
     if (busy) return;

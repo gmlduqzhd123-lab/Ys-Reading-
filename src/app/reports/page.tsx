@@ -3,8 +3,13 @@ import { z } from "zod";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { loadOperationsWorkspace } from "@/lib/operations-workspace";
-import { ReportComposer, ReportArchive } from "@/components/growth-reports";
+import {
+  ReportComposer,
+  ReportArchive,
+  ReportBatch,
+} from "@/components/growth-reports";
 import type { GrowthReport, ReportState } from "@/lib/growth-report";
+import type { CollaborationState } from "@/lib/collaboration";
 export const metadata = { title: "학기 성장 보고서" };
 export default async function ReportsPage({
   searchParams,
@@ -15,9 +20,39 @@ export default async function ReportsPage({
     params = await searchParams,
     c = await createClient(),
     teacher = p.role === "teacher";
-  const workspace = teacher
-      ? await loadOperationsWorkspace(params.classroom, params)
-      : null,
+  const staff = teacher
+    ? await c.rpc("collaboration_state", { p_classroom: null, p_page: 1 })
+    : null;
+  const ownedClasses = staff?.data
+    ? (staff.data as CollaborationState).classes.filter((x) => x.read)
+    : [];
+  const ownedSelected =
+    ownedClasses.find((x) => x.id === params.classroom)?.id ??
+    ownedClasses[0]?.id;
+  const staffClass = ownedClasses.find((x) => x.id === ownedSelected),
+    studentPage = Math.max(
+      1,
+      Math.min(100000, Number(params.studentPage) || 1),
+    );
+  const delegated =
+    staffClass && !staffClass.owner
+      ? await c.rpc("collaboration_state", {
+          p_classroom: ownedSelected,
+          p_page: studentPage,
+        })
+      : null;
+  const delegatedData = delegated?.data as CollaborationState | null;
+  const studentsPerPage = delegatedData ? 30 : 50;
+  const workspace = delegatedData
+      ? {
+          selected: ownedSelected,
+          students: delegatedData.students,
+          totals: { students: delegatedData.total },
+          pages: { q: "", studentPage },
+        }
+      : teacher && ownedSelected
+        ? await loadOperationsWorkspace(ownedSelected, params)
+        : null,
     cls = workspace?.selected ?? null,
     student = z.uuid().safeParse(params.student).success
       ? params.student
@@ -87,7 +122,7 @@ export default async function ReportsPage({
             <label className="field">
               담당 학급
               <select name="classroom" defaultValue={cls ?? ""}>
-                {workspace.classes.map((x) => (
+                {ownedClasses.map((x) => (
                   <option key={x.id} value={x.id}>
                     {x.name}
                   </option>
@@ -156,7 +191,7 @@ export default async function ReportsPage({
                 이전 학생
               </Link>
             )}
-            {(workspace.pages?.studentPage ?? 1) * 50 <
+            {(workspace.pages?.studentPage ?? 1) * studentsPerPage <
               (workspace.totals?.students ?? 0) && (
               <Link
                 href={href({
@@ -174,7 +209,15 @@ export default async function ReportsPage({
           시작일·종료일을 함께 입력하고, 3년 이내의 올바른 순서로 선택해 주세요.
         </p>
       )}
-      {state && (
+      {teacher && staffClass?.review && cls && datesValid && (
+        <ReportBatch
+          key={JSON.stringify([cls, from, until])}
+          classroom={cls}
+          from={from}
+          until={until}
+        />
+      )}
+      {state && staffClass?.review && (
         <>
           <ReportComposer
             key={JSON.stringify([cls, student, from, until, worksPage])}
@@ -196,7 +239,7 @@ export default async function ReportsPage({
       )}
       <ReportArchive
         reports={(reports.data ?? []) as GrowthReport[]}
-        teacher={teacher}
+        teacher={teacher && staffClass?.review === true}
       />
       <nav className="hub-inline" aria-label="저장한 보고서 페이지">
         <span>

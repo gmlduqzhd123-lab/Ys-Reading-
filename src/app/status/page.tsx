@@ -1,4 +1,5 @@
 import { getCurrentProfile } from "@/lib/auth";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ReliabilityPanel } from "@/components/recovery/reliability-panel";
 import {
@@ -22,7 +23,11 @@ export default async function StatusPage() {
       !p.must_change_password;
     if (teacher) {
       const c = await createClient(),
-        r = await c.from("classrooms").select("id,name").order("name");
+        r = await c
+          .from("classrooms")
+          .select("id,name")
+          .eq("teacher_id", p!.id)
+          .order("name");
       classes = r.data ?? [];
       if (operator) {
         const b = await c.rpc("operator_backup_state");
@@ -35,6 +40,11 @@ export default async function StatusPage() {
   return (
     <>
       <ReliabilityPanel classes={classes} teacher={teacher} />
+      <p>
+        <Link className="button button-outline" href="/device-check">
+          수업 전 학교 PC·태블릿 점검 →
+        </Link>
+      </p>
       {operator && <OperatorBackupStatus state={backup} />}
     </>
   );
