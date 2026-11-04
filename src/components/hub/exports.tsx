@@ -1,7 +1,7 @@
 "use client";
 import { GoogleConnectionCheck } from "./google-connection-check";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { HubData } from "@/lib/hub-data";
 import { Empty, Panel } from "./shared";
@@ -16,6 +16,8 @@ export function Exports({
   googleNotice?: string;
 }) {
   const router = useRouter();
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
   const [kind, setKind] = useState<"reading" | "writing" | "drafts">("reading"),
     [selected, setSelected] = useState<string[]>([]),
     [title, setTitle] = useState("나의 책숲 기록"),
@@ -133,7 +135,7 @@ export function Exports({
         <label className="field">
           기록 종류
           <select
-            disabled={busy}
+            disabled={busy || !interactive}
             value={kind}
             onChange={(e) => {
               setKind(e.target.value as typeof kind);
@@ -149,7 +151,7 @@ export function Exports({
         <label className="field">
           기록장·작품집 제목
           <input
-            disabled={busy}
+            disabled={busy || !interactive}
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
@@ -162,7 +164,7 @@ export function Exports({
         <label className="hub-check">
           <input
             type="checkbox"
-            disabled={busy}
+            disabled={busy || !interactive}
             checked={includeNames}
             onChange={(e) => {
               setIncludeNames(e.target.checked);
@@ -176,7 +178,7 @@ export function Exports({
           <label className="hub-check hub-record" key={r.id}>
             <input
               type="checkbox"
-              disabled={busy}
+              disabled={busy || !interactive}
               checked={selected.includes(r.id)}
               onChange={(e) => {
                 setSelected((old) =>

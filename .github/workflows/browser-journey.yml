@@ -30,12 +30,21 @@ jobs:
         run: node scripts/check-release-contract.mjs
       - run: npm run build
       - run: npx playwright install --with-deps chromium webkit
-      - run: npx playwright test
+      - name: Verify classroom and teacher journey
+        id: classroom
+        run: npx playwright test --project chromium
+      - name: Verify mobile learning and accessibility
+        run: npx playwright test --project webkit-mobile
       - name: Verify 90 concurrent student flows across three classes
+        id: load
+        if: always() && steps.classroom.outcome == 'success' && !cancelled()
         run: npx tsx scripts/ci-concurrency.ts
       - name: Verify delegated teacher and account worker permissions
+        id: collaboration
+        if: always() && steps.load.outcome == 'success' && !cancelled()
         run: npx tsx scripts/ci-collaboration.ts
       - name: Verify portable backup and independent Auth restore
+        if: always() && steps.collaboration.outcome == 'success' && !cancelled()
         run: npx tsx scripts/ci-recovery-drill.ts
       - name: Stop isolated services
         if: always()

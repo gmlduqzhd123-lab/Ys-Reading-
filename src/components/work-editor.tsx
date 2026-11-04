@@ -130,6 +130,8 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
   const submittingRef = useRef(false);
   const navigatingRef = useRef(false);
   const mountedRef = useRef(true);
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
   const recoveryReloadRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestRef = useRef<{ payload: string; id: string } | null>(null);
@@ -634,7 +636,9 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
               value={content.title}
               onChange={(event) => updateContent("title", event.target.value)}
               maxLength={WRITING_TITLE_LIMIT}
-              disabled={!canWrite || isSubmitting || isNavigating}
+              disabled={
+                !interactive || !canWrite || isSubmitting || isNavigating
+              }
               aria-describedby="title-count"
               placeholder="내 생각에 어울리는 제목을 붙여 주세요"
               autoComplete="off"
@@ -652,7 +656,9 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
               onChange={(event) => updateContent("body", event.target.value)}
               maxLength={WRITING_BODY_LIMIT}
               rows={14}
-              disabled={!canWrite || isSubmitting || isNavigating}
+              disabled={
+                !interactive || !canWrite || isSubmitting || isNavigating
+              }
               aria-describedby="writing-help writing-count"
               placeholder="읽은 책의 제목과 작가를 적고, 미션 질문에 대한 내 생각을 써 보세요."
             />

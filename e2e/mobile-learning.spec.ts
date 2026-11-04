@@ -41,6 +41,9 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   await expect(page.getByText(/저장했어요/).first()).toBeVisible();
   await page.reload();
   await expect(body).toHaveValue(/한글 글자/);
+  await expect(page.getByLabel("글 제목", { exact: true })).toHaveValue(
+    "모바일에서 함께 쓰는 한글",
+  );
   await page
     .getByRole("checkbox", { name: "이 탭에 미저장 글 임시보관", exact: true })
     .check();
@@ -73,6 +76,7 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   ).toBeLessThanOrEqual(391);
   await page.goto("/hub?tab=exports");
   await page.getByLabel("기록 종류").selectOption("drafts");
+  await expect(page.getByLabel("기록 종류")).toHaveValue("drafts");
   await page
     .getByRole("checkbox", { name: /모바일에서 함께 쓰는 한글/ })
     .check();
