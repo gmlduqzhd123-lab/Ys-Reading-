@@ -129,6 +129,74 @@ const events = checked(
   "CI_STAFF_REWARD",
 );
 if (events.length !== 1) throw Error("CI_STAFF_DUPLICATE_REWARD");
+const reportStudents = checked(
+  await reviewer
+    .from("enrollments")
+    .select("student_id")
+    .eq("classroom_id", f.classroom)
+    .neq("student_id", f.student.id)
+    .order("student_id")
+    .limit(5),
+  "CI_STAFF_REPORT_STUDENTS",
+);
+const previews = [];
+for (const s of reportStudents) {
+  const state = checked(
+    await reviewer.rpc("growth_report_state", {
+      p_classroom: f.classroom,
+      p_student: s.student_id,
+      p_page: 1,
+    }),
+    "CI_STAFF_REPORT_PREVIEW",
+  );
+  previews.push({
+    student: s.student_id,
+    title: "CI 함께 검토할 초안",
+    note: "",
+    token: state.sourceToken,
+    version: state.latestVersion,
+  });
+}
+const last = previews.at(-1)!;
+const [batch, single] = await Promise.all([
+  reviewer.rpc("batch_report_drafts", {
+    p_classroom: f.classroom,
+    p_from: null,
+    p_until: null,
+    p_items: previews,
+    p_request_id: randomUUID(),
+  }),
+  owner.rpc("create_reviewed_report", {
+    p_classroom: f.classroom,
+    p_student: last.student,
+    p_from: null,
+    p_until: null,
+    p_works: [],
+    p_title: "CI 동시 개별 초안",
+    p_note: "",
+    p_expected_version: last.version,
+    p_source_token: last.token,
+    p_request_id: randomUUID(),
+  }),
+]);
+checked(batch, "CI_STAFF_REPORT_BATCH");
+if (single.error && !single.error.message.includes("BF_REPORT_CONFLICT"))
+  throw Error("CI_STAFF_REPORT_CONCURRENT");
+const reports = checked(
+  await admin
+    .from("term_reports")
+    .select("student_id,version,published_at")
+    .in(
+      "student_id",
+      previews.map((x) => x.student),
+    ),
+  "CI_STAFF_REPORT_PERSISTENCE",
+);
+if (
+  reports.length !== 5 ||
+  reports.some((x) => x.version !== 1 || x.published_at !== null)
+)
+  throw Error("CI_STAFF_REPORT_DUPLICATE");
 const hidden = checked(
   await studentAdmin.from("reading_logs").select("id"),
   "CI_STAFF_ADMIN_READ",
@@ -176,6 +244,27 @@ checked(
     password,
   }),
   "CI_STAFF_ISSUED_LOGIN",
+);
+const newPassword = "Reset-CI-" + randomUUID() + "aA!";
+const reset = await edge({
+  kind: "reset_password",
+  classroomId: f.classroom,
+  studentId: rows[0].id,
+  password: newPassword,
+  requestId: randomUUID(),
+});
+if (!reset.data.ok) throw Error("CI_STAFF_PASSWORD_RESET");
+const oldLogin = await student.auth.signInWithPassword({
+  email: loginId + "@students.bookforest.invalid",
+  password,
+});
+if (!oldLogin.error) throw Error("CI_STAFF_OLD_PASSWORD_ACCEPTED");
+checked(
+  await student.auth.signInWithPassword({
+    email: loginId + "@students.bookforest.invalid",
+    password: newPassword,
+  }),
+  "CI_STAFF_RESET_LOGIN",
 );
 const foreign = checked(
   await owner.rpc("create_classroom", { p_name: "CI 다른 위임 범위" }),
@@ -231,5 +320,7 @@ console.log(
     studentAdminCannotReadWriting: true,
     crossClassDenied: true,
     revocationDenied: true,
+    concurrentPrivateReports: true,
+    delegatedPasswordReset: true,
   }),
 );

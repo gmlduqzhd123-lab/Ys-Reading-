@@ -98,8 +98,8 @@ try {
     throw Error("RESTORE_TARGET_NOT_EMPTY");
   sql("create database " + targetDb + " template template0");
   created = true;
-  // The target is newly created. Keep initdb's public schema: pg_dump does not
-  // recreate it. --clean would try dropping policies on absent tables.
+  // The target is newly created. Keep initdb's public schema and skip its TOC
+  // creation entry below. --clean would drop policies on absent tables.
   stage = "database-extensions";
   sql(
     'create schema if not exists extensions;create extension if not exists pgcrypto with schema extensions;create extension if not exists "uuid-ossp" with schema extensions',
@@ -115,7 +115,6 @@ try {
     "-d",
     "postgres",
     "-Fc",
-    "--no-owner",
     "--schema=public",
     "--schema=private",
     "--schema=auth",
@@ -152,6 +151,11 @@ try {
     "/tmp/bookforest-native-recovery.list",
   ]);
   stage = "native-restore";
+  // This is the disposable local database container, where supabase_admin is
+  // available. Restore owners and ACLs intact; postgres cannot change default
+  // privileges owned by the Auth/Storage administration roles.
+  if (sql("select rolsuper from pg_roles where rolname='supabase_admin'") !== "t")
+    throw Error("ISOLATED_RESTORE_SUPERUSER_REQUIRED");
   docker(
     [
       "exec",
@@ -159,10 +163,9 @@ try {
       dbContainer,
       "pg_restore",
       "-U",
-      "postgres",
+      "supabase_admin",
       "-d",
       targetDb,
-      "--no-owner",
       "--use-list=/tmp/bookforest-native-recovery.list",
       "--exit-on-error",
     ],
@@ -281,6 +284,20 @@ try {
     rows.some((x) => x.student_id !== fixture.student.id)
   )
     throw Error("RESTORED_RLS_FAILED");
+  const reportRead = await fetch(
+      "http://127.0.0.1:55432/term_reports?select=id,student_id,published_at",
+      { headers },
+    ),
+    reportRows = await reportRead.json();
+  if (
+    !reportRead.ok ||
+    !Array.isArray(reportRows) ||
+    reportRows.length !== 1 ||
+    reportRows.some(
+      (x) => x.student_id !== fixture.student.id || x.published_at === null,
+    )
+  )
+    throw Error("RESTORED_REPORT_RLS_FAILED");
   const anon = await fetch("http://127.0.0.1:55432/reading_logs?select=id", {
     headers: { apikey: config.ANON_KEY },
   });
@@ -312,6 +329,7 @@ try {
       restoredAuthPassword: true,
       restoredMfa: true,
       restoredStudentRls: true,
+      restoredReportRls: true,
       anonymousDenied: true,
       productionBackupTransferred: false,
     }),
