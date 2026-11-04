@@ -143,6 +143,14 @@ try {
     tocFile,
     dbContainer + ":/tmp/bookforest-native-recovery.list",
   ]);
+  // The list contains object names only. docker cp sets root ownership.
+  docker([
+    "exec",
+    dbContainer,
+    "chmod",
+    "0644",
+    "/tmp/bookforest-native-recovery.list",
+  ]);
   stage = "native-restore";
   docker(
     [
