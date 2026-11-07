@@ -1,4 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomUUID, randomBytes } from "node:crypto";
@@ -176,7 +177,7 @@ describe("Bounded learning reads, batch consent/progression and private recovery
     );
   });
   beforeAll(async () => {
-    db = new PGlite();
+    db = new PGlite({ extensions: { pgcrypto } });
     await db.exec(
       "create role anon nologin;create role authenticated nologin;create role service_role nologin bypassrls;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}',encrypted_password text);create table auth.sessions(id uuid primary key,user_id uuid references auth.users(id),created_at timestamptz not null default clock_timestamp());create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;grant execute on function auth.uid() to anon,authenticated,service_role;create schema supabase_migrations;create table supabase_migrations.schema_migrations(version text primary key,name text);",
     );

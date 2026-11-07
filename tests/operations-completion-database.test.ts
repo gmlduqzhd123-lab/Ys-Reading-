@@ -46,6 +46,8 @@ it("keeps public backup metadata bounded and flags missing, failed and expired r
   const value = await rpc("service_backup_health");
   expect(value.code).toBe("BACKUP_AUTH_REQUIRED");
   expect(Object.keys(value).sort()).toEqual([
+    "agentCheckedAt",
+    "agentState",
     "checkedAt",
     "code",
     "healthy",

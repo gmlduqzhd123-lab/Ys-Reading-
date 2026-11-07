@@ -15,6 +15,8 @@ try {
     "BACKUP_AUTH_REQUIRED",
     "BACKUP_FAILED",
     "BACKUP_STALLED",
+    "BACKUP_RETRY_WAIT",
+    "BACKUP_RECOVERY_PENDING",
   ];
   if (codes.includes(d.code)) code = d.code;
   healthy =

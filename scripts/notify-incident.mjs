@@ -3,6 +3,7 @@ import {
   incidentDecision,
   marker as serviceMarker,
   backupMarker,
+  backupIncidentText,
 } from "./lib/incident-notification.mjs";
 const backup = process.argv[2] === "--backup",
   marker = backup ? backupMarker : serviceMarker;
@@ -39,6 +40,7 @@ for (let page = 1; page <= 10; page++) {
 const decision = incidentDecision(receipt.healthy, issues, marker);
 const run =
   "https://github.com/" + repo + "/actions/runs/" + process.env.GITHUB_RUN_ID;
+const reason = backupIncidentText(receipt.code);
 if (decision.create)
   await api("/issues", "POST", {
     title: backup
@@ -47,7 +49,7 @@ if (decision.create)
     body:
       marker +
       (backup
-        ? "\n\n@gmlduqzhd123-lab 전체 백업이 실패했거나 최근 복원 검증 신호가 없습니다. 운영자 PC의 전원·로그인·Codex 인증과 백업 상태를 확인해 주세요.\n\n"
+        ? "\n" + reason.marker + "\n\n@gmlduqzhd123-lab " + reason.text + "\n\n"
         : "\n\n@gmlduqzhd123-lab 서비스 연결 또는 서버 정기 점검 신호에 문제가 확인되었습니다.\n\n") +
       "[서비스 상태](https://reading-blush-zeta.vercel.app/status) · [독립 점검 실행](" +
       run +
@@ -58,6 +60,13 @@ if (decision.create)
         : "") +
       "\n\n학생 정보·글·로그인 정보는 이 알림에 포함하지 않습니다. 정상 확인 시 자동으로 복구 알림을 남기고 닫습니다.",
   });
+// One open incident per service. Notify again only when the actionable reason changes.
+if (backup && !receipt.healthy && !decision.create) {
+  for (const issue of issues.filter(i => i.user?.type === "Bot" && i.body?.startsWith(marker) && !i.body.includes(reason.marker))) {
+    await api("/issues/" + issue.number + "/comments", "POST", { body: reason.text + "\n\n[점검 실행](" + run + ")" });
+    await api("/issues/" + issue.number, "PATCH", { body: marker + "\n" + reason.marker + "\n\n" + reason.text + "\n\n[서비스 상태](https://reading-blush-zeta.vercel.app/status) · [점검 실행](" + run + ")" });
+  }
+}
 for (const number of decision.close) {
   await api("/issues/" + number + "/comments", "POST", {
     body:

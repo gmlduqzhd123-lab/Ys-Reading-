@@ -1,6 +1,20 @@
 // Public, bounded health metadata only. Never include API responses or exception text.
 export const marker = "<!-- bookforest-service-incident-v1 -->";
 export const backupMarker = "<!-- bookforest-backup-incident-v1 -->";
+export function backupIncidentText(code) {
+  const reasons = {
+    BACKUP_AUTH_REQUIRED: "Codex의 Supabase 연결 인증을 갱신해야 합니다. 운영자 PC에서 Codex의 Supabase MCP를 재인증해 주세요. 인증 복구 후 예약 작업이 누락된 백업과 복원 검사를 자동 실행합니다.",
+    BACKUP_RETRY_WAIT: "MCP 연결 점검에 실패했습니다. 운영자 PC가 15~60분 간격으로 재시도합니다. 네트워크와 Codex 설치 상태를 확인해 주세요.",
+    BACKUP_RECOVERY_PENDING: "연결은 회복됐지만 새 전체 백업의 복원 검사가 아직 완료되지 않았습니다. 완료 전에는 복구 처리하지 않습니다.",
+    BACKUP_STALE: "최근 복원 검증 후 48시간이 지났습니다. 운영자 PC의 전원·Windows 로그인·예약 작업과 네트워크를 확인해 주세요.",
+    BACKUP_MISSING: "검증된 전체 백업이 없습니다. 운영자 PC의 백업 도구를 설치하고 첫 백업을 실행해 주세요.",
+    BACKUP_STALLED: "백업 실행 신호가 30분 이상 갱신되지 않았습니다. 운영자 PC의 예약 작업 결과와 로컬 상태를 확인해 주세요.",
+    BACKUP_FAILED: "백업 또는 복원 검사에 실패했습니다. 운영자 PC의 로컬 상태를 확인해 주세요. 새 백업을 검증하기 전에는 복구 처리하지 않습니다.",
+    BACKUP_CHECK_UNAVAILABLE: "백업 상태 조회에 실패했습니다. 서비스 상태와 다음 독립 점검 결과를 확인해 주세요.",
+  };
+  const safe = Object.hasOwn(reasons, code) ? code : "BACKUP_CHECK_UNAVAILABLE";
+  return { code: safe, text: reasons[safe], marker: `<!-- backup-reason:${safe} -->` };
+}
 export function incidentDecision(healthy, issues, selectedMarker = marker) {
   const owned = issues.filter(
     (i) =>

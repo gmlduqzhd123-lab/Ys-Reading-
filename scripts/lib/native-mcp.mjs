@@ -11,6 +11,7 @@ export async function nativeMcp() {
     windowsHide: true,
   });
   let sequence = 0;
+  let startupFailure;
   const pending = new Map();
   child.once("error", () => {
     for (const p of pending.values()) {
@@ -28,6 +29,8 @@ export async function nativeMcp() {
     } catch {
       return;
     }
+    const failure = startupErrorCode(m);
+    if (failure) startupFailure = failure;
     if (m.method && m.id !== undefined) {
       child.stdin.write(
         JSON.stringify({
@@ -44,11 +47,15 @@ export async function nativeMcp() {
     if (!p) return;
     clearTimeout(p.timer);
     pending.delete(m.id);
-    if (m.error) p.reject(Error(mcpErrorCode(m.error)));
+    if (m.error) p.reject(Error(startupFailure || mcpErrorCode(m.error)));
     else p.resolve(m.result);
   });
   function request(method, params) {
     return new Promise((resolve, reject) => {
+      if (startupFailure && method === "mcpServer/tool/call") {
+        reject(Error(startupFailure));
+        return;
+      }
       const id = ++sequence,
         timer = setTimeout(() => {
           pending.delete(id);
@@ -95,6 +102,13 @@ export async function nativeMcp() {
         : "MCP_UNAVAILABLE",
     );
   }
+}
+export function startupErrorCode(notification) {
+  const p = notification?.params;
+  return notification?.method === "mcpServer/startupStatus/updated" &&
+    p?.name === "supabase" && p?.status === "failed" &&
+    p?.failureReason === "reauthenticationRequired"
+    ? "MCP_AUTH_REQUIRED" : null;
 }
 // Raw provider errors can contain credentials or SQL contents. Return only a
 // bounded classification, including the OAuth refresh failure seen by the task.

@@ -1,4 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { digest, canonical, projectRef } from "./operator-vault.mjs";
 import { applyPrivacyCheckpoint } from "./privacy-checkpoint.mjs";
 const ident = (s) => '"' + s.replaceAll('"', '""') + '"',
@@ -44,7 +45,7 @@ export async function verifyRestore(backup, checkpoint = null) {
     backup.migrations.some((m) => digest(m.sql) !== m.sha256)
   )
     throw Error("BACKUP_MANIFEST_INVALID");
-  const db = new PGlite();
+  const db = new PGlite({ extensions: { pgcrypto } });
   let stage = "schema";
   try {
     await db.exec(

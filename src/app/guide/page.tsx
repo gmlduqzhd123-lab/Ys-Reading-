@@ -111,7 +111,7 @@ export default function GuidePage() {
           운영자 PC의 프로젝트 폴더에서{" "}
           <code>node scripts/operator-backup.mjs</code>를 실행합니다. Codex의
           책숲 Supabase 연결 인증이 필요합니다. 백업은 현재 Windows 사용자와
-          SYSTEM만 접근하는 로컬 AppData의 Bookforest/OperatorBackups 폴더에
+          SYSTEM만 접근하는 문서 폴더의 Bookforest-OperatorBackups 폴더에
           암호화해 저장합니다.
         </p>
         <p>
@@ -124,8 +124,9 @@ export default function GuidePage() {
           암호화 키는 이 Windows 사용자 계정에 묶여 있습니다. PC나 Windows
           계정을 잃으면 이 백업만으로 복호화할 수 없으므로 기기 교체 전 운영자가
           ‘복구 키 내보내기’ 도구로 별도 암호를 설정한 키 파일을 다른 안전한
-          장소에 보관해야 합니다. 현재 운영자 PC에는 매일 19시와 로그인 시
-          실행하는 예약 작업을 구성했습니다. PC가 켜져 있고 해당 Windows
+          장소에 보관해야 합니다. 현재 운영자 PC에는 매일 19시 백업과 매시간
+          연결 점검을 구성했습니다. 연결 실패는 별도 경로로 보고하고 재시도하며,
+          로그인·연결 회복 후 누락된 백업을 실행합니다. PC가 켜져 있고 해당 Windows
           사용자로 로그인한 상태여야 하며 Codex 연결 인증도 유효해야 합니다.
         </p>
         <p>
