@@ -44,7 +44,7 @@ export async function nativeMcp() {
     if (!p) return;
     clearTimeout(p.timer);
     pending.delete(m.id);
-    if (m.error) p.reject(Error("MCP_REQUEST_FAILED"));
+    if (m.error) p.reject(Error(mcpErrorCode(m.error)));
     else p.resolve(m.result);
   });
   function request(method, params) {
@@ -87,12 +87,47 @@ export async function nativeMcp() {
         ),
       close,
     };
-  } catch {
+  } catch (error) {
     close();
-    throw Error("MCP_AUTH_REQUIRED");
+    throw Error(
+      /^MCP_[A-Z_]+$/.test(error?.message ?? "")
+        ? error.message
+        : "MCP_UNAVAILABLE",
+    );
   }
 }
+// Raw provider errors can contain credentials or SQL contents. Return only a
+// bounded classification, including the OAuth refresh failure seen by the task.
+export function mcpErrorCode(error, fallback = "MCP_REQUEST_FAILED") {
+  const message =
+    typeof error === "string" ? error : String(error?.message ?? "");
+  return error?.code === 401 ||
+    /oauth[^\n]{0,100}(refresh|expired|invalid)|token[^\n]{0,50}(refresh|expired)|refresh[^\n]{0,50}(token|oauth)|invalid_grant|not authenticated|not logged in|authentication required|unauthorized/i.test(
+      message,
+    )
+    ? "MCP_AUTH_REQUIRED"
+    : fallback;
+}
+function checkedResult(value) {
+  if (value === undefined || value === null)
+    throw Error("MCP_RESPONSE_INVALID");
+  if (
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value.isError === true || value.error)
+  ) {
+    const error = value.error ?? {
+      message: (value.content ?? [])
+        .filter((c) => c.type === "text")
+        .map((c) => c.text)
+        .join("\n"),
+    };
+    throw Error(mcpErrorCode(error, "MCP_TOOL_FAILED"));
+  }
+  return value;
+}
 export function parseToolResult(top) {
+  checkedResult(top);
   let d = top.structuredContent;
   if (!d)
     for (const c of top.content ?? []) {
@@ -101,11 +136,14 @@ export function parseToolResult(top) {
         break;
       } catch {}
     }
-  if (d && typeof d === "object" && "result" in d) d = d.result;
-  if (typeof d !== "string") return d;
+  checkedResult(d);
+  if (typeof d === "object" && "result" in d) d = checkedResult(d.result);
+  if (typeof d !== "string") return checkedResult(d);
+  let parsed;
   try {
-    return JSON.parse(d);
+    parsed = JSON.parse(d);
   } catch {}
+  if (parsed !== undefined) return checkedResult(parsed);
   for (const tag of d.matchAll(/<untrusted-data-[a-z0-9-]+>/g)) {
     const end = d.indexOf("</untrusted-data-", tag.index);
     if (end < 0) continue;
@@ -114,10 +152,15 @@ export function parseToolResult(top) {
       body,
       body.replace(/^(?:\\n|\s)+|(?:\\n|\s)+$/g, ""),
       body.replace(/\\n/g, "\n").replace(/\\"/g, '"').trim(),
-    ])
+    ]) {
+      let decoded;
       try {
-        return JSON.parse(candidate);
-      } catch {}
+        decoded = JSON.parse(candidate);
+      } catch {
+        continue;
+      }
+      return checkedResult(decoded);
+    }
   }
   throw Error("MCP_RESPONSE_INVALID");
 }

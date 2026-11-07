@@ -15,6 +15,7 @@ import { acquireBackupLock } from "./lib/backup-lock.mjs";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const quote = (s) => "'" + String(s).replaceAll("'", "''") + "'";
 let mcp;
+let projectVerified = false;
 let lockFile;
 let ownsLock = false;
 let releaseLock;
@@ -23,6 +24,7 @@ const attemptId = randomUUID(),
 let attemptDirectory;
 const pendingFile = () => path.join(attemptDirectory, "pending-attempts.json");
 async function receipt(row) {
+  if (!projectVerified) throw Error("PROJECT_SCOPE_MISMATCH");
   const sql = `insert into private.backup_attempts(id,started_at,finished_at,status,error_code) values(${quote(row.id)},${quote(row.started)},${row.finished ? quote(row.finished) : "null"},${quote(row.status)},${row.code ? quote(row.code) : "null"}) on conflict(id) do update set finished_at=excluded.finished_at,status=excluded.status,error_code=excluded.error_code;`;
   await mcp.call("execute_sql", { query: sql });
 }
@@ -47,6 +49,7 @@ try {
       typeof check === "string" ? check : (check?.url ?? check?.project_url);
     if (url !== `https://${projectRef}.supabase.co`)
       throw Error("PROJECT_SCOPE_MISMATCH");
+    projectVerified = true;
     if (fs.existsSync(pendingFile())) {
       const pending = JSON.parse(fs.readFileSync(pendingFile(), "utf8"));
       for (const event of pending) await receipt(event);
@@ -182,7 +185,7 @@ try {
       code,
     };
     try {
-      if (mcp) await receipt(event);
+      if (mcp && projectVerified) await receipt(event);
       else throw Error();
     } catch {
       try {
