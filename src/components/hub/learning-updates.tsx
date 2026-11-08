@@ -1,83 +1,57 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { learningPoller } from "@/lib/learning-polling";
 export function LearningUpdates({
   owner,
   classroom,
   tab,
+  initialToken = "",
 }: {
   owner: string;
   classroom: string;
   tab: string;
+  initialToken?: string;
 }) {
   const [changed, setChanged] = useState(false),
     [message, setMessage] = useState(""),
     [busy, start] = useTransition(),
     router = useRouter();
   useEffect(() => {
-    let stopped = false,
-      inFlight = false,
-      baseline = "",
-      timer: ReturnType<typeof setTimeout>,
-      failures = 0,
-      request: AbortController | null = null;
     setChanged(false);
     setMessage("");
-    const poll = async () => {
-      if (stopped || inFlight) return;
-      clearTimeout(timer);
-      if (document.hidden || !navigator.onLine) {
-        timer = setTimeout(poll, 60000);
-        return;
-      }
-      inFlight = true;
-      const controller = new AbortController();
-      request = controller;
-      const timeout = setTimeout(() => controller.abort(), 6000);
-      try {
+    const polling = learningPoller({
+      initial: initialToken,
+      available: () => !document.hidden && navigator.onLine,
+      changed: () => setChanged(true),
+      read: async (signal) => {
         const r = await fetch(
           "/api/learning-changes?classroom=" + encodeURIComponent(classroom),
           {
             headers: { "X-Bookforest-Actor": owner },
             cache: "no-store",
-            signal: controller.signal,
+            signal,
           },
         );
-        if (r.status === 401) {
-          stopped = true;
-          return;
-        }
+        if (r.status === 401) return null;
         if (!r.ok) throw Error();
         const d = await r.json();
         if (typeof d.token !== "string") throw Error();
-        if (!stopped) {
-          if (baseline && baseline !== d.token) setChanged(true);
-          baseline = d.token;
-          failures = 0;
-        }
-      } catch {
-        failures = Math.min(4, failures + 1);
-      } finally {
-        clearTimeout(timeout);
-        inFlight = false;
-        if (!stopped)
-          timer = setTimeout(poll, Math.min(300000, 60000 * 2 ** failures));
-      }
-    };
+        return d.token;
+      },
+    });
     const resume = () => {
-      if (!document.hidden) void poll();
+      if (!document.hidden) polling.refresh();
     };
-    void poll();
+    polling.start();
     document.addEventListener("visibilitychange", resume);
     window.addEventListener("online", resume);
     return () => {
-      stopped = true;
-      clearTimeout(timer);
-      request?.abort();
+      polling.stop();
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("online", resume);
     };
-  }, [owner, classroom, tab]);
+  }, [owner, classroom, tab, initialToken]);
   if (!changed) return null;
   return (
     <aside className="notice" role="status">

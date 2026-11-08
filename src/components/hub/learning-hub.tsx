@@ -33,6 +33,7 @@ import {LearningUpdates} from "./learning-updates";
 import {hubHref} from "@/lib/hub-navigation";
 export function LearningHub({
   data,
+  learningToken,
   initialTab,
   google,
   googleNotice,
@@ -48,6 +49,7 @@ export function LearningHub({
   terms,
 }: {
   data: HubData;
+  learningToken?:string;
   initialTab?: string;
   google: { configured: boolean; connected: boolean };
   googleNotice?: string;
@@ -221,7 +223,7 @@ export function LearningHub({
         ))}
       </nav>
       {(data.availableClasses?.length??0)>0&&<ClassContext owner={data.profile.id} tab={tab} selected={data.selectedClassroom??""} classes={data.availableClasses??[]}/>}
-      <LearningUpdates owner={data.profile.id} classroom={data.selectedClassroom??""} tab={tab}/>
+      <LearningUpdates owner={data.profile.id} classroom={data.selectedClassroom??""} tab={tab} initialToken={learningToken}/>
       {!data.schemaReady ? (
         <div className="notice">
           <strong>새 교실 기능 연결을 준비하고 있어요.</strong> 기록·성장·경제

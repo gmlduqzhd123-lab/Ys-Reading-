@@ -47,6 +47,10 @@ export default async function HubPage({
   const tab = params.tab && allowed.includes(params.tab) ? params.tab : "today";
   const parsed = searchSchema.safeParse(params);
   const filters = parsed.success ? parsed.data : searchSchema.parse({});
+  // Capture the visible version before loading page data. The first browser
+  // probe can then detect updates that arrive during rendering/hydration.
+  let learningToken="";
+  if(profile.role==="teacher"||profile.consent_status==="verified")try{const client=await createClient(),r=await client.rpc("learning_change_token",{p_classroom:filters.classroom||null}).abortSignal(AbortSignal.timeout(5000));if(typeof r.data==="string")learningToken=r.data;}catch{}
   const data = await loadHub(
     ["search", "overview"].includes(tab) ? 1 : Number(params.page ?? 1),
     tab,
@@ -133,6 +137,7 @@ export default async function HubPage({
     <>
       <LearningHub
         data={data}
+        learningToken={learningToken}
         initialTab={tab}
         google={google}
         googleNotice={params.google}

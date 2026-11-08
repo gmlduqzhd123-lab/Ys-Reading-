@@ -58,7 +58,7 @@ test("class context, 28-record split export, resume and learning notification", 
     (r) => r.url().includes("/api/learning-changes") && r.status() === 200,
   );
   await page.goto("/hub?tab=overview");
-  await baseline;
+  const initialVersion = (await (await baseline).json()).token;
   await expect(
     page.getByLabel("지금 보고 있는 학급", { exact: true }),
   ).toHaveValue(f.classroom);
@@ -84,13 +84,23 @@ test("class context, 28-record split export, resume and learning notification", 
     p_request_id: crypto.randomUUID(),
   });
   expect(added.error).toBeNull();
+  const followUp = page.waitForResponse(async (r) => {
+    if (!r.url().includes("/api/learning-changes") || r.status() !== 200)
+      return false;
+    try {
+      return (await r.json()).token !== initialVersion;
+    } catch {
+      return false;
+    }
+  });
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await followUp;
   await expect(
     page.getByText(
       "새 기록·제출·피드백이 있어요. 현재 입력은 그대로 두고 있습니다.",
       { exact: true },
     ),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 10000 });
   await page
     .getByRole("button", { name: "새 활동 불러오기", exact: true })
     .click();
