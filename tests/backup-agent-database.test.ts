@@ -32,3 +32,9 @@ it("keeps an authentication incident open after reconnection and forged completi
  await send(payload({sequence:3,state:"completed",phase:"backup"}));expect((await health()).healthy).toBe(false);
  await db.exec("update private.backup_runs set verified_at=clock_timestamp()");expect((await health()).healthy).toBe(true);
 });
+it("detects a silent PC independently from a fresh verified backup",async()=>{
+ await db.query("insert into private.backup_runs(id,created_at,verified_at,file_name,bytes,table_count,row_count,snapshot_digest) values($1,now(),now(),'2026-11-08T00-00-00-000Z.bfbak',1,1,1,$2)",[randomUUID(),"a".repeat(64)]);
+ await db.query("update private.backup_agents set last_seen_at=now()-interval '3 hours',state='completed' where id=$1",[id]);
+ expect(await health()).toMatchObject({code:"BACKUP_AGENT_OFFLINE",healthy:false,backupHealthy:true,agentHealthy:false});
+ await send(payload());expect((await health()).code).toBe("OK");
+});

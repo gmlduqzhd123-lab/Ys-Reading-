@@ -63,6 +63,11 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await student
     .getByLabel("기억에 남는 장면과 나의 생각", { exact: true })
     .fill("친구를 도와주는 장면을 읽고 나도 먼저 손을 내밀기로 했습니다.");
+  await expect(student.getByText("독서 기록을 임시 저장했어요. 아래 저장 버튼을 누르면 정식 기록에 반영됩니다.",{exact:true})).toBeVisible();
+  await student.reload();
+  await student.getByRole("button",{name:"임시 독서 기록 불러오기",exact:true}).click();
+  await expect(student.getByLabel("책 제목",{exact:true})).toHaveValue("CI 함께 읽은 책");
+  await expect(student.getByLabel("기억에 남는 장면과 나의 생각",{exact:true})).toHaveValue("친구를 도와주는 장면을 읽고 나도 먼저 손을 내밀기로 했습니다.");
   await student
     .getByRole("button", { name: "독서 기록 저장하기", exact: true })
     .click();

@@ -118,3 +118,4 @@ describe("external API gates after account/session changes", () => {
     expect(r.headers.get("location")).not.toContain("private-code");
   });
 });
+vi.mock("server-only",()=>({}));

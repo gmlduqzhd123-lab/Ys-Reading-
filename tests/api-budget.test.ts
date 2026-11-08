@@ -1,0 +1,7 @@
+import {it,expect,vi,afterEach} from "vitest";
+vi.mock("server-only",()=>({}));
+vi.mock("@/lib/supabase/config",()=>({getSupabaseConfig:()=>({url:"https://project.example.test",key:"public-only"})}));
+import {consumeApiBudget} from "@/lib/api-budget";
+afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
+it("sends only an authenticated daily pseudonym to the shared budget store",async()=>{vi.stubEnv("BOOKFOREST_LIMITER_SECRET","a".repeat(64));const f=vi.fn().mockResolvedValue(new Response(JSON.stringify({allowed:true,retryAfter:0})));vi.stubGlobal("fetch",f);expect((await consumeApiBudget("health","192.0.2.1")).allowed).toBe(true);const args=f.mock.calls[0][1];const body=JSON.parse(args.body),payload=JSON.parse(body.p_payload);expect(payload.subject).toMatch(/^[a-f0-9]{64}$/);expect(args.body).not.toContain("192.0.2.1");expect(args.body).not.toContain("a".repeat(64));expect(body.p_signature).toMatch(/^[a-f0-9]{64}$/);});
+it("does not bypass the limit on denial or configuration/transport failure",async()=>{vi.stubEnv("BOOKFOREST_LIMITER_SECRET","a".repeat(64));vi.stubGlobal("fetch",vi.fn().mockResolvedValue(new Response(JSON.stringify({allowed:false,retryAfter:60}))));expect(await consumeApiBudget("books","user-test")).toEqual({allowed:false,retryAfter:60,unavailable:false});vi.stubEnv("BOOKFOREST_LIMITER_SECRET","");expect((await consumeApiBudget("books","user-test")).unavailable).toBe(true);});

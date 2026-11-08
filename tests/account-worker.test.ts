@@ -45,6 +45,11 @@ function provider(): AccountProvider {
   };
 }
 describe("Auth operations: no secrets in plans, safe retries and provider failures", () => {
+  it("does not create or change credentials when the breach check rejects a password",async()=>{
+    const p=provider();p.assertPassword=vi.fn().mockRejectedValue(Error("BF_PASSWORD_PWNED"));
+    expect(await runAccountJob(input,makeJob(),p)).toMatchObject({ok:false,code:"BF_PASSWORD_PWNED",completed:0});
+    expect(p.create).not.toHaveBeenCalled();expect(p.password).not.toHaveBeenCalled();expect(p.finish).toHaveBeenCalledWith(expect.anything(),0,false);
+  });
   it("renders the same numeric Seoul timestamp across server/browser locales", () => {
     expect(formatOperationsDate("2026-10-30T15:03:04Z")).toBe(
       "2026-10-31 00:03:04",

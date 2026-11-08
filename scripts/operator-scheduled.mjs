@@ -37,6 +37,7 @@ try {
       } finally { mcp.close(); }
     },
     backup: async () => {
+      spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-recovery-settings.mjs"),"export"],{cwd:path.resolve(import.meta.dirname,".."),windowsHide:true,encoding:"utf8",timeout:20000,maxBuffer:10000});
       const r = spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-backup.mjs")],{
         cwd:path.resolve(import.meta.dirname,".."),env:process.env,encoding:"utf8",windowsHide:true,maxBuffer:1024*1024,timeout:25*60*1000,
       });
@@ -46,6 +47,11 @@ try {
       return {ok:true,verified:true};
     },
   });
+  // Copy failures stay separate from a verified primary backup. The operator
+  // sees the last verified copy and local failure state; never claim delivery.
+  if(fs.existsSync(path.join(directory,"backup-copy.bfconfig"))) {
+    spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-check-copy.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:3*60000,maxBuffer:10000});
+  }
   fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({...result,checkedAt:new Date().toISOString(),state:state.state,code:state.code}),{mode:0o600});
   process.exitCode = result.ok === false ? 1 : 0;
 } catch(e) {

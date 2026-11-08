@@ -1,0 +1,4 @@
+import {it,expect} from "vitest";
+import {normalizeIsbn,normalizeBooks,safeBookThumbnail} from "@/lib/book-metadata";
+it("normalizes and verifies ISBN10/13 without merging different editions",()=>{expect(normalizeIsbn("ISBN 0-306-40615-2")).toBe("9780306406157");expect(normalizeIsbn("9780306406158")).toBeNull();const row={title:"어린 왕자",author:"작가",publisher:"출판사",isbn:"9780306406157",thumbnail:""};expect(normalizeBooks([row,{...row,isbn:"0-306-40615-2"},{...row,isbn:"9788970555201"}])).toHaveLength(2);});
+it("rejects remote image URLs outside reviewed book providers",()=>{expect(safeBookThumbnail("http://image.aladin.co.kr/book.jpg")).toBe("https://image.aladin.co.kr/book.jpg");for(const u of ["file:///secret","https://internal.example/secret","https://user:password@books.google.com/image"])expect(safeBookThumbnail(u)).toBe("");});

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
+import {assertPasswordNotBreached} from "../_shared/password-safety.ts";
 import {
   parseAccountInput,
   safePlan,
@@ -18,7 +19,7 @@ Deno.serve(async (req: Request) => {
     new URL(req.url).searchParams.get("health") === "1"
   )
     return new Response(
-      JSON.stringify({ service: "bookforest-account-worker", protocol: 2 }),
+      JSON.stringify({ service: "bookforest-account-worker", protocol: 2, passwordSafety: true, passwordSafetyEnabled: (Deno.env.get("SUPABASE_URL")??"").startsWith("https://") }),
       { status: 200, headers },
     );
   if (req.method !== "POST")
@@ -103,6 +104,7 @@ Deno.serve(async (req: Request) => {
       await verifier.auth.signOut();
     }
     const result = await runAccountJob(input, job as Job, {
+      ...(url.startsWith("https://")?{assertPassword:assertPasswordNotBreached}:{}),
       async create(id, email, password, jobId) {
         const found = await admin.auth.admin.getUserById(id);
         if (found.data.user) {

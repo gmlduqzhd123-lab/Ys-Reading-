@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { randomUUID,randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { missions } from "../src/lib/missions";
 import { totp } from "../e2e/totp";
@@ -273,10 +273,12 @@ fs.writeFileSync(
   }),
   { mode: 0o600 },
 );
+const budgetSecret=randomBytes(32).toString("hex");
+execFileSync("docker",["exec","-i","supabase_db_bookforest","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-q"],{input:`insert into private.api_request_keys values(true,decode('${budgetSecret}','hex')) on conflict(id) do update set secret=excluded.secret;`,stdio:["pipe","pipe","pipe"]});
 if (process.env.GITHUB_ENV)
   fs.appendFileSync(
     process.env.GITHUB_ENV,
-    `NEXT_PUBLIC_SUPABASE_URL=${url}\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${key}\nNEXT_PUBLIC_APP_URL=http://127.0.0.1:3096\nBOOKFOREST_E2E=1\n`,
+    `NEXT_PUBLIC_SUPABASE_URL=${url}\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${key}\nNEXT_PUBLIC_APP_URL=http://127.0.0.1:3096\nBOOKFOREST_E2E=1\nBOOKFOREST_LIMITER_SECRET=${budgetSecret}\n`,
   );
 console.log(
   "Isolated CI fixtures ready. Production data and credentials were not used.",

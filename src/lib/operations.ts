@@ -85,6 +85,8 @@ export function operationsError(error: unknown) {
     return "보관된 학급에는 학생을 새로 발급할 수 없어요. 진행 중인 학급을 선택하거나 학기를 다시 열어 주세요.";
   if (/BF_PASSWORD_WEAK/.test(m))
     return "새 비밀번호는 영문 대·소문자와 숫자를 포함해 12~128자로 입력해 주세요.";
+  if (/BF_PASSWORD_PWNED/.test(m))return "이미 유출된 것으로 알려진 비밀번호예요. 다른 비밀번호를 골라 주세요.";
+  if (/BF_PASSWORD_CHECK_UNAVAILABLE/.test(m))return "비밀번호 안전성을 지금 확인하지 못했어요. 비밀번호는 변경하지 않았습니다. 잠시 후 다시 시도해 주세요.";
   if (/BF_PASSWORD_CURRENT/.test(m))
     return "현재 비밀번호를 다시 확인해 주세요.";
   if (/BF_PASSWORD_DIFFERENT/.test(m))

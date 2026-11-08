@@ -1,6 +1,6 @@
 import fs from "node:fs";
 let healthy = false,
-  code = "BACKUP_CHECK_UNAVAILABLE";
+  code = "BACKUP_CHECK_UNAVAILABLE", warning=false;
 try {
   const r = await fetch(
     "https://reading-blush-zeta.vercel.app/api/backup-health",
@@ -17,6 +17,8 @@ try {
     "BACKUP_STALLED",
     "BACKUP_RETRY_WAIT",
     "BACKUP_RECOVERY_PENDING",
+    "BACKUP_AGENT_MISSING",
+    "BACKUP_AGENT_OFFLINE",
   ];
   if (codes.includes(d.code)) code = d.code;
   healthy =
@@ -25,8 +27,10 @@ try {
     code === "OK" &&
     Number.isFinite(at) &&
     Math.abs(Date.now() - at) < 120000;
+  warning=r.ok && d.backupHealthy===true && ["BACKUP_AGENT_MISSING","BACKUP_AGENT_OFFLINE"].includes(code) && Number.isFinite(at) && Math.abs(Date.now()-at)<120000;
 } catch {}
-const result = { healthy, code, checkedAt: new Date().toISOString() };
+const result = { healthy, warning, code, checkedAt: new Date().toISOString() };
 fs.writeFileSync("backup-result.json", JSON.stringify(result));
 console.log(JSON.stringify(result));
-process.exitCode = healthy ? 0 : 1;
+// A silent PC needs attention; a still-verified backup is not a failed backup.
+process.exitCode = healthy || warning ? 0 : 1;

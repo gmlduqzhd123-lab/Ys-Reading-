@@ -27,6 +27,10 @@ export default function PrivacyPage() {
         </p>
       </section>
       <section className="panel">
+        <h2>비밀번호 안전성 확인</h2>
+        <p>책숲의 계정 발급·비밀번호 변경·재발급에서는 이미 유출된 것으로 알려진 비밀번호를 피하도록 확인합니다. 비밀번호 원문·계정 정보·전체 해시를 외부로 보내지 않고, Pwned Passwords 서비스에 짧은 해시 범위만 조회합니다. 확인 서비스에 연결할 수 없으면 해당 비밀번호 작업을 완료하지 않고 재시도를 안내합니다.</p>
+      </section>
+      <section className="panel">
         <h2>Google Drive 권한은 어떻게 사용하나요?</h2>
         <p>
           Google 로그인과 Drive 내보내기 연결은 별개입니다. Drive 연결은 교사가

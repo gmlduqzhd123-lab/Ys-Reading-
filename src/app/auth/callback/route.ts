@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     error: userError,
   } = await client.auth.getUser();
   if (userError || !user) return failed();
-  const { error: setupError } = await client.rpc(
+  const { data: setup, error: setupError } = await client.rpc(
     "complete_operator_email_setup",
   );
   if (setupError)
@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       status: 303,
       headers: noStore,
     });
+  if(setup?.requiresMfa)return NextResponse.redirect(new URL("/account/security?notice=operator-invitation",origin),{status:303,headers:noStore});
   // The caller cannot choose a redirect or role through query parameters.
   return NextResponse.redirect(new URL("/account", origin), {
     status: 303,

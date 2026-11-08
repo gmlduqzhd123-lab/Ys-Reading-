@@ -1,5 +1,7 @@
 # 책숲 개발 백로그
 
+> 현재 구현·설정 대기·현장 검증의 기준은 [CURRENT-STATUS.md](CURRENT-STATUS.md)입니다. 아래 표의 초기 `planned`/`implemented` 표시는 당시 이력으로 유지합니다.
+
 > 2026-11-02 최신 운영 설명은 [OPERATIONS-EIGHT.md](OPERATIONS-EIGHT.md)를 우선합니다. 아래 과거의 미완료·미설정 표기는 당시 이력입니다.
 
 ## 2026-11-01 · 장애·복구·현황·검색

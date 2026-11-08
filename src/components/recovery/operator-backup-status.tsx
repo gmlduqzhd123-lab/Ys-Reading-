@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatOperationsDate } from "@/lib/operations";
 export interface BackupState {
   asOf: string;
+  copies?:{verified_at:string;backup_digest:string;location_kind:string}[];
   health?: { healthy: boolean; code: string; agentCheckedAt: string | null; agentState: string | null };
   attempts?: {
     id: string;
@@ -22,6 +23,7 @@ export interface BackupState {
   }[];
 }
 export function OperatorBackupStatus({ state }: { state: BackupState | null }) {
+  const copy=state?.copies?.[0],external=copy&&["removable","network"].includes(copy.location_kind),copyFresh=external&&copy.backup_digest===state?.runs[0]?.snapshot_digest&&Date.parse(state!.asOf)-Date.parse(copy.verified_at)<48*3600000;
   const latest = state?.runs[0],
     stale =
       !latest ||
@@ -31,6 +33,7 @@ export function OperatorBackupStatus({ state }: { state: BackupState | null }) {
     <section className="panel">
       <span className="eyebrow">OPERATOR RECOVERY</span>
       <h2>운영자 전체 자료 백업</h2>
+      <p role="status">외부 사본: {copyFresh?`최신 암호화 사본 확인 · ${formatOperationsDate(copy!.verified_at)}`:!copy?"외부 사본 검증 기록이 없어요.":!external?"같은 PC 또는 별도 내부 드라이브의 사본만 확인했어요. 외부 보관은 아직 확인되지 않았습니다.":"새 백업의 외부 사본을 다시 확인해 주세요."}</p>
       <p>
         선택한 운영자 PC에 계정·권한·학습 기록·경제 원장을 암호화해 보관합니다.
         백업 파일을 다시 복호화하고 별도 PostgreSQL 환경에 복원해 내용·관계·접근
@@ -40,6 +43,7 @@ export function OperatorBackupStatus({ state }: { state: BackupState | null }) {
         <p role="status">
           자동 연결 점검 · {formatOperationsDate(state.health.agentCheckedAt)} · {state.health.code === "BACKUP_AUTH_REQUIRED"
             ? "Supabase 연결 재인증이 필요해요. 운영자 PC에서 Codex의 Supabase MCP를 다시 연결해 주세요."
+            : ["BACKUP_AGENT_MISSING","BACKUP_AGENT_OFFLINE"].includes(state.health.code) ? "백업 PC의 보고 신호가 없거나 2시간 이상 지났어요. 기존 백업 검증 시각과 별도로 PC 전원·로그인·예약 작업을 확인해 주세요."
             : state.health.code === "BACKUP_RETRY_WAIT" ? "연결을 재시도하고 있어요."
             : state.health.code === "BACKUP_RECOVERY_PENDING" ? "연결 회복 후 새 백업을 검증하고 있어요."
             : state.health.healthy ? "정상" : "백업 상태를 확인해 주세요."}

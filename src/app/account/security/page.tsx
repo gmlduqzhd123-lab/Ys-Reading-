@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { OperatorMfa } from "@/components/operator-mfa";
+import {OperatorInvitation} from "@/components/recovery/operator-invitation";
 export const metadata = { title: "운영자 2단계 인증" };
 export default async function SecurityPage() {
   const p = await requireProfile();
   if (p.role !== "teacher") redirect("/account");
-  return <OperatorMfa />;
+  return <><OperatorMfa /><OperatorInvitation /></>;
 }

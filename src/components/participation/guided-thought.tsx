@@ -1,11 +1,17 @@
 "use client";
 import { useState } from "react";
-export function GuidedThought({ initial = "" }: { initial?: string }) {
-  const [mode, setMode] = useState(initial ? "free" : "line"),
-    [thought, setThought] = useState(initial);
-  const [scene, setScene] = useState(""),
-    [feeling, setFeeling] = useState(""),
-    [idea, setIdea] = useState("");
+export type ThoughtMemo={mode:string;scene:string;feeling:string;idea:string};
+export function GuidedThought({ initial = "",value,onChange,memo,onMemoChange }: { initial?: string;value?:string;onChange?:(value:string)=>void;memo?:ThoughtMemo;onMemoChange?:(value:ThoughtMemo)=>void }) {
+  const [ownMode, setOwnMode] = useState(initial ? "free" : "line"),
+    [ownThought, setOwnThought] = useState(initial);
+  const thought=value??ownThought;
+  const setThought=(next:string|((previous:string)=>string))=>{const text=typeof next==="function"?next(thought):next;setOwnThought(text);onChange?.(text);};
+  const [ownScene, setOwnScene] = useState(""),
+    [ownFeeling, setOwnFeeling] = useState(""),
+    [ownIdea, setOwnIdea] = useState("");
+  const mode=memo?.mode??ownMode,scene=memo?.scene??ownScene,feeling=memo?.feeling??ownFeeling,idea=memo?.idea??ownIdea;
+  const updateMemo=(next:Partial<ThoughtMemo>)=>{const all={mode,scene,feeling,idea,...next};setOwnMode(all.mode);setOwnScene(all.scene);setOwnFeeling(all.feeling);setOwnIdea(all.idea);onMemoChange?.(all);};
+  const setMode=(v:string)=>updateMemo({mode:v}),setScene=(v:string)=>updateMemo({scene:v}),setFeeling=(v:string)=>updateMemo({feeling:v}),setIdea=(v:string)=>updateMemo({idea:v});
   return (
     <div className="guided-thought">
       <label className="field">
@@ -75,9 +81,7 @@ export function GuidedThought({ initial = "" }: { initial?: string }) {
                 .join("\n");
               if (thought.length + lines.length + 2 <= 10000) {
                 setThought((old) => (old ? old + "\n\n" + lines : lines));
-                setScene("");
-                setFeeling("");
-                setIdea("");
+                updateMemo({scene:"",feeling:"",idea:""});
               }
             }}
           >

@@ -10,7 +10,8 @@ export async function hubCommand(
 ): Promise<ActionResult<Record<string, unknown>>> {
   try {
     const value = commandSchema.parse(input);
-    await requireProfile();
+    const actor=await requireProfile();
+    if(value.expectedActor&&value.expectedActor!==actor.id)throw Error("BF_ACCOUNT_CHANGED");
     if (value.command === "reading_save")
       value.payload = readingSchema.parse(value.payload);
     const client = await createClient();

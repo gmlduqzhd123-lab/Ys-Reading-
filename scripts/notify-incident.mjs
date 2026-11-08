@@ -71,7 +71,7 @@ for (const number of decision.close) {
   await api("/issues/" + number + "/comments", "POST", {
     body:
       (backup
-        ? "새 전체 백업의 복원 검증 성공을 확인했습니다. [점검 실행]("
+        ? "전체 백업·PC 연결 점검의 정상 상태를 확인했습니다. [점검 실행]("
         : "서비스와 서버 정기 점검 신호의 회복을 확인했습니다. [점검 실행](") +
       run +
       ")",

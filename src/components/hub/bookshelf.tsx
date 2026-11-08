@@ -6,7 +6,7 @@ import type { HubData, ReadingLog } from "@/lib/hub-data";
 import { ClassField, Empty, Field, HubForm, Panel, string } from "./shared";
 import { PaperBook } from "@/components/paper-book";
 import { Plus, ArrowDownRight, ArrowRight, PenLine } from "lucide-react";
-import { GuidedThought } from "@/components/participation/guided-thought";
+import { ReadingEditor } from "./reading-editor";
 export function Bookshelf({ data }: { data: HubData }) {
   const [query, setQuery] = useState(""),
     [books, setBooks] = useState<Book[]>([]),
@@ -48,7 +48,7 @@ export function Bookshelf({ data }: { data: HubData }) {
       setMessage(
         valid.length
           ? `${json.source ?? "도서"} 검색 결과입니다. 원하는 판본인지 책 정보를 확인해 주세요.`
-          : "검색 결과가 없어요. 아래에서 책 정보를 직접 입력할 수 있습니다.",
+          : "검색 결과가 없어요. 아래에서 책 정보를 직접 입력할 수 있습니다." + (json.domesticConfigured===false?" 국내 도서 검색 연결을 준비 중이므로 제목을 바꾸어 검색해 보세요.":""),
       );
     } catch (e) {
       if (!request.signal.aborted)
@@ -112,7 +112,8 @@ export function Bookshelf({ data }: { data: HubData }) {
                 className="book-result"
                 key={`${b.isbn}-${i}`}
                 onClick={() => {
-                  setBook(b);
+                  if(document.querySelector('form[data-reading-editor="true"][data-hub-dirty="true"]')&&!window.confirm("아직 임시 저장하지 못한 독서 기록이 있어요. 다른 책을 선택할까요?"))return;
+                    setBook(b);
                   setEdit(null);
                   setBooks([]);
                 }}
@@ -129,102 +130,14 @@ export function Bookshelf({ data }: { data: HubData }) {
                 <span>
                   <strong>{b.title}</strong>
                   <small>
-                    {b.author} · {b.publisher}
+                    {b.author} · {b.publisher}{b.isbn&&` · ISBN ${b.isbn}`}
                   </small>
                 </span>
               </button>
             ))}
           </div>
-          <HubForm
-            key={`${edit ? `${edit.id}:${edit.revision}` : JSON.stringify(book)}:${formVersion}`}
-            command="reading_save"
-            disabled={
-                !data.classes.some(c=>c.term_state!=="archived") || data.profile.consent_status !== "verified"
-            }
-            label={edit ? "독서 기록 수정하기" : "독서 기록 저장하기"}
-            onSuccess={() => {
-              setEdit(null);
-              setBook(null);
-              setFormVersion((v) => v + 1);
-              setMessage(
-                "독서 기록을 저장했어요. 아래 내 기록에서 확인할 수 있습니다.",
-              );
-            }}
-            payload={(f) => ({
-              ...(edit ? { id: edit.id, revision: edit.revision } : {}),
-              classroomId: string(f, "classroomId"),
-              book: {
-                title: string(f, "title"),
-                author: string(f, "author"),
-                publisher: string(f, "publisher"),
-                isbn: string(f, "isbn"),
-                thumbnail: book?.thumbnail ?? edit?.book.thumbnail ?? "",
-              },
-              readOn: string(f, "readOn"),
-              status: string(f, "status"),
-              thought: string(f, "thought"),
-              question: string(f, "question"),
-            })}
-          >
-            <div className="hub-form-grid">
-              <ClassField classes={data.classes} />
-              <Field
-                name="title"
-                label="책 제목"
-                defaultValue={book?.title ?? edit?.book.title ?? ""}
-                maxLength={200}
-              />
-              <Field
-                name="author"
-                label="저자"
-                required={false}
-                defaultValue={book?.author ?? edit?.book.author ?? ""}
-                maxLength={200}
-              />
-              <Field
-                name="publisher"
-                label="출판사"
-                required={false}
-                defaultValue={book?.publisher ?? edit?.book.publisher ?? ""}
-                maxLength={200}
-              />
-              <Field
-                name="isbn"
-                label="ISBN"
-                required={false}
-                defaultValue={book?.isbn ?? edit?.book.isbn ?? ""}
-                maxLength={40}
-              />
-              <Field
-                name="readOn"
-                label="읽은 날짜"
-                type="date"
-                defaultValue={edit?.read_on ?? koreanDay()}
-                max={koreanDay()}
-              />
-            </div>
-            <label className="field">
-              독서 상태
-              <select name="status" defaultValue={edit?.status ?? "reading"}>
-                <option value="reading">읽는 중</option>
-                <option value="completed">완독했어요</option>
-              </select>
-            </label>
-            <GuidedThought initial={edit?.thought ?? ""}/>
-            <label className="field">
-              더 생각해 보고 싶은 질문
-              <textarea
-                name="question"
-                defaultValue={edit?.question ?? ""}
-                maxLength={2000}
-                rows={2}
-              />
-            </label>
-            <p className="form-help">
-              기록 저장과 보상 지급은 별개예요. 완독 기록을 선생님이 확인하면
-              경험치와 학급 화폐가 지급됩니다. 확인한 기록은 보존돼요.
-            </p>
-          </HubForm>
+          <ReadingEditor key={`${edit ? `${edit.id}:${edit.revision}` : JSON.stringify(book)}:${formVersion}`} data={data} book={book} edit={edit} onSaved={()=>{setEdit(null);setBook(null);setFormVersion(v=>v+1);setMessage("독서 기록을 저장했어요. 아래 내 기록에서 확인할 수 있습니다.");}} />
+
           {!data.classes.length && (
             <p className="notice">아래 학급 연결 신청을 먼저 진행해 주세요.</p>
           )}

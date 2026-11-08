@@ -38,7 +38,7 @@ export function clearDraftRecovery() {
   try {
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
       const k = sessionStorage.key(i);
-      if (k?.startsWith(prefix)) sessionStorage.removeItem(k);
+      if (k?.startsWith(prefix)||k?.startsWith("bookforest.reading-recovery:")) sessionStorage.removeItem(k);
     }
   } catch {
     /* Storage may be blocked. */

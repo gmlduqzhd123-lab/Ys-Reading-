@@ -63,4 +63,23 @@ describe("Trusted independent monitoring", () => {
       ),
     ).toContain("BF_INVALID_INPUT");
   });
+  it("retains only bounded diagnostic metadata and denies client writes and operator history reads",async()=>{
+    const at=new Date().toISOString();
+    const body={errorId:"10000000-0000-4000-8000-000000000001",commit:"a".repeat(40),diagnostics:{stage:"database_pool",databaseMs:5000,authenticationMs:42},message:"PRIVATE STUDENT CONTENT",token:"SECRET"};
+    await db.query("select private.record_monitor_diagnostic($1,503,$2,$3)",[at,body,"iad1:request-1"]);
+    const row=(await db.query("select * from private.monitor_diagnostics")).rows[0];
+    expect(row).toMatchObject({stage:"database_pool",database_ms:5000,authentication_ms:42,deployment_sha:"a".repeat(40)});
+    expect(JSON.stringify(row)).not.toMatch(/PRIVATE|SECRET/);
+    await db.exec("set role anon");
+    expect(await forbidden(db,()=>db.query("select * from private.monitor_diagnostics"))).toContain("permission denied");
+    expect(await forbidden(db,()=>db.query("select public.operator_monitor_diagnostics()"))).toContain("permission denied");
+    await db.exec("reset role;set role authenticated");
+    expect(await forbidden(db,()=>db.query("select public.operator_monitor_diagnostics()"))).toContain("BF_FORBIDDEN");
+  });
+  it("classifies non-JSON hosting failures and timeouts without inventing a DB failure",async()=>{
+    await db.query("select private.record_monitor_diagnostic($1,500,$2,$3)",[new Date(Date.now()-1000).toISOString(),{},"invalid secret text"]);
+    await db.query("select private.record_monitor_diagnostic($1,null,$2,null)",[new Date().toISOString(),{}]);
+    const rows=(await db.query("select stage,upstream_request_id from private.monitor_diagnostics order by checked_at")).rows;
+    expect(rows).toEqual([{stage:"platform",upstream_request_id:null},{stage:"timeout",upstream_request_id:null}]);
+  });
 });

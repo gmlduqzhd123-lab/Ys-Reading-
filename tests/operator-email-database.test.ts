@@ -102,6 +102,16 @@ describe("operator email reservation: verified identity only", () => {
     await actor(owner);
     expect((await claim()).claimed).toBe(false);
   });
+  it("requires recipient MFA before granting an additional operator",async()=>{
+    await db.query("update public.profiles set role='teacher' where id=$1",[other]);
+    await db.query("insert into private.operators(user_id) values($1)",[other]);
+    await db.query("update auth.users set email_confirmed_at=now() where id=$1",[owner]);
+    await actor(owner);
+    expect(await claim()).toMatchObject({claimed:false,requiresMfa:true});
+    await db.exec("reset role");expect((await one("select count(*)::int n from private.operators")).n).toBe(1);
+    await actor(owner);await db.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({aal:"aal2",amr:[{method:"totp",timestamp:Math.floor(Date.now()/1000)}]})]);
+    expect((await claim()).claimed).toBe(true);
+  });
   it("rejects an expired invitation", async () => {
     await db.query(
       "update auth.users set email_confirmed_at=now() where id=$1",

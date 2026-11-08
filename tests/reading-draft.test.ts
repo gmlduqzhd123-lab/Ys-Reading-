@@ -1,0 +1,5 @@
+import {it,expect} from "vitest";
+import {readingDraftPayload,readLocalReadingDraft} from "@/lib/reading-draft";
+const value={title:"책",author:"",publisher:"",isbn:"",thumbnail:"",readOn:"2026-11-08",status:"reading",thought:"생각",question:"",guidance:JSON.stringify({mode:"guided",scene:"장면",feeling:"마음",idea:"생각"})};
+it("keeps recovery scoped to one account/context and expires at 24 hours",()=>{const now=Date.now(),raw=(changes={})=>JSON.stringify({user:"a",context:"class:new",at:now,value,...changes});expect(readLocalReadingDraft(raw(),"a","class:new",now)).toEqual(value);for(const [user,context] of [["b","class:new"],["a","other:new"]])expect(readLocalReadingDraft(raw(),user,context,now)).toBeNull();expect(readLocalReadingDraft(raw({at:now-86400000}),"a","class:new",now)).toBeNull();expect(readLocalReadingDraft(raw({at:now+1}),"a","class:new",now)).toBeNull();});
+it("does not restore malformed guidance or foreign fields",()=>{expect(readingDraftPayload.safeParse({...value,guidance:'{"secret":"injected"}'}).success).toBe(false);expect(readingDraftPayload.safeParse({...value,operator:true}).success).toBe(false);});

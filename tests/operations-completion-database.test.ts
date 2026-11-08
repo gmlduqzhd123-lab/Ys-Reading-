@@ -47,7 +47,9 @@ it("keeps public backup metadata bounded and flags missing, failed and expired r
   expect(value.code).toBe("BACKUP_AUTH_REQUIRED");
   expect(Object.keys(value).sort()).toEqual([
     "agentCheckedAt",
+    "agentHealthy",
     "agentState",
+    "backupHealthy",
     "checkedAt",
     "code",
     "healthy",

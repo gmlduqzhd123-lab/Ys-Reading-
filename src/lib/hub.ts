@@ -39,6 +39,7 @@ export const commandSchema = z
     command: z.enum(commands),
     payload: z.record(z.string(), z.unknown()),
     requestId: z.uuid(),
+    expectedActor:z.uuid().optional(),
   })
   .strict();
 export const readingSchema = z

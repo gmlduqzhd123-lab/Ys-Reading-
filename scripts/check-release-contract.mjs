@@ -32,6 +32,7 @@ try {
     !d.scopedStaff ||
     !d.operationsCompletion ||
     !d.exportJobs ||
+    !d.readingDrafts || !d.signedApiBudget || !d.monitorDiagnostics || !d.recoveryReadiness || !v.passwordSafety ||
     v.service !== "bookforest-account-worker" ||
     v.protocol < d.minimumWorkerProtocol
   )

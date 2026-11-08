@@ -3,6 +3,8 @@ export const marker = "<!-- bookforest-service-incident-v1 -->";
 export const backupMarker = "<!-- bookforest-backup-incident-v1 -->";
 export function backupIncidentText(code) {
   const reasons = {
+    BACKUP_AGENT_MISSING: "백업 PC의 연결 신호가 없습니다. 운영자 PC에서 백업 에이전트 등록과 예약 작업 상태를 확인해 주세요. 기존 백업의 검증 시각과 별도로 확인합니다.",
+    BACKUP_AGENT_OFFLINE: "백업 PC의 연결 신호가 2시간 이상 없습니다. PC 전원·Windows 로그인·네트워크·예약 작업을 확인해 주세요. 보고 도구 자체의 중단도 확인해야 합니다.",
     BACKUP_AUTH_REQUIRED: "Codex의 Supabase 연결 인증을 갱신해야 합니다. 운영자 PC에서 Codex의 Supabase MCP를 재인증해 주세요. 인증 복구 후 예약 작업이 누락된 백업과 복원 검사를 자동 실행합니다.",
     BACKUP_RETRY_WAIT: "MCP 연결 점검에 실패했습니다. 운영자 PC가 15~60분 간격으로 재시도합니다. 네트워크와 Codex 설치 상태를 확인해 주세요.",
     BACKUP_RECOVERY_PENDING: "연결은 회복됐지만 새 전체 백업의 복원 검사가 아직 완료되지 않았습니다. 완료 전에는 복구 처리하지 않습니다.",

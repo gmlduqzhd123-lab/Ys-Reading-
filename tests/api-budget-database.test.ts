@@ -1,0 +1,10 @@
+import {beforeAll,afterAll,beforeEach,afterEach,it,expect} from "vitest";
+import {randomBytes,createHmac} from "node:crypto";
+import type {PGlite} from "@electric-sql/pglite";
+import {runtimeDb,forbidden} from "./helpers/runtime-db";
+let db:PGlite;const key=randomBytes(32),subject="a".repeat(64);
+beforeAll(async()=>{db=await runtimeDb();await db.query("insert into private.api_request_keys values(true,$1)",[key]);});afterAll(()=>db?.close());beforeEach(()=>db.exec("begin"));afterEach(()=>db.exec("rollback;reset role"));
+const raw=(changes:any={})=>JSON.stringify({scope:"books",subject,at:Math.floor(Date.now()/1000),...changes});
+const rpc=async(p=raw(),sig=createHmac("sha256",key).update(p).digest("hex"))=>(await db.query<{v:any}>("select public.consume_api_budget($1,$2) v",[p,sig])).rows[0].v;
+it("enforces one shared per-user budget and does not burn global allowance on denied attempts",async()=>{await db.exec("set role anon");for(let i=0;i<30;i++)expect((await rpc()).allowed).toBe(true);for(let i=0;i<3;i++)expect((await rpc()).allowed).toBe(false);await db.exec("reset role");expect((await db.query<{count:number}>("select count from private.api_request_budgets where subject='global'")).rows[0].count).toBe(30);expect((await rpc(raw({subject:"b".repeat(64)}))).allowed).toBe(true);});
+it("refuses forged, expired or oversized requests and keeps keys private",async()=>{for(const p of [raw({subject:"forged"}),raw({at:0}),raw({token:"private"}),"x".repeat(600)])expect(await forbidden(db,()=>rpc(p))).toContain("BF_FORBIDDEN");expect(await forbidden(db,()=>rpc(raw(),"0".repeat(64)))).toContain("BF_FORBIDDEN");await db.exec("set role authenticated");expect(await forbidden(db,()=>db.query("select * from private.api_request_keys"))).toContain("permission denied");});

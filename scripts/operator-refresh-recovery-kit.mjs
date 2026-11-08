@@ -52,6 +52,14 @@ try {
   const guard = path.join(vault, "privacy-current.bfguard");
   if (!fs.existsSync(guard)) throw Error("PRIVACY_CHECKPOINT_REQUIRED");
   fs.copyFileSync(guard, path.join(directory, "privacy-current.bfguard"));
+  const settings=path.join(vault,"recovery-settings.bfsettings");
+  if(fs.existsSync(settings)){
+    const metadata=decryptBackup(fs.readFileSync(settings,"utf8"),key);
+    if(metadata.projectRef!==projectRef||metadata.format!=="bookforest-recovery-settings")throw Error("SETTINGS_FORMAT_INVALID");
+    const target=path.join(directory,"recovery-settings.bfsettings");
+    if(fs.existsSync(target)&&fs.lstatSync(target).isSymbolicLink())throw Error("RECOVERY_KIT_FILE_REQUIRED");
+    fs.copyFileSync(settings,target);
+  }
   if (fs.readFileSync(keyFile, "utf8") !== wrapped)
     throw Error("RECOVERY_KEY_CHANGED");
   fs.writeFileSync(

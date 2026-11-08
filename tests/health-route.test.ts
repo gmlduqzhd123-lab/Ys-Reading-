@@ -1,0 +1,7 @@
+import {it,expect,vi,beforeEach,afterEach} from "vitest";
+const mocks=vi.hoisted(()=>({check:vi.fn(),budget:vi.fn()}));
+vi.mock("@/lib/service-health",()=>({checkService:mocks.check}));vi.mock("@/lib/api-budget",()=>({consumeApiBudget:mocks.budget}));vi.mock("@/lib/supabase/config",()=>({getSupabaseConfig:()=>({url:"https://example.test",key:"public"}),isSupabaseConfigured:()=>true}));
+import {GET} from "@/app/api/health/route";
+beforeEach(()=>{mocks.check.mockReset();mocks.budget.mockReset().mockResolvedValue({allowed:true});vi.spyOn(console,"error").mockImplementation(()=>{});});afterEach(()=>vi.restoreAllMocks());
+it("returns bounded 503 diagnostics instead of an unhandled 500 or raw exception",async()=>{mocks.check.mockRejectedValue(Error("private provider secret"));const r=await GET(new Request("https://example.test/api/health?deep=1"));expect(r.status).toBe(503);const d=await r.json();expect(d.diagnostics.stage).toBe("application");expect(JSON.stringify(d)).not.toContain("private provider secret");expect(d.errorId).toMatch(/^[a-f0-9-]{36}$/);});
+it("blocks repeated deep probes before expensive checks and leaves shallow metadata available",async()=>{mocks.budget.mockResolvedValue({allowed:false,retryAfter:60,unavailable:false});const r=await GET(new Request("https://example.test/api/health?deep=1"));expect(r.status).toBe(429);expect(r.headers.get("Retry-After")).toBe("60");expect(mocks.check).not.toHaveBeenCalled();expect((await GET(new Request("https://example.test/api/health"))).status).toBe(200);});

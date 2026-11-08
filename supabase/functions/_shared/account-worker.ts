@@ -138,6 +138,7 @@ export function safePlan(input: AccountInput) {
   return {};
 }
 export interface AccountProvider {
+  assertPassword?(password:string):Promise<void>;
   create(
     id: string,
     email: string,
@@ -169,6 +170,7 @@ export async function runAccountJob(
         const student = input.students?.[i];
         if (!student || student.loginId !== item.loginId)
           throw new Error("BF_IDEMPOTENCY_CONFLICT");
+        await provider.assertPassword?.(student.password);
         await provider.create(
           item.id,
           `${student.loginId}@students.bookforest.invalid`,
@@ -179,9 +181,9 @@ export async function runAccountJob(
         const deletion = await provider.purge(job.plan.deletionId!);
         if (deletion.studentId !== item.id) throw new Error("BF_FORBIDDEN");
         if (deletion.scope === "account") await provider.remove(item.id);
-      } else await provider.password(item.id, input.password!);
+      } else {await provider.assertPassword?.(input.password!);await provider.password(item.id, input.password!);}
       job = await provider.finish(job, i, true);
-    } catch {
+    } catch(error) {
       // Never return provider error bodies: they may contain identifiers or credentials.
       try {
         await provider.finish(job, i, false);
@@ -190,6 +192,7 @@ export async function runAccountJob(
       }
       return {
         ok: false,
+        ...(["BF_PASSWORD_PWNED","BF_PASSWORD_CHECK_UNAVAILABLE"].includes(error instanceof Error?error.message:"")?{code:(error as Error).message}:{}),
         completed: Object.values(job.results).filter((v) => v === "done")
           .length,
         total: job.plan.items.length,
