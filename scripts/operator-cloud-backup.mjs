@@ -10,8 +10,9 @@ import {
 import { cloudKey } from "./lib/cloud-key.mjs";
 import { decryptCloud } from "../supabase/functions/_shared/cloud-crypto.mjs";
 import { prepareBackup, verifyRestore } from "./lib/operator-restore.mjs";
+import { registrationDecision } from "./lib/cloud-registration.mjs";
 const directory = defaultVault(),
-  key = vaultKey(directory),
+  key = vaultKey(directory, { create: false }),
   derived = cloudKey(key),
   m = await nativeMcp();
 try {
@@ -21,9 +22,12 @@ try {
   )
     throw Error("PROJECT_SCOPE_MISMATCH");
   if (process.argv.includes("setup")) {
-    await m.call("execute_sql", {
-      query: `insert into private.cloud_backup_config(singleton,public_key) values(true,'${derived.publicKey}') on conflict(singleton) do update set public_key=excluded.public_key,enabled=true;`,
+    const config = await m.call("execute_sql", {query:"select public_key from private.cloud_backup_config where singleton"});
+    registrationDecision(config[0]?.public_key, derived.publicKey);
+    const saved=await m.call("execute_sql", {
+      query: `insert into private.cloud_backup_config(singleton,public_key) values(true,'${derived.publicKey}') on conflict(singleton) do update set enabled=true where cloud_backup_config.public_key=excluded.public_key returning singleton;`,
     });
+    if(saved.length!==1)throw Error("RECOVERY_KEY_CHANGED_RETRY");
     console.log(
       JSON.stringify({ ok: true, configured: true, privateKeyExported: false }),
     );
@@ -90,6 +94,7 @@ try {
         JSON.stringify({
           ...proof,
           job: latest.id,
+          cipherDigest:latest.digest,
           checkedAt: new Date().toISOString(),
         }),
         { mode: 0o600 },

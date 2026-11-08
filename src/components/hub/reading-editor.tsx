@@ -36,7 +36,7 @@ export function ReadingEditor({
     thought: edit?.thought ?? "",
     question: edit?.question ?? "",
     guidance: JSON.stringify({
-      mode: edit?.thought ? "free" : "line",
+      mode: edit?.thought ? "free" : (classes.find(c=>c.id===(edit?.classroom_id??classes[0]?.id))?.reading_guidance??"line"),
       scene: "",
       feeling: "",
       idea: "",

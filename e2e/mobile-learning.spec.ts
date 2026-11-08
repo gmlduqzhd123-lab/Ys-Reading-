@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./checked-test";
 import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs";
 import JSZip from "jszip";

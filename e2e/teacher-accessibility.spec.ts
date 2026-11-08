@@ -1,0 +1,39 @@
+import {test,expect} from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import fs from "node:fs";
+import {watchBrowserErrors} from "./browser-errors";
+const f=JSON.parse(fs.readFileSync("e2e/.runtime/fixtures.json","utf8"));
+test.use({timezoneId:"America/Los_Angeles"});
+test("teacher roster, invitations, term progression, batch export and simple student view are accessible",async({page,browser})=>{
+  const check=watchBrowserErrors(page);
+  await page.goto("/login");
+  await page.getByLabel("학생 아이디 또는 선생님 이메일",{exact:true}).fill(f.accounts[1].email);
+  await page.getByLabel("비밀번호",{exact:true}).fill(f.accounts[1].password);
+  await page.getByRole("button",{name:"내 교실로 들어가기",exact:true}).click();
+  await expect(page).toHaveURL(/\/hub/);
+  for(const route of ["/operations","/collaboration?classroom="+f.classroom,"/hub?tab=terms&classroom="+f.classroom,"/hub?tab=exports&classroom="+f.classroom,"/hub?tab=manage&classroom="+f.classroom]){
+    await page.goto(route);
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link",{name:"본문으로 바로가기",exact:true})).toBeFocused();
+    const result=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
+    expect(result.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),route).toEqual([]);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(1281);
+  }
+  await page.getByRole("checkbox",{name:"학생 메뉴 간편 보기",exact:true}).check();
+  await page.getByLabel("새 독서 기록의 작성 도움",{exact:true}).selectOption("guided");
+  await page.getByRole("button",{name:"이 학급 학생 화면 설정 저장",exact:true}).click();
+  await expect(page.getByText("학생 화면 시작 설정을 저장했어요.",{exact:true})).toBeVisible();
+  const c=await browser.newContext(),student=await c.newPage(),studentCheck=watchBrowserErrors(student);
+  await student.goto("/login");
+  await student.getByLabel("학생 아이디 또는 선생님 이메일",{exact:true}).fill(f.mobile.loginId);
+  await student.getByLabel("비밀번호",{exact:true}).fill(f.mobile.password);
+  await student.getByRole("button",{name:"내 교실로 들어가기",exact:true}).click();
+  await expect(student).toHaveURL(/\/hub/);
+  await student.goto("/hub?tab=today&classroom="+f.classroom);
+  const more=student.locator("summary").filter({hasText:"더 많은 활동 보기"});
+  await expect(more).toBeVisible();await more.focus();await student.keyboard.press("Enter");
+  await expect(student.getByRole("navigation",{name:"추가 책숲 활동"})).toBeVisible();
+  await student.goto("/hub?tab=reading&classroom="+f.classroom+"#reading-editor");
+  await expect(student.getByLabel("작성 방법 선택",{exact:true})).toHaveValue("guided");
+  check();studentCheck();await c.close();
+});

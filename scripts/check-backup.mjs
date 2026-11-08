@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { cloudHealth } from "./lib/cloud-health.mjs";
 let healthy = false,
   code = "BACKUP_CHECK_UNAVAILABLE", warning=false;
 try {
@@ -31,7 +32,8 @@ try {
 } catch {}
 // Keep restore-verified primary health distinct from server ciphertext creation.
 try{const r=await fetch("https://reading-blush-zeta.vercel.app/api/cloud-backup-health",{cache:"no-store",signal:AbortSignal.timeout(10000)});
- if(r.status!==404){const d=await r.json();if(!r.ok||d.configured===true&&(!d.healthy||Date.now()-Date.parse(d.storedAt)>48*3600000)){healthy=false;warning=false;code="CLOUD_BACKUP_STALE";}}
+ const cloud=cloudHealth(r.status,await r.json());
+ if(!cloud.healthy&&(!cloud.warning||healthy||warning)){healthy=false;warning=cloud.warning;code=cloud.code;}
 }catch{healthy=false;warning=false;code="CLOUD_BACKUP_CHECK_UNAVAILABLE";}
 const result = { healthy, warning, code, checkedAt: new Date().toISOString() };
 fs.writeFileSync("backup-result.json", JSON.stringify(result));

@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { Bookshelf } from "./bookshelf";
+import {StudentViewSettings} from "./student-view-settings";
 import { Character, Economy } from "./growth-economy";
 import { Management, Plaza } from "./community";
 import { Exports } from "./exports";
@@ -97,6 +98,9 @@ export function LearningHub({
       : []),
   ];
   const tab = tabs.some(([id]) => id === initialTab) ? initialTab! : "today";
+  const simple=!teacher&&data.classes.length===1&&data.classes[0].simple_student_view===true;
+  const primaryTabs=simple?tabs.filter(([id])=>["today","reading","growth"].includes(id)):tabs;
+  const otherTabs=simple?tabs.filter(([id])=>!["today","reading","growth"].includes(id)):[];
   if (teacher && data.staffClasses) {
     const permitted = new Set(
       data.staffClasses
@@ -211,7 +215,7 @@ export function LearningHub({
         </div>
       </div>
       <nav className="workspace-tabs" aria-label="책장과 성장 메뉴">
-        {tabs.map(([id, label]) => (
+        {primaryTabs.map(([id, label]) => (
           <Link
             key={id}
             className={`hub-tab ${tab === id ? "selected" : ""}`}
@@ -222,6 +226,7 @@ export function LearningHub({
           </Link>
         ))}
       </nav>
+      {otherTabs.length>0&&<details className="panel" key={data.selectedClassroom} open={otherTabs.some(([id])=>id===tab)||undefined}><summary>더 많은 활동 보기</summary><nav className="workspace-tabs" aria-label="추가 책숲 활동">{otherTabs.map(([id,label])=><Link key={id} className={`hub-tab ${tab===id?"selected":""}`} aria-current={tab===id?"page":undefined} href={hubHref(id,data.selectedClassroom)}>{label}</Link>)}</nav></details>}
       {(data.availableClasses?.length??0)>0&&<ClassContext owner={data.profile.id} tab={tab} selected={data.selectedClassroom??""} classes={data.availableClasses??[]}/>}
       <LearningUpdates owner={data.profile.id} classroom={data.selectedClassroom??""} tab={tab} initialToken={learningToken}/>
       {!data.schemaReady ? (
@@ -342,7 +347,7 @@ export function LearningHub({
                   <Economy data={data} />
                 </>
               )}
-              {tab === "manage" && <Management data={data} />}
+              {tab === "manage" && <>{teacher&&owns&&<StudentViewSettings owner={data.profile.id} classes={data.classes.filter(c=>c.teacher_id===data.profile.id)}/>}<Management data={data} /></>}
               {!teacher && !data.classes.length && tab !== "manage" && (
                 <Management data={data} />
               )}

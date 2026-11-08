@@ -120,10 +120,11 @@ export function ensureVault(directory) {
     if (r.status !== 0) throw Error("BACKUP_FOLDER_ACL_FAILED");
   }
 }
-export function vaultKey(directory) {
+export function vaultKey(directory, { create = true } = {}) {
   ensureVault(directory);
   const file = path.join(directory, "operator-key.dpapi");
   if (fs.existsSync(file)) return protectLocalKey(fs.readFileSync(file), true);
+  if (!create) throw Error("RECOVERY_KEY_MISSING");
   const key = randomBytes(32);
   fs.writeFileSync(file, protectLocalKey(key), { flag: "wx", mode: 0o600 });
   return key;

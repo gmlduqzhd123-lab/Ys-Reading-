@@ -12,6 +12,8 @@ export const exportSchema = z
     title: z.string().trim().min(1).max(100).default("나의 책숲 기록"),
     requestId: z.uuid(),
     includeNames: z.boolean().optional(),
+    batchId: z.uuid().optional(),
+    part: z.number().int().min(0).max(399).optional(),
   })
   .strict();
 export interface ExportEntry {
@@ -31,6 +33,13 @@ export async function loadExportBundle(
   if (profile.role === "student" && profile.consent_status !== "verified")
     throw new Error("BF_CONSENT_REQUIRED");
   const client = await createClient();
+  if (input.batchId) {
+    if (input.part === undefined) throw Error("BF_FORBIDDEN");
+    const r = await client.rpc("export_batch_content", {p_id: input.batchId, p_part: input.part});
+    const frozen = r.data;
+    if (r.error || !frozen || frozen.kind !== (input.kind === "drafts" ? "draft" : input.kind) || frozen.format !== input.format || frozen.requestId !== input.requestId || frozen.includeNames !== Boolean(input.includeNames) || JSON.stringify(frozen.ids) !== JSON.stringify(input.ids) || frozen.bundle.title !== input.title) throw Error("BF_FORBIDDEN");
+    return frozen.bundle as ExportBundle;
+  }
   const ids = [...new Set(input.ids)];
   if(input.kind==="exhibition"){
     if(profile.role!=="teacher")throw new Error("BF_FORBIDDEN");

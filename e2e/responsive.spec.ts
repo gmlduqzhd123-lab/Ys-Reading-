@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./checked-test";
 for (const path of [
   "/",
   "/login",

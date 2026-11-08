@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export type { Profile } from "@/lib/auth";
 export interface Classroom {
+  simple_student_view?: boolean;
+  reading_guidance?: "line"|"guided"|"free";
   id: string;
   name: string;
   teacher_id: string;

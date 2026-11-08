@@ -35,6 +35,7 @@ export function BatchExports({
   selected: string;
 }) {
   const [kind, setKind] = useState("reading"),
+    [selection, setSelection] = useState("all"),
     [format, setFormat] = useState("docx"),
     [classroom, setClass] = useState(selected),
     [from, setFrom] = useState(""),
@@ -94,9 +95,11 @@ export function BatchExports({
         id,
         part: 0,
       });
+      const localFiles: {name:string;data:ArrayBuffer}[]=[];
+      let bytes=0;
       for (let n = 0; n < first.parts; n++) {
         if (!active.current || pause.current) break;
-        if (first.completed[n] && !recreate) {
+        if (first.format.startsWith("google-") && first.completed[n] && !recreate) {
           if (first.completed[n].url)
             setLinks((old) => [
               ...old,
@@ -125,6 +128,8 @@ export function BatchExports({
             title: `${part.title.slice(0, 80)} (${n + 1}-${part.parts})`,
             requestId: part.requestId,
             includeNames: part.includeNames,
+            batchId:id,
+            part:n,
           }),
         });
         if (!active.current) break;
@@ -138,14 +143,11 @@ export function BatchExports({
             { url: url!, label: `${n + 1}번 Google 파일` },
           ]);
         } else {
-          const blob = await response.blob();
+          const file = await response.arrayBuffer();
           if (!active.current) break;
-          const href = URL.createObjectURL(blob),
-            a = document.createElement("a");
-          a.href = href;
-          a.download = `책숲-${n + 1}-${part.parts}.${part.format}`;
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(href), 60000);
+          bytes+=file.byteLength;
+          if(bytes>64*1024*1024)throw Error("파일이 커요. 날짜 범위를 나누어 새 묶음을 만들어 주세요.");
+          localFiles.push({name:`책숲-${n+1}-${part.parts}.${part.format}`,data:file});
         }
         await batchExportAction(owner, {
           action: "part",
@@ -155,6 +157,20 @@ export function BatchExports({
           url,
         });
         await refresh();
+      }
+      if(active.current&&!pause.current&&localFiles.length===first.parts){
+        // Revalidate access to every part immediately before releasing the ZIP.
+        for(let n=0;n<first.parts;n++){
+          const r=await createClient().rpc("check_export_part_access",{p_id:id,p_part:n});
+          if(r.error||!active.current)throw Error("기록 접근 권한이 바뀌었어요. 새 묶음을 만들어 주세요.");
+        }
+        const {default:JSZip}=await import("jszip"),zip=new JSZip();
+        for(const file of localFiles)zip.file(file.name,file.data);
+        const blob=await zip.generateAsync({type:"blob",compression:"STORE"});
+        if(!active.current)return;
+        const href=URL.createObjectURL(blob),a=document.createElement("a");
+        a.href=href;a.download="책숲-기록묶음.zip";a.click();
+        setTimeout(()=>URL.revokeObjectURL(href),60000);
       }
       if (active.current)
         setMessage(
@@ -183,8 +199,7 @@ export function BatchExports({
       <h2>학급·학기 기록 한 번에 내보내기</h2>
       <p>
         날짜와 학급으로 기록 목록을 정하고 25건씩 파일을 만듭니다. 최대
-        10,000건, 7일 동안 이어하기를 지원해요. 각 파일의 내용은 생성 시점의
-        사본입니다.
+        10,000건, 7일 동안 보관합니다. 묶음을 만들 때 내용을 고정하며 다운로드마다 현재 동의·권한을 다시 확인해요. Word·CSV는 ZIP 하나로 받습니다.
       </p>
       <fieldset
         disabled={!interactive}
@@ -201,6 +216,7 @@ export function BatchExports({
               kind,
               format,
               includeNames: names,
+              selection,
               classroom,
               from,
               to,
@@ -266,6 +282,13 @@ export function BatchExports({
               )}
             </select>
           </label>
+          <label className="field">기록 버전·확인 조건
+            <select value={selection} disabled={busy} onChange={e=>setSelection(e.target.value)}>
+              <option value="all">모든 기록·제출 버전</option>
+              <option value="latest">제출 글은 최신 버전만</option>
+              <option value="completed">선생님 확인·검토 완료만</option>
+            </select>
+          </label>
           <label className="field">
             기록 시작 날짜
             <input
@@ -312,9 +335,7 @@ export function BatchExports({
           </button>
         )}
         <p className="form-help">
-          여러 파일 다운로드 허용이 필요할 수 있어요. 아래 생성 건수는 기기에
-          저장됐다는 확인을 대신하지 않습니다. Google 형식은 먼저 교사 계정을
-          연결해 주세요.
+          ZIP은 모든 부분을 준비한 뒤 한 번에 다운로드합니다. 중지·재접속하면 고정한 내용으로 ZIP 전체를 다시 만들어요. 생성 건수는 기기 저장 확인이 아닙니다. Google은 교사 계정을 먼저 연결해 주세요. 이전 방식 묶음은 새로 만들어 주세요.
         </p>
         {message && <p role="status">{message}</p>}
         {links.map((l) => (

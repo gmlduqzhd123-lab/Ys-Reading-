@@ -3,6 +3,7 @@ export const marker = "<!-- bookforest-service-incident-v1 -->";
 export const backupMarker = "<!-- bookforest-backup-incident-v1 -->";
 export function backupIncidentText(code) {
   const reasons = {
+    CLOUD_RESTORE_OVERDUE: "서버에 암호화 백업은 있지만 최신 파일의 복원 검증이 2시간 이상 지연되었습니다. 운영자 PC의 전원·MCP 인증·예약 복원 검사 결과를 확인해 주세요. 생성 성공을 복원 성공으로 처리하지 않습니다.",
     CLOUD_BACKUP_STALE: "서버의 독립 암호화 백업을 확인하지 못했습니다. Supabase 예약 작업·백업 작업자·비공개 저장소 상태를 확인해 주세요. PC 백업의 복원 검증과 별도 점검입니다.",
     CLOUD_BACKUP_CHECK_UNAVAILABLE: "독립 서버 백업의 상태 조회에 실패했습니다. 다음 점검과 서버 예약 작업 상태를 확인해 주세요.",
     BACKUP_AGENT_MISSING: "백업 PC의 연결 신호가 없습니다. 운영자 PC에서 백업 에이전트 등록과 예약 작업 상태를 확인해 주세요. 기존 백업의 검증 시각과 별도로 확인합니다.",

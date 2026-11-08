@@ -2,10 +2,12 @@ import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
+import {watchBrowserErrors} from "./browser-errors";
 const f = JSON.parse(fs.readFileSync("e2e/.runtime/fixtures.json", "utf8"));
 test("class context, 28-record split export, resume and learning notification", async ({
   page,
 }) => {
+  const checkBrowser=watchBrowserErrors(page);
   await page.goto("/login");
   await page
     .getByLabel("학생 아이디 또는 선생님 이메일", { exact: true })
@@ -44,9 +46,12 @@ test("class context, 28-record split export, resume and learning notification", 
   await expect(
     page.getByText("28건 · 2/2개 파일 생성", { exact: true }),
   ).toBeVisible();
-  expect(downloaded).toHaveLength(2);
+  expect(downloaded).toHaveLength(1);
   const paths = await Promise.all(downloaded.map((d) => d.path()));
-  const document = await JSZip.loadAsync(fs.readFileSync(paths[0]!));
+  expect(downloaded[0].suggestedFilename()).toBe("책숲-기록묶음.zip");
+  const zip=await JSZip.loadAsync(fs.readFileSync(paths[0]!));
+  const files=Object.keys(zip.files);expect(files).toHaveLength(2);
+  const document = await JSZip.loadAsync(await zip.file(files[0])!.async("uint8array"));
   expect(await document.file("word/document.xml")!.async("text")).toContain(
     "CI 묶음 기록",
   );
@@ -110,4 +115,5 @@ test("class context, 28-record split export, resume and learning notification", 
       { exact: true },
     ),
   ).toHaveCount(0);
+  checkBrowser();
 });

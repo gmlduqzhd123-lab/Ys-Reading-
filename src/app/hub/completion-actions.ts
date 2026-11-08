@@ -4,6 +4,13 @@ import { cookies } from "next/headers";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 const classroom = z.union([z.uuid(), z.literal("")]);
+export async function setClassStudentView(owner:string, input:unknown) {
+  const p=await requireProfile();
+  if(p.id!==z.uuid().parse(owner)||p.role!=="teacher")throw Error("선생님 계정으로 다시 확인해 주세요.");
+  const v=z.object({classroom:z.uuid(),simple:z.boolean(),guidance:z.enum(["line","guided","free"])}).strict().parse(input);
+  const c=await createClient(),r=await c.rpc("set_class_student_view",{p_classroom:v.classroom,p_simple:v.simple,p_guidance:v.guidance});
+  if(r.error)throw Error("학급 소유 교사 권한과 연결 상태를 확인해 주세요.");
+}
 export async function rememberHubClass(owner: string, id: string) {
   const p = await requireProfile();
   if (p.id !== z.uuid().parse(owner)) throw Error("로그인 계정이 바뀌었어요.");
@@ -35,6 +42,7 @@ export async function batchExportAction(owner: string, input: unknown) {
           kind: z.enum(["reading", "writing", "draft"]),
           format: z.enum(["docx", "csv", "google-docs", "google-sheets"]),
           includeNames: z.boolean(),
+          selection: z.enum(["all", "latest", "completed"]).default("all"),
           classroom,
           from: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
           to: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
@@ -53,7 +61,7 @@ export async function batchExportAction(owner: string, input: unknown) {
     .parse(input);
   const r =
     v.action === "start"
-      ? await c.rpc("start_export_batch", {
+      ? await c.rpc("start_export_snapshot", {
           p_title: v.title,
           p_kind: v.kind,
           p_format: v.format,
@@ -61,6 +69,7 @@ export async function batchExportAction(owner: string, input: unknown) {
           p_classroom: v.classroom || null,
           p_from: v.from || null,
           p_to: v.to || null,
+          p_selection: v.selection,
         })
       : await c.rpc(
           "export_batch_state",

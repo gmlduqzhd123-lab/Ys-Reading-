@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import {formatKoreanDate} from "@/lib/rules";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CollaborationState } from "@/lib/collaboration";
@@ -143,7 +144,7 @@ export function CollaborationPanel({
                   )
                   .join(", ")}{" "}
                 · {s.active ? "활성" : "취소됨"} ·{" "}
-                {new Date(s.expiresAt).toLocaleDateString("ko-KR")}
+                {formatKoreanDate(s.expiresAt,{year:"numeric",month:"numeric",day:"numeric"})}
               </p>
               <button
                 className="button button-outline"
@@ -224,7 +225,7 @@ export function CollaborationPanel({
                   operator: "보조 운영자",
                 }[i.kind]
               }{" "}
-              · {new Date(i.expiresAt).toLocaleString("ko-KR")}{" "}
+              · {formatKoreanDate(i.expiresAt)}{" "}
               <button
                 disabled={busy}
                 onClick={() => void run("revoke_invitation", { id: i.id })}

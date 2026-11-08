@@ -31,7 +31,7 @@ try {
     !d.reportReview ||
     !d.scopedStaff ||
     !d.operationsCompletion ||
-    !d.exportJobs || !d.monitorRechecks || !d.cloudBackup || !d.batchExports || !d.learningSignals || !d.scopeCache ||
+    !d.exportJobs || !d.monitorRechecks || !d.cloudBackup || !d.batchExports || !d.learningSignals || !d.scopeCache || !d.coherentExports || !d.studentView ||
     !d.readingDrafts || !d.signedApiBudget || !d.monitorDiagnostics || !d.recoveryReadiness || !v.passwordSafety ||
     v.service !== "bookforest-account-worker" ||
     v.protocol < d.minimumWorkerProtocol

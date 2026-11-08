@@ -158,6 +158,37 @@ describe("Server-side classroom insights, notices and complete record search", (
   beforeEach(async () => {
     await db.exec("begin");
   });
+  it("freezes batch content but immediately revokes frozen access after consent, membership and deletion changes",async()=>{
+    const id=await reading("고정할 책");await actor(t);
+    const batch=await rpc("start_export_snapshot",["묶음","reading","docx",false,c,null,null,"all"]);
+    expect((await rpc("export_batch_content",[batch,0])).bundle.entries[0].title).toBe("고정할 책");
+    await db.exec("reset role");await db.query("update public.reading_logs set thought='나중에 바뀐 생각' where id=$1",[id]);
+    await actor(t);expect((await rpc("export_batch_content",[batch,0])).bundle.entries[0].body).toBe("함께 배웠어요");
+    await actor(other);await reject("select public.export_batch_content($1,0)",[batch],"BF_FORBIDDEN");
+    await db.exec("reset role");await db.query("update public.profiles set consent_status='pending' where id=$1",[s]);
+    await actor(t);await reject("select public.export_batch_content($1,0)",[batch],"BF_EXPORT_ACCESS_CHANGED");
+    await db.exec("reset role");await db.query("update public.profiles set consent_status='verified' where id=$1",[s]);await db.query("update public.enrollments set active=false where student_id=$1",[s]);
+    await actor(t);await reject("select public.export_batch_content($1,0)",[batch],"BF_EXPORT_ACCESS_CHANGED");
+    await db.exec("reset role");await db.query("update public.enrollments set active=true where student_id=$1",[s]);await db.query("delete from public.reading_logs where id=$1",[id]);
+    await actor(t);await reject("select public.export_batch_content($1,0)",[batch],"BF_EXPORT_ACCESS_CHANGED");
+  });
+  it("limits class display configuration to the owner teacher",async()=>{
+    await actor(s);await reject("select public.set_class_student_view($1,true,'guided')",[c],"BF_FORBIDDEN");
+    await actor(other);await reject("select public.set_class_student_view($1,true,'guided')",[c],"BF_FORBIDDEN");
+    await actor(t);await rpc("set_class_student_view",[c,true,"guided"]);
+    expect(await one("select simple_student_view,reading_guidance from public.classrooms where id=$1",[c])).toMatchObject({simple_student_view:true,reading_guidance:"guided"});
+  });
+  it("selects latest immutable writing versions and reviewed records before snapshot creation",async()=>{
+    await actor(s);const first=await one("select * from public.submit_work($1,'첫 글','처음 생각한 충분한 문장입니다.',$2)",[a,randomUUID()]);
+    await actor(t);await one("select * from public.review_work($1,'다듬어 보세요.','revision_requested')",[first.id]);
+    await actor(s);const latest=await one("select * from public.submit_work($1,'두 번째 글','친구 생각을 더해 다듬은 충분한 문장입니다.',$2)",[a,randomUUID()]);
+    await actor(t);const batch=await rpc("start_export_snapshot",["최신","writing","csv",false,c,null,null,"latest"]);
+    expect((await rpc("export_batch_content",[batch,0])).ids).toEqual([latest.id]);
+    await reject("select public.start_export_snapshot('완료','writing','csv',false,$1,null,null,'completed')",[c],"BF_INVALID_INPUT");
+    await one("select * from public.review_work($1,'완성했어요.','completed')",[latest.id]);
+    const done=await rpc("start_export_snapshot",["완료","writing","csv",false,c,null,null,"completed"]);
+    expect((await rpc("export_batch_content",[done,0])).ids).toEqual([latest.id]);
+  });
   afterEach(async () => {
     await db.exec("rollback;reset role");
   });
