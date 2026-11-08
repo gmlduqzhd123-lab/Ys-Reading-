@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { encryptCloud } from "../_shared/cloud-crypto.mjs";
+import { readCloudJob } from "../_shared/cloud-request.mjs";
 declare const Deno: {
   env: { get(k: string): string | undefined };
   serve(handler: (r: Request) => Promise<Response>): void;
@@ -15,21 +16,9 @@ Deno.serve(async (r) => {
         "Cache-Control": "no-store",
       },
     });
-  if (r.method !== "POST" || Number(r.headers.get("content-length") ?? 0) > 300)
-    return reply(400, { code: "INVALID_REQUEST" });
   let id: string;
   try {
-    const text = await r.text();
-    if (text.length > 300) throw Error();
-    const v = JSON.parse(text);
-    if (
-      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
-        v.job,
-      ) ||
-      Object.keys(v).length !== 1
-    )
-      throw Error();
-    id = v.job;
+    id = await readCloudJob(r);
   } catch {
     return reply(400, { code: "INVALID_REQUEST" });
   }
