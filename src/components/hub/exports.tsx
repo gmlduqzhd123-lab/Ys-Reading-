@@ -1,5 +1,6 @@
 "use client";
 import { GoogleConnectionCheck } from "./google-connection-check";
+import {BatchExports} from "./batch-exports";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -117,6 +118,7 @@ export function Exports({
   }
   return (
     <>
+      <BatchExports key={data.profile.id+":"+data.selectedClassroom} owner={data.profile.id} teacher={teacher} classes={data.availableClasses??data.classes} selected={data.selectedClassroom??""}/>
       <p>
         <Link className="text-link" href="/account/records">
           내보낸 사본의 보관·삭제 확인 →

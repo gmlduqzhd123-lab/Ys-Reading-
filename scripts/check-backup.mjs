@@ -29,6 +29,10 @@ try {
     Math.abs(Date.now() - at) < 120000;
   warning=r.ok && d.backupHealthy===true && ["BACKUP_AGENT_MISSING","BACKUP_AGENT_OFFLINE"].includes(code) && Number.isFinite(at) && Math.abs(Date.now()-at)<120000;
 } catch {}
+// Keep restore-verified primary health distinct from server ciphertext creation.
+try{const r=await fetch("https://reading-blush-zeta.vercel.app/api/cloud-backup-health",{cache:"no-store",signal:AbortSignal.timeout(10000)});
+ if(r.status!==404){const d=await r.json();if(!r.ok||d.configured===true&&(!d.healthy||Date.now()-Date.parse(d.storedAt)>48*3600000)){healthy=false;warning=false;code="CLOUD_BACKUP_STALE";}}
+}catch{healthy=false;warning=false;code="CLOUD_BACKUP_CHECK_UNAVAILABLE";}
 const result = { healthy, warning, code, checkedAt: new Date().toISOString() };
 fs.writeFileSync("backup-result.json", JSON.stringify(result));
 console.log(JSON.stringify(result));

@@ -273,6 +273,7 @@ fs.writeFileSync(
   }),
   { mode: 0o600 },
 );
+execFileSync("docker",["exec","-i","supabase_db_bookforest","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-q"],{input:`insert into public.reading_logs(classroom_id,student_id,book,read_on,status,thought) select '${cls.id}','${mobileUser.data.user.id}',jsonb_build_object('title','CI 묶음 기록 '||n),'2024-02-01'::date+(n-1),'reading','분할 내보내기 합성 자료' from generate_series(1,28)n;`,stdio:["pipe","pipe","pipe"]});
 const budgetSecret=randomBytes(32).toString("hex");
 execFileSync("docker",["exec","-i","supabase_db_bookforest","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-q"],{input:`insert into private.api_request_keys values(true,decode('${budgetSecret}','hex')) on conflict(id) do update set secret=excluded.secret;`,stdio:["pipe","pipe","pipe"]});
 if (process.env.GITHUB_ENV)

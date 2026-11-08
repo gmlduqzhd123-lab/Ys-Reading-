@@ -1,5 +1,6 @@
 // Only public build metadata belongs here; no environment values are enumerated.
-export const appVersion = "0.2.0";
+import pkg from "../../package.json";
+export const appVersion = pkg.version;
 export function releaseIdentity() {
   const candidate =
     process.env.BOOKFOREST_BUILD_SHA ||

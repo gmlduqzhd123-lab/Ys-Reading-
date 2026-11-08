@@ -16,6 +16,7 @@ export async function POST(r: NextRequest) {
   if (!sameOrigin(r))
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 403 });
   const p = await getCurrentProfile();
+  if(p&&r.headers.has("x-bookforest-actor")&&r.headers.get("x-bookforest-actor")!==p.id)return NextResponse.json({error:"로그인 계정이 바뀌었어요. 현재 계정으로 화면을 다시 열어 주세요."},{status:401});
   if (
     !accountReady(p) ||
     (p.role === "student" && p.consent_status !== "verified")

@@ -31,8 +31,8 @@ async function one(sql: string, args: unknown[] = []): Promise<any> {
 }
 async function rpc(name: string, args: unknown[] = []) {
   const placeholders = args.map((_, i) => "$" + (i + 1)).join(",");
-  return (await one(`select public.${name}(${placeholders}) value`, args))
-    .value;
+  try{return (await one(`select public.${name}(${placeholders}) value`, args)).value;}
+  catch(e){console.error("Isolated RPC failure",name,(e as {where?:string}).where);throw e;}
 }
 async function reject(sql: string, args: unknown[], message: string) {
   await db.exec("savepoint rejected");
@@ -81,6 +81,32 @@ async function search(
   ]);
 }
 describe("Server-side classroom insights, notices and complete record search", () => {
+  it("rechecks membership eligibility between queries after introducing the scope cache",async()=>{
+    await reading();await actor(t);expect((await search("reading",c)).total).toBe(1);
+    await db.exec("reset role");await db.query("update public.profiles set account_active=false where id=$1",[s]);
+    await actor(t);expect((await search("reading",c)).total).toBe(0);
+    await db.exec("reset role");await db.query("update public.profiles set account_active=true,consent_status='verified' where id=$1",[s]);
+    await actor(t);expect((await search("reading",c)).total).toBe(1);
+  });
+  it("freezes authorized batch IDs, resumes parts and denies another owner",async()=>{
+    for(let n=0;n<28;n++)await reading("묶음 "+n);
+    await reading("다른 학급 비공개","2026-01-01",c2,outsider);
+    await actor(t);
+    const id=await rpc("start_export_batch",["학기 작품집","reading","docx",false,c,null,null]);
+    const part=await rpc("export_batch_state",[id,0,false,null]);expect(part.parts).toBe(2);expect(part.ids).toHaveLength(25);
+    await reject("select public.export_batch_state($1,0,true,null)",[id],"BF_EXPORT_NOT_GENERATED");
+    await rpc("register_export_receipt",["reading",part.ids,"docx","학기 작품집",null,part.requestId]);
+    await rpc("export_batch_state",[id,0,true,null]);
+    expect((await rpc("export_batch_state")).find((x:any)=>x.id===id).done).toBe(1);
+    expect((await rpc("export_batch_state",[id,1,false,null])).ids).toHaveLength(3);
+    await actor(other);await reject("select public.export_batch_state($1,0,false,null)",[id],"BF_FORBIDDEN");
+  });
+  it("signals new own learning records without leaking another classroom",async()=>{
+    await actor(s);const initial=await rpc("learning_change_token",[c]);
+    await reading("다른 학급 비공개","2026-01-01",c2,outsider);
+    await actor(s);expect(await rpc("learning_change_token",[c])).toBe(initial);
+    await reading();await actor(s);expect(await rpc("learning_change_token",[c])).not.toBe(initial);
+  });
   it("retains private unsubmitted drafts for the student alone", async () => {
     await actor(s);
     await one(

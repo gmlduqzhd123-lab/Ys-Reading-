@@ -28,6 +28,9 @@ import type {
 import type { GrowthState, TermState } from "@/lib/growth-terms";
 import { TermPanel } from "./term-panel";
 import { HandoverPanel, type HandoverState } from "./operations-batch";
+import {ClassContext} from "./class-context";
+import {LearningUpdates} from "./learning-updates";
+import {hubHref} from "@/lib/hub-navigation";
 export function LearningHub({
   data,
   initialTab,
@@ -211,12 +214,14 @@ export function LearningHub({
             key={id}
             className={`hub-tab ${tab === id ? "selected" : ""}`}
             aria-current={tab === id ? "page" : undefined}
-            href={`/hub?tab=${id}`}
+            href={hubHref(id,data.selectedClassroom)}
           >
             {label}
           </Link>
         ))}
       </nav>
+      {(data.availableClasses?.length??0)>0&&<ClassContext owner={data.profile.id} tab={tab} selected={data.selectedClassroom??""} classes={data.availableClasses??[]}/>}
+      <LearningUpdates owner={data.profile.id} classroom={data.selectedClassroom??""} tab={tab}/>
       {!data.schemaReady ? (
         <div className="notice">
           <strong>새 교실 기능 연결을 준비하고 있어요.</strong> 기록·성장·경제
@@ -351,7 +356,7 @@ export function LearningHub({
                   {data.page > 1 && (
                     <Link
                       className="button button-outline"
-                      href={`/hub?tab=${tab}&page=${data.page - 1}`}
+                      href={hubHref(tab,data.selectedClassroom,{page:data.page-1})}
                     >
                       이전 기록
                     </Link>
@@ -363,7 +368,7 @@ export function LearningHub({
                   {data.hasNext && (
                     <Link
                       className="button button-outline"
-                      href={`/hub?tab=${tab}&page=${data.page + 1}`}
+                      href={hubHref(tab,data.selectedClassroom,{page:data.page+1})}
                     >
                       다음 기록
                     </Link>

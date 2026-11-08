@@ -1,5 +1,7 @@
 import { loadHub } from "@/lib/hub-data";
 import { redirect } from "next/navigation";
+import {cookies} from "next/headers";
+import {z} from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   PlazaReports,
@@ -28,6 +30,7 @@ export default async function HubPage({
 }) {
   const params = await searchParams;
   const profile = await requireProfile();
+  if(params.classroom===undefined){const remembered=(await cookies()).get("bf_class_"+profile.id)?.value;if(remembered&&z.uuid().safeParse(remembered).success){const c=await createClient(),r=await c.from("classrooms").select("id").eq("id",remembered).maybeSingle();if(r.data)params.classroom=remembered;}}
   const allowed = [
     "today",
     "reading",
@@ -47,6 +50,7 @@ export default async function HubPage({
   const data = await loadHub(
     ["search", "overview"].includes(tab) ? 1 : Number(params.page ?? 1),
     tab,
+    filters.classroom,
   );
   if (profile.role === "teacher") {
     const staff = data.staffClasses ?? [],

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState, useTransition, useRef } from "react";
 import { saveRecoveryCheck } from "@/app/account/recovery-actions";
+import {manageOperatorInvitation} from "@/app/hub/completion-actions";
 const labels = {
   backup: "외부 파일의 복호화·복원 확인",
   database: "운영과 다른 DB의 자료 복원",
@@ -36,6 +37,7 @@ export function RecoveryReadinessPanel({
     [message, setMessage] = useState(""),
     [busy, start] = useTransition();
   const request = useRef<{ hash: string; id: string } | null>(null);
+  const [email,setEmail]=useState(""),[name,setName]=useState(""),[revoke,setRevoke]=useState(false);
   return (
     <section className="panel">
       <h2>복구 훈련·대체 운영자 준비</h2>
@@ -59,6 +61,7 @@ export function RecoveryReadinessPanel({
               {new Date(p.expiresAt).toLocaleDateString("ko-KR")}까지
             </p>
           ))}
+          <details><summary>대체 운영자 초대 준비·재발급·취소</summary><p>최근 2단계 인증이 필요합니다. 이메일을 자동 발송하지 않으며 소유자가 직접 수락해야 합니다.</p><form onSubmit={e=>{e.preventDefault();start(async()=>{try{setMessage((await manageOperatorInvitation({email,name,revoke})).message);}catch(e){setMessage(e instanceof Error?e.message:"연결을 확인해 주세요.");}});}}><label className="field">초대할 이메일<input type="email" value={email} required maxLength={254} onChange={e=>setEmail(e.target.value)}/></label><label className="field">운영자 표시 이름<input value={name} required minLength={2} maxLength={40} onChange={e=>setName(e.target.value)}/></label><label className="hub-check"><input type="checkbox" checked={revoke} onChange={e=>setRevoke(e.target.checked)}/>이 이메일의 대기 중 초대 취소</label><button className="button button-outline" disabled={busy}>초대 설정 저장</button></form></details>
           <details>
             <summary>다른 프로젝트의 복구 훈련 기록</summary>
             <form

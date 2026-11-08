@@ -29,6 +29,7 @@ export async function releaseReadiness() {
       db.monitorDiagnostics === true &&
       db.recoveryReadiness === true &&
       db.exportJobs === true,
+    operations:db?.monitorRechecks===true&&db.cloudBackup===true&&db.batchExports===true&&db.learningSignals===true&&db.scopeCache===true,
     worker:
       w?.service === "bookforest-account-worker" &&
       typeof db?.minimumWorkerProtocol === "number" &&

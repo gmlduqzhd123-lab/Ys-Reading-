@@ -50,6 +50,9 @@ jobs:
       - name: Verify portable backup and independent Auth restore
         if: always() && steps.classroom.outcome == 'success' && steps.collaboration.outcome == 'success' && !cancelled()
         run: npx tsx scripts/ci-recovery-drill.ts
+      - name: Verify 30000 historical records and scoped search performance
+        if: always() && steps.collaboration.outcome == 'success' && !cancelled()
+        run: npx tsx scripts/ci-record-scale.ts
       - name: Stop isolated services
         if: always()
         run: npx --no-install supabase stop --no-backup

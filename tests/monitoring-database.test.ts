@@ -11,6 +11,33 @@ import type { PGlite } from "@electric-sql/pglite";
 import { runtimeDb, forbidden } from "./helpers/runtime-db";
 let db: PGlite;
 describe("Trusted independent monitoring", () => {
+  it("never labels ciphertext creation as a successful restore of the latest archive",async()=>{
+    await db.query("insert into private.cloud_backup_config(public_key) values($1)",["A".repeat(88)]);
+    await db.exec("insert into private.cloud_backup_jobs(purpose,status,created_at,verified_at) values('backup','stored',now()-interval '1 hour',now()-interval '30 minutes'),('backup','stored',now(),null)");
+    await db.exec("set role anon");
+    const value=(await db.query<{v:any}>("select public.service_cloud_backup_health() v")).rows[0].v;
+    expect(value).toMatchObject({configured:true,healthy:true,restoreVerified:false,verifiedAt:null,separateProvider:false});
+  });
+  it("denies anonymous cloud jobs and permits a service worker to consume a capability once",async()=>{
+    await db.query("insert into private.cloud_backup_config(public_key) values($1)",["A".repeat(88)]);
+    const id=(await db.query<{id:string}>("insert into private.cloud_backup_jobs(purpose) values('download') returning id")).rows[0].id;
+    await db.exec("set role anon");
+    expect(await forbidden(db,()=>db.query("select public.claim_cloud_backup_job($1)",[id]))).toContain("permission denied");
+    expect(await forbidden(db,()=>db.query("select * from private.cloud_backup_jobs"))).toContain("permission denied");
+    await db.exec("reset role;set role service_role");
+    expect((await db.query<{v:any}>("select public.claim_cloud_backup_job($1) v",[id])).rows[0].v.purpose).toBe("download");
+    expect(await forbidden(db,()=>db.query("select public.claim_cloud_backup_job($1)",[id]))).toContain("BF_CLOUD_JOB_INVALID");
+  });
+  it("retains an isolated timeout and opens an incident only after a failed recheck",async()=>{
+    const first=new Date(Date.now()-90000).toISOString(),second=new Date(Date.now()-30000).toISOString();
+    await record(new Date(Date.now()-180000).toISOString(),true);
+    expect((await db.query<{v:boolean}>("select private.accept_monitor_result($1,null,'{}',null,'timeout',1) v",[first])).rows[0].v).toBe(true);
+    expect((await status()).checks[0].healthy).toBe(true);
+    await db.query("select private.accept_monitor_result($1,null,'{}',null,'timeout',2)",[second]);
+    expect((await status()).checks[0].healthy).toBe(false);
+    expect((await status()).incidents).toHaveLength(1);
+    expect((await db.query("select attempt,transport from private.monitor_diagnostics order by checked_at")).rows).toEqual([{attempt:1,transport:"timeout"},{attempt:2,transport:"timeout"}]);
+  });
   beforeAll(async () => {
     db = await runtimeDb();
   });

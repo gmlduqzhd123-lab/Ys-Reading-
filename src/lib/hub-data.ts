@@ -21,6 +21,8 @@ export type ReadingLog = HubRow & {
   verified_at: string | null;
 };
 export interface HubData {
+  selectedClassroom?:string;
+  availableClasses?:Classroom[];
   staffClasses?: import("./collaboration").StaffClass[];
   profile: Profile;
   classes: Classroom[];
@@ -58,6 +60,7 @@ export interface HubData {
 export async function loadHub(
   requestedPage = 1,
   activeTab = "reading",
+  classroom = "",
 ): Promise<HubData> {
   const page = Number.isSafeInteger(requestedPage)
     ? Math.min(10000, Math.max(1, requestedPage))
@@ -164,7 +167,7 @@ export async function loadHub(
       )
         return { table, data: [], error: null };
       const fields =
-        table === "grade_groups" ? "id,name,owner_id,created_at" : "*";
+        table === "grade_groups" ? "id,name,owner_id,created_at" : classroom&&["drafts","submissions"].includes(table)?"*,assignments!inner(classroom_id)":"*";
       let query = client
         .from(table)
         .select(fields)
@@ -172,6 +175,10 @@ export async function loadHub(
         .limit(pagedTables.has(table) ? 101 : 1001);
       if (pagedTables.has(table))
         query = query.order("id").range((page - 1) * 100, page * 100);
+      if(classroom){
+        if(["drafts","submissions"].includes(table))query=query.eq("assignments.classroom_id",classroom);
+        else if(!["classrooms","profiles","grade_groups","character_profiles"].includes(table))query=query.eq("classroom_id",classroom);
+      }
       if (table === "reading_logs" && activeTab === "review")
         query = query.eq("status", "completed").is("verified_at", null);
       const response = await query;
@@ -199,9 +206,11 @@ export async function loadHub(
       "성장·지갑 합계를 불러오지 못했습니다. 새 데이터베이스 구성을 확인해 주세요.",
     );
   return {
+    selectedClassroom:classroom,
+    availableClasses:rows("classrooms") as unknown as Classroom[],
     staffClasses: staff?.data?.classes,
     profile,
-    classes: rows("classrooms") as unknown as Classroom[],
+    classes: (rows("classrooms") as unknown as Classroom[]).filter(c=>!classroom||c.id===classroom),
     logs: rows("reading_logs") as ReadingLog[],
     posts: rows("plaza_posts"),
     groups: rows("grade_groups") as unknown as HubData["groups"],

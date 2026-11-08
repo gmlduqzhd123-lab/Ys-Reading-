@@ -52,6 +52,11 @@ try {
   if(fs.existsSync(path.join(directory,"backup-copy.bfconfig"))) {
     spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-check-copy.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:3*60000,maxBuffer:10000});
   }
+  // Cloud archives are created by server cron. A returning PC independently
+  // decrypts and restores the newest archive; failure cannot claim verification.
+  const cloudRun=spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-cloud-backup.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:5*60000,maxBuffer:10000});
+  let cloudResult;try{cloudResult=JSON.parse(cloudRun.stdout.trim().split(/\r?\n/).at(-1));}catch{cloudResult={ok:false,code:"CLOUD_CHECK_UNAVAILABLE"};}
+  fs.writeFileSync(path.join(directory,"cloud-scheduled-status.json"),JSON.stringify({...cloudResult,checkedAt:new Date().toISOString()}),{mode:0o600});
   fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({...result,checkedAt:new Date().toISOString(),state:state.state,code:state.code}),{mode:0o600});
   process.exitCode = result.ok === false ? 1 : 0;
 } catch(e) {

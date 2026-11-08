@@ -33,6 +33,7 @@ export async function ReleaseStatus() {
         {release.builtAt ? formatOperationsDate(release.builtAt) : "확인 불가"}
       </p>
       <p role="status">
+        새 운영 기능: {readiness.operations?"확인":"확인 필요"} ·{" "}
         DB 기능 호환: {readiness.database ? "확인" : "확인 필요"} · 계정 작업자:{" "}
         {readiness.worker ? "확인" : "확인 필요"} · 책숲 비밀번호 안전성 검사:{" "}
         {readiness.passwordSafetyEnabled
@@ -41,6 +42,7 @@ export async function ReleaseStatus() {
             ? "검사 환경에서 준비됨"
             : "확인 필요"}
       </p>
+      <p>국내 도서 검색: {process.env.ALADIN_TTB_KEY||process.env.KAKAO_BOOK_REST_KEY?"서버 키 등록됨 · 제공자 실제 응답은 도서 검색에서 확인":"연결 코드·설정 도구 준비됨 · API 키 발급 대기"}</p>
     </section>
   );
 }

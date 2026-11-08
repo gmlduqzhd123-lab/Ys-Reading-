@@ -7,6 +7,8 @@ type Entry = {
   stage: string;
   database_ms: number | null;
   authentication_ms: number | null;
+  attempt?:number;
+  transport?:string;
 };
 export type MonitorDiagnostics = {
   asOf: string;
@@ -37,6 +39,7 @@ export function OperatorMonitorDiagnostics({
       <p>
         정기 점검의 실패 구간·시간·배포 버전을 14일간 보관합니다. 학생 글과 오류
         원문은 수집하지 않습니다.
+        첫 실패는 진단에 남기고 한 번 재확인합니다. 재확인도 실패하면 장애로 판정하며 원본 실패는 삭제하지 않습니다.
       </p>
       {!state ? (
         <p role="status">진단 이력을 읽지 못했어요.</p>
@@ -57,6 +60,8 @@ export function OperatorMonitorDiagnostics({
                 {x.http_status ?? "응답 없음"} · DB {x.database_ms ?? "—"}ms /
                 인증 {x.authentication_ms ?? "—"}ms · 배포{" "}
                 {x.deployment_sha?.slice(0, 7) ?? "확인 불가"}
+                {x.attempt&&<> · {x.attempt===1?"첫 검사":"재확인"}</>}
+                {x.transport&&x.transport!=="none"&&<> · 통신 분류 {({timeout:"시간 초과",dns:"주소 확인",tls:"보안 연결",connection:"접속",unknown:"추가 확인"} as Record<string,string>)[x.transport]??"추가 확인"}</>}
                 {x.error_id && <> · 문의 번호 {x.error_id}</>}
               </p>
             ))}

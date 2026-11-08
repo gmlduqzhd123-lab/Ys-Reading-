@@ -9,6 +9,8 @@ import {
 import {OperatorMonitorDiagnostics,type MonitorDiagnostics} from "@/components/recovery/monitor-diagnostics";
 import {RecoveryReadinessPanel,type RecoveryReadiness} from "@/components/recovery/recovery-readiness";
 import {ReleaseStatus} from "@/components/recovery/release-status";
+import {CloudBackupStatus} from "@/components/recovery/cloud-backup-status";
+import {ProviderCheck} from "@/components/recovery/provider-check";
 export const metadata = { title: "연결 점검·기록 보관" };
 export default async function StatusPage() {
   let classes: { id: string; name: string }[] = [];
@@ -54,6 +56,8 @@ export default async function StatusPage() {
         </Link>
       </p>
       {operator && <OperatorBackupStatus state={backup} />}
+      {operator && <CloudBackupStatus />}
+      {operator && <ProviderCheck />}
       {operator && <OperatorMonitorDiagnostics state={diagnostics} />}
       {operator && <RecoveryReadinessPanel state={readiness} />}
     </>
