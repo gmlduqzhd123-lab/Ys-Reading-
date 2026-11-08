@@ -81,6 +81,7 @@ export async function batchExportAction(owner: string, input: unknown) {
     throw Error(
       r.error.message.includes("BF_EXPORT_NOT_GENERATED")
         ? "파일 생성 확인 후 다시 시도해 주세요."
+        : r.error.message.includes("BF_EXPORT_TOO_LARGE") ? "선택한 기록이 커요. 학급·날짜 범위를 나누어 새 묶음을 만들어 주세요."
         : "조건·권한·연결을 확인해 주세요. 기록은 1~10,000건까지 묶을 수 있습니다.",
     );
   return r.data;

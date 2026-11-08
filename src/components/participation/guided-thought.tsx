@@ -17,7 +17,7 @@ export function GuidedThought({ initial = "",value,onChange,memo,onMemoChange }:
     <div className="guided-thought">
       <label className="field">
         작성 방법 선택
-        <select value={mode} onChange={(e) => setMode(e.target.value)}>
+        <select aria-label="작성 방법 선택" value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="line">한 문장으로 시작</option>
           <option value="guided">질문 세 개로 생각 모으기</option>
           <option value="free">자유롭게 쓰기</option>

@@ -20,6 +20,7 @@ it("distinguishes a new archive grace period from overdue verification and recov
  expect(cloudHealth(200,{...base,restoreVerified:true,verifiedAt:at(0.5)},now).healthy).toBe(true);
  expect(cloudHealth(200,{...base,storedAt:at(3),restoreVerified:true,verifiedAt:at(4)},now).healthy).toBe(false);
  expect(cloudHealth(200,{...base,healthy:false},now).code).toBe("CLOUD_BACKUP_STALE");
+ expect(cloudHealth(200,{...base,storedAt:at(49)},now).code).toBe("CLOUD_BACKUP_STALE");
 });
 it("never replaces a recovery public key without old-key identity, restore proof, retention and explicit confirmation",()=>{
  expect(registrationDecision(null,"next")).toBe("register");

@@ -11,11 +11,11 @@ import { cloudKey } from "./lib/cloud-key.mjs";
 import { decryptCloud } from "../supabase/functions/_shared/cloud-crypto.mjs";
 import { prepareBackup, verifyRestore } from "./lib/operator-restore.mjs";
 import { registrationDecision } from "./lib/cloud-registration.mjs";
-const directory = defaultVault(),
-  key = vaultKey(directory, { create: false }),
-  derived = cloudKey(key),
-  m = await nativeMcp();
+const directory = defaultVault();
+let m;
 try {
+  const key=vaultKey(directory,{create:false}),derived=cloudKey(key);
+  m=await nativeMcp();
   if (
     (await m.call("get_project_url", {}))?.url !==
     `https://${projectRef}.supabase.co`
@@ -124,5 +124,5 @@ try {
   );
   process.exitCode = 1;
 } finally {
-  m.close();
+  m?.close();
 }

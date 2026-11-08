@@ -59,7 +59,7 @@ try {
   fs.writeFileSync(path.join(directory,"cloud-scheduled-status.json"),JSON.stringify({...cloudResult,checkedAt:new Date().toISOString()}),{mode:0o600});
   if(fs.existsSync(path.join(directory,"cloud-mirror.bfconfig")))spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-cloud-mirror.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:120000,maxBuffer:10000});
   fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({...result,checkedAt:new Date().toISOString(),state:state.state,code:state.code}),{mode:0o600});
-  process.exitCode = result.ok === false ? 1 : 0;
+  process.exitCode = result.ok === false || cloudRun.status !== 0 || cloudResult?.ok !== true ? 1 : 0;
 } catch(e) {
   const code = /^[A-Z][A-Z_]{1,79}$/.test(e?.message ?? "") ? e.message : "BACKUP_RUNNER_UNAVAILABLE";
   fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({ok:false,code,checkedAt:new Date().toISOString()}),{mode:0o600});

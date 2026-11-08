@@ -1,11 +1,12 @@
 import { spawn } from "node:child_process";
 import readline from "node:readline";
 import { existsSync } from "node:fs";
+import { resolveBackupCodex } from "./backup-runtime.mjs";
 // Native project-scoped MCP credentials stay in Codex. Never print tool payloads.
 export async function nativeMcp() {
-  const binary = process.env.BOOKFOREST_CODEX_BINARY || "codex";
+  const binary = process.env.BOOKFOREST_CODEX_BINARY || (process.platform === "win32" ? resolveBackupCodex() : "codex");
   if (process.env.BOOKFOREST_CODEX_BINARY && !existsSync(binary))
-    throw Error("MCP_AUTH_REQUIRED");
+    throw Error("BACKUP_CODEX_UNAVAILABLE");
   const child = spawn(binary, ["app-server"], {
     stdio: ["pipe", "pipe", "pipe"],
     windowsHide: true,
