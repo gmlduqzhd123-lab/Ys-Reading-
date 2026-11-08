@@ -81,6 +81,38 @@ async function search(
   ]);
 }
 describe("Server-side classroom insights, notices and complete record search", () => {
+  it("does not reset daily export usage after deletion and enforces account storage plus download rate",async()=>{
+    await reading();await actor(t);
+    for(let i=0;i<20;i++){
+      const batch=await rpc("create_export_batch",["당일 묶음","reading","csv",false,c,null,null,"all",randomUUID()]);
+      await rpc("discard_export_batch",[batch]);
+    }
+    await reject("select public.start_export_snapshot('초과','reading','csv',false,$1)",[c],"BF_EXPORT_QUOTA");
+    await db.exec("reset role;update private.export_batches set created_at=now()-interval '1 day'");await actor(t);
+    const batch=await rpc("create_export_batch",["보관 한도","reading","csv",false,c,null,null,"all",randomUUID()]);
+    await db.exec("reset role");await db.query("update private.export_batches set source_bytes=67108864 where id=$1",[batch]);await actor(t);
+    await reject("select public.start_export_snapshot('용량 초과','reading','csv',false,$1)",[c],"BF_EXPORT_STORAGE_QUOTA");
+    for(let i=0;i<60;i++)expect(await rpc("consume_export_budget")).toBe(true);
+    expect(await rpc("consume_export_budget")).toBe(false);
+  });
+  it("rejects workers after cancellation and expired initiating sessions",async()=>{
+    await reading();const sid=randomUUID();
+    await db.exec("reset role;create table if not exists auth.sessions(id uuid primary key,user_id uuid,created_at timestamptz default now());create or replace function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}')$$");
+    await db.query("insert into auth.sessions(id,user_id) values($1,$2)",[sid,t]);await actor(t);
+    await db.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:t,session_id:sid,role:"authenticated"})]);
+    const batch=await rpc("create_export_batch",["취소할 묶음","reading","csv",false,c,null,null,"all",randomUUID()]);
+    await rpc("zip_job",[batch,"start"]);await db.exec("reset role");
+    const task=(await one("select id from private.zip_tasks where batch_id=$1",[batch])).id;
+    await db.exec("set role anon");const claimed=await rpc("claim_zip_task",[task]);
+    await actor(t);await rpc("zip_job",[batch,"cancel"]);
+    await db.exec("reset role;set role anon");
+    await reject("select public.finish_zip_task($1,$2,$3,true)",[task,claimed.lease,Buffer.from("이전 작업").toString("base64")],"BF_JOB_UNAVAILABLE");
+    await actor(t);await rpc("zip_job",[batch,"start"]);await db.exec("reset role");
+    const next=(await one("select id from private.zip_tasks where batch_id=$1 and generation=3",[batch])).id;
+    await db.query("delete from auth.sessions where id=$1",[sid]);await db.exec("set role anon");
+    await reject("select public.claim_zip_task($1)",[next],"BF_JOB_UNAVAILABLE");
+    await db.exec("reset role");expect((await one("select count(*)::int n from private.zip_parts where batch_id=$1",[batch])).n).toBe(0);
+  });
   it("persists ZIP parts across sessions, uses real source RLS under a non-bypass role and fences one-use workers",async()=>{
     const id=await reading(),sid=randomUUID();
     await db.exec("reset role;create table if not exists auth.sessions(id uuid primary key,user_id uuid,created_at timestamptz default now());create or replace function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}')$$");
