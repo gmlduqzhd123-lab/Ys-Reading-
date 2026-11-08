@@ -128,7 +128,7 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await expect(teacher.getByText("교사 작성 내용을 임시 보관했어요. 최종 저장·피드백 전송은 별도로 확인해 주세요.",{exact:true})).toBeVisible();
   await teacher.reload();
   await teacher.getByRole("button",{name:"교사 초안 불러오기",exact:true}).click();
-  await expect(teacher.getByLabel("피드백",{exact:true})).toHaveValue("친구의 마음을 근거와 함께 표현했어요.");
+  await expect(teacher.getByRole("textbox",{name:"피드백",exact:true})).toHaveValue("친구의 마음을 근거와 함께 표현했어요.");
   // Restoring text never implies that the current student version was read.
   await expect(teacher.getByRole("button",{name:"선택한 최신 글 검토 완료",exact:true})).toBeDisabled();
   await teacher.locator("summary").filter({hasText:"CI 생각을 나눈 글"}).click();
@@ -201,7 +201,7 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await expect(teacher.getByText("교사 작성 내용을 임시 보관했어요. 최종 저장·피드백 전송은 별도로 확인해 주세요.",{exact:true})).toBeVisible();
   await teacher.reload();
   await teacher.getByRole("button",{name:"교사 초안 불러오기",exact:true}).click();
-  await expect(teacher.getByLabel("선생님의 관찰과 응원")).toHaveValue("원문을 읽고 친구의 마음을 담은 표현을 확인했습니다.");
+  await expect(teacher.getByRole("textbox",{name:"선생님의 관찰과 응원",exact:true})).toHaveValue("원문을 읽고 친구의 마음을 담은 표현을 확인했습니다.");
   await expect(teacher.getByRole("checkbox",{name:"CI 생각을 나눈 글 · 1번째 글"})).toBeChecked();
   await expect(teacher.getByRole("button",{name:"확인한 보고서 새 판 저장",exact:true})).toBeDisabled();
   await teacher

@@ -23,7 +23,7 @@ export function useTeacherWorkDraft({owner,scope,context,payload,apply,enabled=t
  async function clear(){await inFlight.current;if(blocked||!active.current)return;const r=await teacherDraftAction(owner,{action:"discard",scope,context:ref.current.context,revision:revision.current,request:crypto.randomUUID()});revision.current=r.revision;baseline.current=JSON.stringify(ref.current.payload);saved.current=baseline.current;setCandidate(null);request.current=null;setMessage("교사 임시 보관 내용을 정리했어요.");}
  function restore(){if(!candidate||blocked)return;try{ref.current.apply(candidate);saved.current=JSON.stringify(candidate);setCandidate(null);setMessage("교사 초안을 불러왔어요. 대상 학생과 내용을 다시 확인한 뒤 최종 저장하세요.");}catch(e){setMessage(e instanceof Error?e.message:"초안을 불러오지 못했어요.");}}
  function file(){const data=candidate??ref.current.payload,href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"})),a=document.createElement("a");a.href=href;a.download="책숲-교사초안.json";a.click();setTimeout(()=>URL.revokeObjectURL(href),10000);}
- const displayMessage=unsaved&&!candidate&&!conflict.current&&!blocked?"교사 입력을 임시 보관하는 중이에요.":message;
+ const displayMessage=ready&&unsaved&&!candidate&&!conflict.current&&!blocked?"교사 입력을 임시 보관하는 중이에요.":message;
  return {candidate,message:displayMessage,blocked,ready,unsaved,restore,clear,file,confirmLeave:()=>!unsavedRef.current||window.confirm("교사 입력을 아직 임시 보관하지 못했어요. 이동할까요?")};
 }
 export function TeacherWorkDraftNotice({draft}:{draft:ReturnType<typeof useTeacherWorkDraft>}){

@@ -278,7 +278,7 @@ const budgetSecret=randomBytes(32).toString("hex");
 const dbInfo=JSON.parse(execFileSync("docker",["inspect","supabase_db_bookforest"],{encoding:"utf8"}))[0];
 const gateway=Object.values(dbInfo.NetworkSettings.Networks).map((v:any)=>String(v.Gateway)).find(v=>/^172\.[0-9.]+$/.test(v));
 if(!gateway)throw Error("ISOLATED_WORKER_GATEWAY_REQUIRED");
-execFileSync("docker",["exec","-i","supabase_db_bookforest","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-q"],{input:`update private.zip_worker_config set url='http://${gateway}:3096/api/exports/worker' where singleton;`,stdio:["pipe","pipe","pipe"]});
+execFileSync("docker",["exec","-i","supabase_db_bookforest","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-q"],{input:`create extension if not exists pg_net with schema extensions; update private.zip_worker_config set url='http://${gateway}:3096/api/exports/worker' where singleton;`,stdio:["pipe","pipe","pipe"]});
 execFileSync("docker",["exec","-i","supabase_db_bookforest","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-q"],{input:`insert into private.api_request_keys values(true,decode('${budgetSecret}','hex')) on conflict(id) do update set secret=excluded.secret;`,stdio:["pipe","pipe","pipe"]});
 if (process.env.GITHUB_ENV)
   fs.appendFileSync(
