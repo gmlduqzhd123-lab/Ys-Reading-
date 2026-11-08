@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState,useId } from "react";
 export type ThoughtMemo={mode:string;scene:string;feeling:string;idea:string};
 export function GuidedThought({ initial = "",value,onChange,memo,onMemoChange }: { initial?: string;value?:string;onChange?:(value:string)=>void;memo?:ThoughtMemo;onMemoChange?:(value:ThoughtMemo)=>void }) {
+  const thoughtId=useId();
   const [ownMode, setOwnMode] = useState(initial ? "free" : "line"),
     [ownThought, setOwnThought] = useState(initial);
   const thought=value??ownThought;
@@ -89,9 +90,10 @@ export function GuidedThought({ initial = "",value,onChange,memo,onMemoChange }:
           </button>
         </fieldset>
       )}
-      <label className="field">
-        기억에 남는 장면과 나의 생각
+      <div className="field">
+        <label htmlFor={thoughtId}>기억에 남는 장면과 나의 생각</label>
         <textarea
+          id={thoughtId}
           name="thought"
           value={thought}
           onChange={(e) => setThought(e.target.value)}
@@ -102,7 +104,7 @@ export function GuidedThought({ initial = "",value,onChange,memo,onMemoChange }:
             mode === "line" ? "나는 이 장면에서 …라고 생각했어요." : ""
           }
         />
-      </label>
+      </div>
       <p className="form-help">
         {mode === "line"
           ? "한 문장도 괜찮아요. 나중에 생각을 덧붙일 수 있어요."

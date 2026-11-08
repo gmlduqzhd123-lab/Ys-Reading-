@@ -25,6 +25,7 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   const teacher = await tc.newPage(),
     operator = await oc.newPage(),
     student = await sc.newPage();
+  student.on("pageerror",error=>console.log("SYNTHETIC_STUDENT_PAGE_ERROR",error.message.slice(0,500)));
   await login(
     operator,
     fixture.accounts[0].email,
