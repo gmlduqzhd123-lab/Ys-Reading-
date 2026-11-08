@@ -122,7 +122,7 @@ export function BatchExports({
             kind: part.kind === "draft" ? "drafts" : part.kind,
             ids: part.ids,
             format: part.format,
-            title: `${part.title} (${n + 1}-${part.parts})`,
+            title: `${part.title.slice(0, 80)} (${n + 1}-${part.parts})`,
             requestId: part.requestId,
             includeNames: part.includeNames,
           }),

@@ -11,6 +11,11 @@ import type { PGlite } from "@electric-sql/pglite";
 import { runtimeDb, forbidden } from "./helpers/runtime-db";
 let db: PGlite;
 describe("Trusted independent monitoring", () => {
+  it("allows anonymous release metadata without granting access to the private schema",async()=>{
+    await db.exec("set role anon");
+    expect((await db.query<{v:boolean}>("select has_schema_privilege('anon','private','usage') v")).rows[0].v).toBe(false);
+    expect((await db.query<{v:any}>("select public.service_release_contract() v")).rows[0].v).toMatchObject({monitorRechecks:true,cloudBackup:true,batchExports:true,learningSignals:true,scopeCache:true});
+  });
   it("never labels ciphertext creation as a successful restore of the latest archive",async()=>{
     await db.query("insert into private.cloud_backup_config(public_key) values($1)",["A".repeat(88)]);
     await db.exec("insert into private.cloud_backup_jobs(purpose,status,created_at,verified_at) values('backup','stored',now()-interval '1 hour',now()-interval '30 minutes'),('backup','stored',now(),null)");

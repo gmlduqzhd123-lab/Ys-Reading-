@@ -20,7 +20,7 @@ const claims = JSON.parse(
   ),
   quote = (s: string) => "'" + s.replaceAll("'", "''") + "'";
 const sql = `begin;set local statement_timeout='15s';
-insert into public.reading_logs(classroom_id,student_id,book,read_on,status,thought) select '${f.classroom}','${f.student.id}',jsonb_build_object('title','CI-SCALE-'||n),'2025-01-01'::date+(n%365),'reading',repeat('합성 누적 자료입니다. ',30) from generate_series(1,30000)n;
+insert into public.reading_logs(classroom_id,student_id,book,read_on,status,thought) select '${f.classroom}','${f.mobile.id}',jsonb_build_object('title','CI-SCALE-'||n),'2025-01-01'::date+(n%365),'reading',repeat('합성 누적 자료입니다. ',30) from generate_series(1,30000)n;
 analyze public.reading_logs;create temp table scale_metrics(scenario text,ms numeric,total integer,returned integer);grant all on scale_metrics to authenticated;set local role authenticated;
 do $$declare started timestamptz;r jsonb;q text;label text;begin perform set_config('request.jwt.claim.sub','${f.accounts[1].id}',true);perform set_config('request.jwt.claims',${quote(JSON.stringify(claims))},true);
 for q,label in select * from(values('','all'),('CI-SCALE-23456','selective'),('NO-SCALE-MATCH-UNIQUE','none'))x(q,label) loop started:=clock_timestamp();r:=public.record_search('reading','${f.classroom}',null,q,null,null,'',1);if(label='all' and(r->>'total')::integer<30000)or(label='selective' and(r->>'total')::integer<>1)or(label='none' and(r->>'total')::integer<>0)then raise exception 'SCALE_RESULT_MISMATCH';end if;insert into scale_metrics values(label,round(extract(epoch from(clock_timestamp()-started))*1000),(r->>'total')::integer,jsonb_array_length(r->'rows'));end loop;
