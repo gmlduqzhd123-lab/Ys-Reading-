@@ -10,6 +10,7 @@ import {OperatorMonitorDiagnostics,type MonitorDiagnostics} from "@/components/r
 import {RecoveryReadinessPanel,type RecoveryReadiness} from "@/components/recovery/recovery-readiness";
 import {ReleaseStatus} from "@/components/recovery/release-status";
 import {CloudBackupStatus} from "@/components/recovery/cloud-backup-status";
+import {BackupCopyStatus} from "@/components/recovery/backup-copy-status";
 import {ProviderCheck} from "@/components/recovery/provider-check";
 export const metadata = { title: "연결 점검·기록 보관" };
 export default async function StatusPage() {
@@ -57,6 +58,7 @@ export default async function StatusPage() {
       </p>
       {operator && <OperatorBackupStatus state={backup} />}
       {operator && <CloudBackupStatus />}
+      {operator && <BackupCopyStatus />}
       {operator && <ProviderCheck />}
       {operator && <OperatorMonitorDiagnostics state={diagnostics} />}
       {operator && <RecoveryReadinessPanel state={readiness} />}

@@ -12,6 +12,7 @@ import { googleExport } from "@/lib/google-drive";
 import { sameOrigin } from "@/lib/request-origin";
 import { googleExportFailure } from "@/lib/google-errors";
 import { recordExport } from "@/lib/export-receipts";
+import {createClient} from "@/lib/supabase/server";
 export async function POST(r: NextRequest) {
   if (!sameOrigin(r))
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 403 });
@@ -26,6 +27,8 @@ export async function POST(r: NextRequest) {
       { status: 401 },
     );
   try {
+    const client=await createClient(),budget=await client.rpc("consume_export_budget");
+    if(budget.error||budget.data!==true)return NextResponse.json({error:budget.error?"내보내기 연결을 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요.":"내보내기 요청이 많아요. 1분 뒤 다시 시도해 주세요."},{status:budget.error?503:429,headers:{"Cache-Control":"no-store","Retry-After":"60"}});
     const input = exportSchema.parse(await r.json());
     const bundle = await loadExportBundle(input);
     if (input.format.startsWith("google-")) {

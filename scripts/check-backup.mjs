@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import { cloudHealth } from "./lib/cloud-health.mjs";
+import {copyWarning} from "./lib/copy-report.mjs";
+let copies;
 let healthy = false,
   code = "BACKUP_CHECK_UNAVAILABLE", warning=false;
 try {
@@ -9,6 +11,7 @@ try {
   );
   const d = await r.json(),
     at = Date.parse(d.checkedAt);
+  copies=d.copies;
   const codes = [
     "OK",
     "BACKUP_MISSING",
@@ -35,8 +38,8 @@ try{const r=await fetch("https://reading-blush-zeta.vercel.app/api/cloud-backup-
  const cloud=cloudHealth(r.status,await r.json());
  if(!cloud.healthy&&(!cloud.warning||healthy||warning)){healthy=false;warning=cloud.warning;code=cloud.code;}
 }catch{healthy=false;warning=false;code="CLOUD_BACKUP_CHECK_UNAVAILABLE";}
-const result = { healthy, warning, code, checkedAt: new Date().toISOString() };
+const result = {...copyWarning({healthy,warning,code},copies), checkedAt: new Date().toISOString() };
 fs.writeFileSync("backup-result.json", JSON.stringify(result));
 console.log(JSON.stringify(result));
 // A silent PC needs attention; a still-verified backup is not a failed backup.
-process.exitCode = healthy || warning ? 0 : 1;
+process.exitCode = result.healthy || result.warning ? 0 : 1;

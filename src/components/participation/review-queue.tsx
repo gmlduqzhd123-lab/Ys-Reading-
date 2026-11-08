@@ -7,14 +7,17 @@ import { useRouter } from "next/navigation";
 import { feedbackStarters } from "@/lib/participation";
 import { ParticipationForm, TextArea, value } from "./form";
 import { Field } from "@/components/hub/shared";
+import {useTeacherWorkDraft,TeacherWorkDraftNotice} from "@/components/teacher-work-draft";
 export function ReviewQueue({
   state,
   classes,
   basePath = "/hub?tab=review",
+  owner,
 }: {
   state: ReviewState;
   classes: Classroom[];
   basePath?: string;
+  owner:string;
 }) {
   const router = useRouter(),
     kind = state.kind,
@@ -32,6 +35,11 @@ export function ReviewQueue({
   const [body, setBody] = useState(""),
     [decision, setDecision] = useState("completed");
   const [notice, setNotice] = useState("");
+  const draft=useTeacherWorkDraft({owner,scope:"review",context:{classroom:classId||null,kind,page:state.page},payload:{selected,body,decision},enabled:selected.length>0,apply:p=>{
+    const ids=Array.isArray(p.selected)?p.selected.filter((id):id is string=>typeof id==="string"):[];
+    if(ids.some(id=>!queue.some(r=>r.id===id)))throw Error("원래 검토 대상이 이 페이지에서 바뀌었어요. 교사 초안을 파일로 보관하고 학생 기록을 다시 확인해 주세요.");
+    setSelected(ids);setOpened(new Set());setBody(typeof p.body==="string"?p.body:"");setDecision(p.decision==="revision_requested"?"revision_requested":"completed");
+  }});
   return (
     <div className="review-queue">
       {notice && (
@@ -40,6 +48,7 @@ export function ReviewQueue({
         </p>
       )}
       <h2>학생 기록 확인</h2>
+      <TeacherWorkDraftNotice draft={draft}/>
       <p>
         작품을 펼쳐 읽은 뒤 ‘읽고 확인했어요’를 선택하세요. 한 번에 20건까지
         처리하며, 글쓰기 완료 보상은 기존 규칙에 따라 한 번만 지급됩니다.
@@ -64,6 +73,7 @@ export function ReviewQueue({
           <select
             value={kind}
             onChange={(e) => {
+              if(!draft.confirmLeave())return;
               router.push(
                 href(e.target.value as "reading" | "writing", classId, 1),
               );
@@ -78,6 +88,7 @@ export function ReviewQueue({
           <select
             value={classId}
             onChange={(e) => {
+              if(!draft.confirmLeave())return;
               router.push(href(kind, e.target.value, 1));
             }}
           >
@@ -142,7 +153,7 @@ export function ReviewQueue({
         <button
           className="button button-outline"
           disabled={!page}
-          onClick={() => router.push(href(kind, classId, state.page - 1))}
+          onClick={() => {if(draft.confirmLeave())router.push(href(kind, classId, state.page - 1));}}
         >
           이전 묶음
         </button>
@@ -152,7 +163,7 @@ export function ReviewQueue({
         <button
           className="button button-outline"
           disabled={(page + 1) * 20 >= state.total}
-          onClick={() => router.push(href(kind, classId, state.page + 1))}
+          onClick={() => {if(draft.confirmLeave())router.push(href(kind, classId, state.page + 1));}}
         >
           다음 묶음
         </button>
@@ -197,7 +208,9 @@ export function ReviewQueue({
                 ? "읽은 기록 확인·보상 반영"
                 : "선택한 최신 글 검토 완료"
             }
+            disabled={draft.blocked||selected.some(id=>!opened.has(id))}
             onSuccess={() => {
+              void draft.clear().catch(()=>{});
               setNotice(
                 selected.length +
                   "건의 " +
@@ -210,7 +223,7 @@ export function ReviewQueue({
               setSelected([]);
             }}
             payload={() => ({
-              items: selected.map((id) => ({ id, kind, read: true })),
+              items: selected.map((id) => ({ id, kind, read: opened.has(id) })),
               body,
               decision: kind === "reading" ? "completed" : decision,
             })}

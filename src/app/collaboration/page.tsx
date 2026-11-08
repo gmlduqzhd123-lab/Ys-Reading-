@@ -118,6 +118,7 @@ export default async function CollaborationPage({
       )}
       {review && (
         <ReviewQueue
+          owner={p.id}
           state={review}
           classes={state.classes.filter((x) => x.review)}
           basePath="/collaboration?view=review"

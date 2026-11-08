@@ -22,6 +22,10 @@ test("teacher roster, invitations, term progression, batch export and simple stu
   }
   await page.getByRole("checkbox",{name:"학생 메뉴 간편 보기",exact:true}).check();
   await page.getByLabel("새 독서 기록의 작성 도움",{exact:true}).selectOption("guided");
+  await expect(page.getByText("교사 작성 내용을 임시 보관했어요. 최종 저장·피드백 전송은 별도로 확인해 주세요.",{exact:true})).toBeVisible();
+  await page.reload();
+  await page.getByRole("button",{name:"교사 초안 불러오기",exact:true}).click();
+  await expect(page.getByLabel("새 독서 기록의 작성 도움",{exact:true})).toHaveValue("guided");
   await page.getByRole("button",{name:"이 학급 학생 화면 설정 저장",exact:true}).click();
   await expect(page.getByText("학생 화면 시작 설정을 저장했어요.",{exact:true})).toBeVisible();
   const c=await browser.newContext(),student=await c.newPage(),studentCheck=watchBrowserErrors(student);

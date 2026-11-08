@@ -33,7 +33,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm start -- --port 3096",
+    command: "node node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port 3096",
     url: "http://127.0.0.1:3096/api/health",
     reuseExistingServer: false,
     env: {

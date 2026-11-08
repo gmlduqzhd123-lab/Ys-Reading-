@@ -6,7 +6,8 @@ import { resolveBackupCodex } from "./lib/backup-runtime.mjs";
 import { acquireBackupLock } from "./lib/backup-lock.mjs";
 import { nativeMcp } from "./lib/native-mcp.mjs";
 import { runBackupAgent } from "./lib/backup-agent.mjs";
-import { readAgent, reportAgent } from "./lib/backup-agent-channel.mjs";
+import { readAgent, reportAgent,reportCopies } from "./lib/backup-agent-channel.mjs";
+import {copyTarget} from "./lib/copy-report.mjs";
 const directory = defaultVault(), stateFile = path.join(directory, "agent-state.json");
 const read = (file) => { try { return JSON.parse(fs.readFileSync(file,"utf8")); } catch { return null; } };
 let release;
@@ -49,17 +50,22 @@ try {
   });
   // Copy failures stay separate from a verified primary backup. The operator
   // sees the last verified copy and local failure state; never claim delivery.
-  if(fs.existsSync(path.join(directory,"backup-copy.bfconfig"))) {
-    spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-check-copy.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:3*60000,maxBuffer:10000});
+  let copyExit=0,mirrorExit=0,copyReported=true;
+  const copyConfigured=fs.existsSync(path.join(directory,"backup-copy.bfconfig")),mirrorConfigured=fs.existsSync(path.join(directory,"cloud-mirror.bfconfig"));
+  if(copyConfigured) {
+    copyExit=spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-check-copy.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:3*60000,maxBuffer:10000}).status??1;
   }
   // Cloud archives are created by server cron. A returning PC independently
   // decrypts and restores the newest archive; failure cannot claim verification.
   const cloudRun=spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-cloud-backup.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:5*60000,maxBuffer:10000});
   let cloudResult;try{cloudResult=JSON.parse(cloudRun.stdout.trim().split(/\r?\n/).at(-1));}catch{cloudResult={ok:false,code:"CLOUD_CHECK_UNAVAILABLE"};}
   fs.writeFileSync(path.join(directory,"cloud-scheduled-status.json"),JSON.stringify({...cloudResult,checkedAt:new Date().toISOString()}),{mode:0o600});
-  if(fs.existsSync(path.join(directory,"cloud-mirror.bfconfig")))spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-cloud-mirror.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:120000,maxBuffer:10000});
+  if(mirrorConfigured)mirrorExit=spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-cloud-mirror.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:120000,maxBuffer:10000}).status??1;
+  const targets=[copyTarget("recovery-kit",copyConfigured,read(path.join(directory,"copy-status.json")),copyExit),copyTarget("cloud-mirror",mirrorConfigured,read(path.join(directory,"cloud-mirror-status.json")),mirrorExit)];
+  try{await reportCopies(directory,key,agent,targets);}catch{copyReported=false;}
+  fs.writeFileSync(path.join(directory,"copy-report-status.json"),JSON.stringify({reported:copyReported,targets,checkedAt:new Date().toISOString()}),{mode:0o600});
   fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({...result,checkedAt:new Date().toISOString(),state:state.state,code:state.code}),{mode:0o600});
-  process.exitCode = result.ok === false || cloudRun.status !== 0 || cloudResult?.ok !== true ? 1 : 0;
+  process.exitCode = result.ok === false || cloudRun.status !== 0 || cloudResult?.ok !== true || !copyReported ||targets.some(t=>t.configured&&t.state!=="verified") ? 1 : 0;
 } catch(e) {
   const code = /^[A-Z][A-Z_]{1,79}$/.test(e?.message ?? "") ? e.message : "BACKUP_RUNNER_UNAVAILABLE";
   fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({ok:false,code,checkedAt:new Date().toISOString()}),{mode:0o600});

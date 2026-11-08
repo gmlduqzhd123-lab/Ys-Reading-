@@ -52,6 +52,7 @@ it("keeps public backup metadata bounded and flags missing, failed and expired r
     "backupHealthy",
     "checkedAt",
     "code",
+    "copies",
     "healthy",
     "verifiedAt",
   ]);

@@ -9,6 +9,19 @@ const payload=(changes:any={})=>JSON.stringify({version:1,agent:id,sequence:1,ch
 const sign=(p:string)=>createHmac("sha256",secret).update(p).digest("hex");
 const send=async(p:string,s=sign(p))=>(await db.query<{v:any}>("select public.backup_agent_report($1,$2) v",[p,s])).rows[0].v;
 const health=async()=>(await db.query<{v:any}>("select public.service_backup_health() v")).rows[0].v;
+it("authenticates copy reports, alerts only configured targets, preserves real backup health and fences replay",async()=>{
+ const targets=[{kind:"recovery-kit",configured:true,state:"verified",external:false,digest:"a".repeat(64),verifiedAt:new Date().toISOString(),bytes:100},{kind:"cloud-mirror",configured:false,state:"unconfigured",external:false,digest:null,verifiedAt:null,bytes:null}];
+ const copyPayload=(sequence:number,values=targets)=>JSON.stringify({version:1,agent:id,sequence,checkedAt:new Date().toISOString(),targets:values});
+ const copySend=(p:string,s=sign(p))=>db.query<{v:any}>("select public.backup_copy_report($1,$2) v",[p,s]);
+ await db.exec("set role anon");const p=copyPayload(1);await copySend(p);expect((await health()).copies).toMatchObject({configured:true,external:false,healthy:true});
+ expect((await copySend(p)).rows[0].v.replayed).toBe(true);
+ const bad=copyPayload(2,targets.map(t=>t.kind==="recovery-kit"?{...t,state:"failed",digest:null,verifiedAt:null,bytes:null}:t));
+ expect(await forbidden(db,()=>copySend(bad,sign(p)))).toContain("BF_FORBIDDEN");await copySend(bad);
+ expect((await health()).copies).toMatchObject({healthy:false,code:"BACKUP_COPY_FAILED"});
+ expect(await forbidden(db,()=>db.query("select * from private.backup_copy_reports"))).toContain("permission denied");
+ await db.exec("reset role;update private.backup_copy_reports set checked_at=now()-interval '3 hours',state='verified'");
+ expect((await health()).copies.healthy).toBe(false);
+});
 it("accepts a signed anonymous status, rejects tampering, and does not expose credentials",async()=>{
  await db.exec("set role anon");const p=payload();expect((await send(p)).accepted).toBe(true);
  expect(await forbidden(db,()=>send(payload({sequence:2}),sign(p)))).toContain("BF_FORBIDDEN");

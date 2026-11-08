@@ -222,6 +222,7 @@ export default async function ReportsPage({
       {state && staffClass?.review && (
         <>
           <ReportComposer
+            owner={p.id}
             key={JSON.stringify([cls, student, from, until, worksPage])}
             state={state}
           />

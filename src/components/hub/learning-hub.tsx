@@ -288,6 +288,7 @@ export function LearningHub({
               )}
               {tab === "review" && teacher && reviewQueue && (
                 <ReviewQueue
+                  owner={data.profile.id}
                   key={`${reviewQueue.kind}:${reviewQueue.classroom}:${reviewQueue.page}`}
                   state={reviewQueue}
                   classes={data.classes}

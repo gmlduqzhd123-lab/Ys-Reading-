@@ -37,15 +37,14 @@ test("class context, 28-record split export, resume and learning notification", 
   await page
     .getByRole("button", { name: "조건에 맞는 묶음 만들기", exact: true })
     .click();
-  await expect(
-    page.getByText(
-      "분할 파일 생성을 마쳤어요. 다운로드 목록 또는 Google 링크에서 파일을 확인해 주세요.",
-      { exact: true },
-    ),
-  ).toBeVisible();
+  await expect(page.getByText("ZIP 생성을 서버에 등록했어요. 탭을 닫아도 계속되며 완료 후 아래에서 받을 수 있습니다.",{exact:true})).toBeVisible();
+  // The browser no longer drives generation. Reload while the server job runs.
+  await page.reload();
   await expect(
     page.getByText("28건 · 2/2개 파일 생성", { exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({timeout:90000});
+  const firstDownload=page.waitForEvent("download");
+  await page.getByRole("link",{name:"ZIP 받기",exact:true}).click();await firstDownload;
   expect(downloaded).toHaveLength(1);
   const paths = await Promise.all(downloaded.map((d) => d.path()));
   expect(downloaded[0].suggestedFilename()).toBe("책숲-기록묶음.zip");
@@ -60,7 +59,7 @@ test("class context, 28-record split export, resume and learning notification", 
     page.getByText("28건 · 2/2개 파일 생성", { exact: true }),
   ).toBeVisible();
   const resumed=page.waitForEvent("download");
-  await page.getByRole("button",{name:"ZIP 다시 받기",exact:true}).click();
+  await page.getByRole("link",{name:"ZIP 받기",exact:true}).click();
   const resumedFile=await resumed;
   expect(resumedFile.suggestedFilename()).toBe("책숲-기록묶음.zip");
   const resumedZip=await JSZip.loadAsync(fs.readFileSync((await resumedFile.path())!));

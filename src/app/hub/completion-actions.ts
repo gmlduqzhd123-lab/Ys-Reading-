@@ -43,6 +43,7 @@ export async function batchExportAction(owner: string, input: unknown) {
           format: z.enum(["docx", "csv", "google-docs", "google-sheets"]),
           includeNames: z.boolean(),
           selection: z.enum(["all", "latest", "completed"]).default("all"),
+          requestId:z.uuid(),
           classroom,
           from: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
           to: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
@@ -57,11 +58,13 @@ export async function batchExportAction(owner: string, input: unknown) {
           url: z.url().nullable().default(null),
         })
         .strict(),
+      z.object({action:z.literal("discard"),id:z.uuid()}).strict(),
+      z.object({action:z.literal("zip"),id:z.uuid(),operation:z.enum(["start","status","cancel"])}).strict(),
     ])
     .parse(input);
   const r =
     v.action === "start"
-      ? await c.rpc("start_export_snapshot", {
+      ? await c.rpc("create_export_batch", {
           p_title: v.title,
           p_kind: v.kind,
           p_format: v.format,
@@ -70,8 +73,9 @@ export async function batchExportAction(owner: string, input: unknown) {
           p_from: v.from || null,
           p_to: v.to || null,
           p_selection: v.selection,
+          p_request:v.requestId,
         })
-      : await c.rpc(
+      : v.action==="discard"?await c.rpc("discard_export_batch",{p_id:v.id}):v.action==="zip"?await c.rpc("zip_job",{p_batch:v.id,p_action:v.operation}):await c.rpc(
           "export_batch_state",
           v.action === "list"
             ? {}
@@ -79,7 +83,7 @@ export async function batchExportAction(owner: string, input: unknown) {
         );
   if (r.error)
     throw Error(
-      r.error.message.includes("BF_EXPORT_NOT_GENERATED")
+      /BF_EXPORT_(QUOTA|STORAGE_QUOTA)/.test(r.error.message)?"내보내기 한도에 도달했어요. 필요 없는 묶음을 지우거나 다음 날 다시 만들어 주세요. 보관 10개·하루 새 묶음 20개·원문 합계 64MiB까지 지원합니다.":r.error.message.includes("BF_EXPORT_NOT_GENERATED")
         ? "파일 생성 확인 후 다시 시도해 주세요."
         : r.error.message.includes("BF_EXPORT_TOO_LARGE") ? "선택한 기록이 커요. 학급·날짜 범위를 나누어 새 묶음을 만들어 주세요."
         : "조건·권한·연결을 확인해 주세요. 기록은 1~10,000건까지 묶을 수 있습니다.",

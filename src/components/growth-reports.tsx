@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {formatKoreanDate} from "@/lib/rules";
+import {useTeacherWorkDraft,TeacherWorkDraftNotice} from "@/components/teacher-work-draft";
 import {
   createReport,
   reviewReport,
@@ -14,7 +15,7 @@ import {
   type GrowthReport,
   type ReportState,
 } from "@/lib/growth-report";
-export function ReportComposer({ state }: { state: ReportState }) {
+export function ReportComposer({ state,owner }: { state: ReportState;owner:string }) {
   const router = useRouter(),
     [title, setTitle] = useState(state.student.name + "의 책숲 성장 기록"),
     [note, setNote] = useState(""),
@@ -23,6 +24,7 @@ export function ReportComposer({ state }: { state: ReportState }) {
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const request = useRef(crypto.randomUUID());
+  const draft=useTeacherWorkDraft({owner,scope:"report",context:{classroom:state.classroom.id,student:state.student.id,from:state.from,until:state.until},payload:{title,note,works},apply:p=>{setTitle(typeof p.title==="string"?p.title:state.student.name+"의 책숲 성장 기록");setNote(typeof p.note==="string"?p.note:"");setWorks(Array.isArray(p.works)?p.works.filter((id):id is string=>typeof id==="string"&&state.works.some(w=>w.id===id)):[]);setConfirmed(false);request.current=crypto.randomUUID();}});
   function changed() {
     request.current = crypto.randomUUID();
     setConfirmed(false);
@@ -30,6 +32,7 @@ export function ReportComposer({ state }: { state: ReportState }) {
   return (
     <section className="panel">
       <h2>{state.student.name}의 보고서 준비</h2>
+      <TeacherWorkDraftNotice draft={draft}/>
       <p>
         {state.classroom.name} ·{" "}
         {state.from ? `${state.from} ~ ${state.until}` : "이 학급의 전체 기간"}{" "}
@@ -48,7 +51,7 @@ export function ReportComposer({ state }: { state: ReportState }) {
         제출한 횟수는 실력 향상을 자동 평가하지 않습니다. 출석 활동일은 학교
         출결과 다릅니다.
       </p>
-      <fieldset disabled={busy}>
+      <fieldset disabled={busy||draft.blocked}>
         <legend>대표 작품 선택 · 최대 3편</legend>
         {!state.works.length && (
           <p>
@@ -85,7 +88,7 @@ export function ReportComposer({ state }: { state: ReportState }) {
         <p>
           완료 작품 {state.candidateTotal}편 중 현재 {state.works.length}
           편입니다. 다른 페이지로 이동하면 아직 저장하지 않은 선택과 의견은
-          초기화됩니다.
+          달라질 수 있어요. 교사 초안 불러오기로 보관한 입력을 복원할 수 있습니다.
         </p>
         <label className="field">
           성장 보고서 제목
@@ -146,6 +149,7 @@ export function ReportComposer({ state }: { state: ReportState }) {
               });
               setMessage(r.message);
               if (r.ok) {
+                await draft.clear().catch(()=>{});
                 request.current = crypto.randomUUID();
                 setConfirmed(false);
                 router.refresh();

@@ -9,6 +9,8 @@ type Batch = {
   done: number;
   parts: number;
   format: string;
+  zip_state?:string|null;
+  zip_done?:number;
 };
 type Part = {
   id: string;
@@ -51,6 +53,7 @@ export function BatchExports({
   const active = useRef(true),
     pause = useRef(false),
     request = useRef<AbortController | null>(null);
+  const creation=useRef<{fingerprint:string;id:string}|null>(null);
   useEffect(() => {
     active.current = true;
     setInteractive(true);
@@ -85,6 +88,8 @@ export function BatchExports({
     const v = await batchExportAction(owner, { action: "list" });
     if (active.current) setBatches(v);
   }
+  const running=batches.some(b=>["queued","running"].includes(b.zip_state??""));
+  useEffect(()=>{if(!running||blocked)return;const update=()=>{if(active.current&&document.visibilityState==="visible"&&navigator.onLine)void refresh().catch(()=>{});};const timer=setInterval(update,2500);document.addEventListener("visibilitychange",update);return()=>{clearInterval(timer);document.removeEventListener("visibilitychange",update);};},[running,blocked,owner]);
   async function run(id: string, recreate = false) {
     setBusy(true);
     pause.current = false;
@@ -95,8 +100,10 @@ export function BatchExports({
         id,
         part: 0,
       });
-      const localFiles: {name:string;data:ArrayBuffer}[]=[];
-      let bytes=0;
+      if(!first.format.startsWith("google-")){
+        await batchExportAction(owner,{action:"zip",id,operation:"start"});
+        if(active.current){setMessage("ZIP 생성을 서버에 등록했어요. 탭을 닫아도 계속되며 완료 후 아래에서 받을 수 있습니다.");await refresh();}return;
+      }
       for (let n = 0; n < first.parts; n++) {
         if (!active.current || pause.current) break;
         if (first.format.startsWith("google-") && first.completed[n] && !recreate) {
@@ -142,12 +149,6 @@ export function BatchExports({
             ...old,
             { url: url!, label: `${n + 1}번 Google 파일` },
           ]);
-        } else {
-          const file = await response.arrayBuffer();
-          if (!active.current) break;
-          bytes+=file.byteLength;
-          if(bytes>64*1024*1024)throw Error("파일이 커요. 날짜 범위를 나누어 새 묶음을 만들어 주세요.");
-          localFiles.push({name:`책숲-${n+1}-${part.parts}.${part.format}`,data:file});
         }
         await batchExportAction(owner, {
           action: "part",
@@ -157,20 +158,6 @@ export function BatchExports({
           url,
         });
         await refresh();
-      }
-      if(active.current&&!pause.current&&localFiles.length===first.parts){
-        // Revalidate access to every part immediately before releasing the ZIP.
-        for(let n=0;n<first.parts;n++){
-          const r=await createClient().rpc("check_export_part_access",{p_id:id,p_part:n});
-          if(r.error||!active.current)throw Error("기록 접근 권한이 바뀌었어요. 새 묶음을 만들어 주세요.");
-        }
-        const {default:JSZip}=await import("jszip"),zip=new JSZip();
-        for(const file of localFiles)zip.file(file.name,file.data);
-        const blob=await zip.generateAsync({type:"blob",compression:"STORE"});
-        if(!active.current)return;
-        const href=URL.createObjectURL(blob),a=document.createElement("a");
-        a.href=href;a.download="책숲-기록묶음.zip";a.click();
-        setTimeout(()=>URL.revokeObjectURL(href),60000);
       }
       if (active.current)
         setMessage(
@@ -210,6 +197,8 @@ export function BatchExports({
           onSubmit={(e) => {
             e.preventDefault();
             setBusy(true);
+            const fingerprint=JSON.stringify({title,kind,format,names,classroom,from,to,selection});
+            if(creation.current?.fingerprint!==fingerprint)creation.current={fingerprint,id:crypto.randomUUID()};
             void batchExportAction(owner, {
               action: "start",
               title,
@@ -217,11 +206,12 @@ export function BatchExports({
               format,
               includeNames: names,
               selection,
+              requestId:creation.current.id,
               classroom,
               from,
               to,
             })
-              .then((id) => run(id))
+              .then((id) => {creation.current=null;return run(id);})
               .catch((e) => {
                 setMessage(e.message);
                 setBusy(false);
@@ -335,8 +325,9 @@ export function BatchExports({
           </button>
         )}
         <p className="form-help">
-          ZIP은 모든 부분을 준비한 뒤 한 번에 다운로드합니다. 중지·재접속하면 고정한 내용으로 ZIP 전체를 다시 만들어요. 생성 건수는 기기 저장 확인이 아닙니다. Google은 교사 계정을 먼저 연결해 주세요. 이전 방식 묶음은 새로 만들어 주세요.
+          ZIP은 서버에서 분할 생성하고 보관합니다. 재접속 후 완료 파일을 받을 수 있으며 다운로드할 때 현재 동의·권한을 다시 확인해요. 생성 건수는 기기 저장 확인이 아닙니다. Google은 교사 계정을 먼저 연결해 주세요.
         </p>
+      <p className="form-help">계정마다 7일 보관 묶음 10개·하루 새 묶음 20개·원문 합계 64MiB까지 지원합니다. 같은 요청 재시도는 기존 묶음을 이용해요.</p>
         {message && <p role="status">{message}</p>}
         {links.map((l) => (
           <p key={l.url}>
@@ -349,15 +340,18 @@ export function BatchExports({
           <article key={b.id}>
             <h3>{b.title}</h3>
             <p>
-              {b.total}건 · {b.done}/{b.parts}개 파일 생성
+              {b.total}건 · {b.format.startsWith("google-")?b.done:(b.zip_done??0)}/{b.parts}개 파일 생성
             </p>
-            <button
+            {b.zip_state==="complete"&&!b.format.startsWith("google-")?<a className="button button-primary" href={`/api/exports/zip?batch=${b.id}`} download>ZIP 받기</a>:<button
               disabled={busy}
               className="button button-outline"
               onClick={() => void run(b.id)}
             >
-              {b.format.startsWith("google-")?"남은 Google 파일 이어서 생성":"ZIP 다시 받기"}
-            </button>
+              {b.format.startsWith("google-")?"남은 Google 파일 이어서 생성":["queued","running"].includes(b.zip_state??"")?"서버 작업 상태 확인":"ZIP 생성 이어가기"}
+            </button>}
+            {["queued","running"].includes(b.zip_state??"")&&<><p role="status">서버에서 ZIP 파일을 준비하고 있어요. 이 화면을 닫아도 작업은 계속됩니다.</p><button className="button button-outline" onClick={async()=>{try{await batchExportAction(owner,{action:"zip",id:b.id,operation:"cancel"});await refresh();}catch(e){setMessage(e instanceof Error?e.message:"중단을 확인하지 못했어요.");}}}>ZIP 생성 중단</button></>}
+            {b.zip_state==="failed"&&<p role="alert">ZIP 생성이 중단됐어요. 현재 권한과 보관 용량을 확인한 뒤 이어서 생성해 주세요.</p>}
+            <button className="button button-outline" disabled={busy} onClick={async()=>{if(!window.confirm("이 내보내기 묶음과 임시 파일을 지울까요? 원래 독서 기록과 글은 유지됩니다."))return;setBusy(true);try{await batchExportAction(owner,{action:"discard",id:b.id});await refresh();}catch(e){setMessage(e instanceof Error?e.message:"연결을 확인해 주세요.");}finally{setBusy(false);}}}>이 묶음 삭제</button>
           </article>
         ))}
       </fieldset>

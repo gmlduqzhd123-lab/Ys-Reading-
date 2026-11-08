@@ -81,6 +81,51 @@ async function search(
   ]);
 }
 describe("Server-side classroom insights, notices and complete record search", () => {
+  it("persists ZIP parts across sessions, uses real source RLS under a non-bypass role and fences one-use workers",async()=>{
+    const id=await reading(),sid=randomUUID();
+    await db.exec("reset role;create table if not exists auth.sessions(id uuid primary key,user_id uuid,created_at timestamptz default now());create or replace function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}')$$");
+    await db.query("insert into auth.sessions(id,user_id) values($1,$2)",[sid,t]);await actor(t);
+    await db.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:t,session_id:sid,role:"authenticated"})]);
+    const batch=await rpc("create_export_batch",["서버 묶음","reading","csv",false,c,null,null,"all",randomUUID()]);
+    expect((await rpc("zip_job",[batch,"start"])).state).toBe("queued");
+    await db.exec("reset role");const task=(await one("select id from private.zip_tasks where batch_id=$1",[batch])).id;
+    await db.exec("set role anon");const claimed=await rpc("claim_zip_task",[task]);expect(claimed.bundle.entries[0].title).toBe("어린 왕자");
+    await reject("select public.claim_zip_task($1)",[task],"BF_JOB_UNAVAILABLE");
+    await reject("select private.zip_visible_part($1,'{}',$2,0)",[t,batch],"permission denied");
+    await rpc("finish_zip_task",[task,claimed.lease,Buffer.from("독서 기록 CSV").toString("base64"),true]);
+    await actor(other);await reject("select public.read_zip_part($1,0)",[batch],"BF_FORBIDDEN");
+    await actor(t);expect((await rpc("zip_job",[batch])).state).toBe("complete");
+    expect(Buffer.from((await rpc("read_zip_part",[batch,0])).content,"base64").toString()).toBe("독서 기록 CSV");
+    await db.exec("reset role");await db.query("update public.profiles set consent_status='pending' where id=$1",[s]);
+    await actor(t);await reject("select public.read_zip_part($1,0)",[batch],"BF_EXPORT_ACCESS_CHANGED");
+    await rpc("discard_export_batch",[batch]);
+    await db.exec("reset role");expect((await one("select count(*)::int n from private.zip_parts where batch_id=$1",[batch])).n).toBe(0);
+  });
+  it("keeps teacher notes private, revisions monotonic after discard and access current after consent withdrawal",async()=>{
+    const id=await reading();await actor(t);const ctx={classroom:c,kind:"reading",page:1},payload={selected:[id],body:"교사만 보는 초안",decision:"completed"},request=randomUUID();
+    const first=await rpc("teacher_work_draft",["save","review",ctx,payload,0,request]);expect(first.revision).toBe(1);
+    expect((await rpc("teacher_work_draft",["save","review",ctx,payload,0,request])).revision).toBe(1);
+    await reject("select public.teacher_work_draft('save','review',$1,$2,0,$3)",[ctx,payload,randomUUID()],"BF_STALE_REVISION");
+    await actor(other);await reject("select public.teacher_work_draft('get','review',$1)",[ctx],"BF_FORBIDDEN");
+    await actor(s);await reject("select public.teacher_work_draft('get','review',$1)",[ctx],"BF_FORBIDDEN");
+    await actor(t);await rpc("teacher_work_draft",["discard","review",ctx,null,1,randomUUID()]);
+    expect(await rpc("teacher_work_draft",["get","review",ctx])).toMatchObject({revision:2,payload:null});
+    await reject("select public.teacher_work_draft('save','review',$1,$2,1,$3)",[ctx,payload,randomUUID()],"BF_STALE_REVISION");
+    await rpc("teacher_work_draft",["save","review",ctx,payload,2,randomUUID()]);
+    await db.exec("reset role");await db.query("update public.profiles set consent_status='pending' where id=$1",[s]);
+    await actor(t);await reject("select public.teacher_work_draft('get','review',$1)",[ctx],"BF_FORBIDDEN");
+  });
+  it("enforces batch capacity in legacy and new RPCs, safely replays creation and tombstones discarded batches",async()=>{
+    await reading();await actor(t);const request=randomUUID(),args=["묶음","reading","docx",false,c,null,null,"all",request];
+    const first=await rpc("create_export_batch",args);expect(await rpc("create_export_batch",args)).toBe(first);
+    await reject("select public.create_export_batch('다른 요청','reading','docx',false,$1,null,null,'all',$2)",[c,request],"BF_IDEMPOTENCY_CONFLICT");
+    for(let i=1;i<10;i++)await rpc("start_export_batch",["보관 "+i,"reading","csv",false,c,null,null]);
+    await reject("select public.start_export_snapshot('초과','reading','docx',false,$1)",[c],"BF_EXPORT_QUOTA");
+    await rpc("discard_export_batch",[first]);expect(await one("select count(*)::int n from private.export_snapshots where batch_id=$1",[first])).toMatchObject({n:0});
+    await reject("select public.export_batch_content($1,0)",[first],"BF_FORBIDDEN");
+    await reject("select public.create_export_batch('묶음','reading','docx',false,$1,null,null,'all',$2)",[c,request],"BF_BATCH_EXPIRED");
+    await rpc("start_export_batch",["새 보관","reading","csv",false,c,null,null]);
+  });
   it("rechecks membership eligibility between queries after introducing the scope cache",async()=>{
     await reading();await actor(t);expect((await search("reading",c)).total).toBe(1);
     await db.exec("reset role");await db.query("update public.profiles set account_active=false where id=$1",[s]);

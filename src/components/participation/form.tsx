@@ -15,12 +15,14 @@ export function ParticipationForm({
   children,
   label = "저장하기",
   onSuccess,
+  disabled=false,
 }: {
   command: (typeof participationCommands)[number];
   payload: (data: FormData) => Record<string, unknown>;
   children?: ReactNode;
   label?: string;
   onSuccess?: (data: Record<string, unknown>) => void;
+  disabled?:boolean;
 }) {
   const router = useRouter(),
     key = useRef<string | null>(null);
@@ -71,7 +73,7 @@ export function ParticipationForm({
         });
       }}
     >
-      <fieldset className="hub-fieldset" disabled={busy}>
+      <fieldset className="hub-fieldset" disabled={busy||disabled}>
         {children}
         <button className="button button-primary" type="submit">
           {busy ? "처리 중…" : label}
