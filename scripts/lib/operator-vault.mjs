@@ -125,6 +125,7 @@ export function vaultKey(directory, { create = true } = {}) {
   const file = path.join(directory, "operator-key.dpapi");
   if (fs.existsSync(file)) return protectLocalKey(fs.readFileSync(file), true);
   if (!create) throw Error("RECOVERY_KEY_MISSING");
+  if (fs.readdirSync(directory).some(name=>/\.(bfbak|bfcloud|bfconfig|bfguard)$/.test(name))) throw Error("RECOVERY_KEY_MISSING");
   const key = randomBytes(32);
   fs.writeFileSync(file, protectLocalKey(key), { flag: "wx", mode: 0o600 });
   return key;

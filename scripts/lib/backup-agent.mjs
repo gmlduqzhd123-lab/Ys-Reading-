@@ -1,6 +1,6 @@
 // This policy never reads OAuth tokens. A real project-scoped MCP call proves readiness.
 const minute = 60000;
-export const safeAgentCode = (value) => ["OK","MCP_AUTH_REQUIRED","MCP_TIMEOUT","MCP_UNAVAILABLE","MCP_REQUEST_FAILED","MCP_TOOL_FAILED","MCP_RESPONSE_INVALID","PROJECT_SCOPE_MISMATCH","BACKUP_FAILED","BACKUP_RUN_FAILED","BACKUP_CODEX_UNAVAILABLE","SNAPSHOT_READ_FAILED","PRIVACY_CHECKPOINT_READ_FAILED","BACKUP_ALREADY_RUNNING"].includes(value) ? value : "BACKUP_FAILED";
+export const safeAgentCode = (value) => ["OK","MCP_AUTH_REQUIRED","MCP_TIMEOUT","MCP_UNAVAILABLE","MCP_REQUEST_FAILED","MCP_TOOL_FAILED","MCP_RESPONSE_INVALID","PROJECT_SCOPE_MISMATCH","RECOVERY_KEY_MISSING","BACKUP_FAILED","BACKUP_RUN_FAILED","BACKUP_CODEX_UNAVAILABLE","SNAPSHOT_READ_FAILED","PRIVACY_CHECKPOINT_READ_FAILED","BACKUP_ALREADY_RUNNING"].includes(value) ? value : "BACKUP_FAILED";
 export function backupDue(state, now, request) {
   if (request && Date.parse(request.requestedAt) <= now && now - Date.parse(request.requestedAt) < 86400000 && request.id !== state.completedRequest) return true;
   const verified = Date.parse(state.lastVerifiedAt);

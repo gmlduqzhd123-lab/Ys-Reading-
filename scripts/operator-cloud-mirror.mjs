@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import {createHash} from "node:crypto";
 import {defaultVault,vaultKey,encryptBackup,decryptBackup,projectRef} from "./lib/operator-vault.mjs";
 import {copyLocationKind} from "./lib/backup-copy.mjs";
 import {copyCloudArchive} from "./lib/cloud-mirror.mjs";

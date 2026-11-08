@@ -25,7 +25,7 @@ export function ReadingEditor({
 }) {
   const classes = data.classes.filter((c) => c.term_state !== "archived"),
     router = useRouter();
-  const initial = (): ReadingDraftPayload => ({
+  const initial = (classId=edit?.classroom_id??classes[0]?.id): ReadingDraftPayload => ({
     title: book?.title ?? edit?.book.title ?? "",
     author: book?.author ?? edit?.book.author ?? "",
     publisher: book?.publisher ?? edit?.book.publisher ?? "",
@@ -36,7 +36,7 @@ export function ReadingEditor({
     thought: edit?.thought ?? "",
     question: edit?.question ?? "",
     guidance: JSON.stringify({
-      mode: edit?.thought ? "free" : (classes.find(c=>c.id===(edit?.classroom_id??classes[0]?.id))?.reading_guidance??"line"),
+      mode: edit?.thought ? "free" : (classes.find(c=>c.id===classId)?.reading_guidance??"line"),
       scene: "",
       feeling: "",
       idea: "",
@@ -366,7 +366,7 @@ export function ReadingEditor({
                 )
                   return;
                 setClassroom(e.target.value);
-                setValue(initial());
+                setValue(initial(e.target.value));
                 setDirty(false);
               }}
               disabled={!!edit}

@@ -59,6 +59,12 @@ test("class context, 28-record split export, resume and learning notification", 
   await expect(
     page.getByText("28건 · 2/2개 파일 생성", { exact: true }),
   ).toBeVisible();
+  const resumed=page.waitForEvent("download");
+  await page.getByRole("button",{name:"ZIP 다시 받기",exact:true}).click();
+  const resumedFile=await resumed;
+  expect(resumedFile.suggestedFilename()).toBe("책숲-기록묶음.zip");
+  const resumedZip=await JSZip.loadAsync(fs.readFileSync((await resumedFile.path())!));
+  expect(Object.keys(resumedZip.files)).toEqual(files);
   const baseline = page.waitForResponse(
     (r) => r.url().includes("/api/learning-changes") && r.status() === 200,
   );

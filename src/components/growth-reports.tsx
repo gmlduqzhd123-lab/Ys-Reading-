@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {formatKoreanDate} from "@/lib/rules";
 import {
   createReport,
   reviewReport,
@@ -411,9 +412,7 @@ export function ReportArchive({
           <p>
             {r.snapshot.classroom.name} ·{" "}
             {r.published_at ? "학생에게 공개한 판" : "선생님만 보는 판"} ·{" "}
-            {new Date(r.created_at).toLocaleString("ko-KR", {
-              timeZone: "Asia/Seoul",
-            })}
+            {formatKoreanDate(r.created_at)}
           </p>
           <details>
             <summary>보고서 내용 확인</summary>

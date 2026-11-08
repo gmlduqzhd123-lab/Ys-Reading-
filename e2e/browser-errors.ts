@@ -12,5 +12,5 @@ export function watchBrowserErrors(page: Page) {
   page.on("console", message => {
     if (message.type() === "error" && /hydration|hydrating|#418|didn't match/i.test(message.text())) record(message.text());
   });
-  return () => expect(errors, "Browser runtime errors").toEqual([]);
+  return Object.assign(() => expect(errors, "Browser runtime errors").toEqual([]),{errors});
 }

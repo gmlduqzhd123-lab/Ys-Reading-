@@ -15,6 +15,7 @@ test("teacher roster, invitations, term progression, batch export and simple stu
     await page.goto(route);
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link",{name:"본문으로 바로가기",exact:true})).toBeFocused();
+    await page.locator("main details").evaluateAll(list=>list.forEach(node=>{(node as HTMLDetailsElement).open=true;}));
     const result=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
     expect(result.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),route).toEqual([]);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(1281);

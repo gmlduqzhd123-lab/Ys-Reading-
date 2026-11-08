@@ -182,7 +182,7 @@ export function BatchExports({
       if (active.current)
         setMessage(
           (e instanceof Error ? e.message : "연결을 확인해 주세요.") +
-            " 생성된 부분은 보관되며 다시 이어갈 수 있어요. 원본이 변경되었다면 새 묶음을 만들어 주세요.",
+            " 같은 묶음으로 다시 시도할 수 있어요. 동의·권한·기록 삭제 상태가 바뀌었다면 접근 가능한 기록으로 새 묶음을 만들어 주세요.",
         );
     } finally {
       if (active.current) setBusy(false);
@@ -356,17 +356,8 @@ export function BatchExports({
               className="button button-outline"
               onClick={() => void run(b.id)}
             >
-              남은 파일 이어서 생성
+              {b.format.startsWith("google-")?"남은 Google 파일 이어서 생성":"ZIP 다시 받기"}
             </button>
-            {!b.format.startsWith("google-") && (
-              <button
-                disabled={busy}
-                className="button button-outline"
-                onClick={() => void run(b.id, true)}
-              >
-                분할 파일 다시 받기
-              </button>
-            )}
           </article>
         ))}
       </fieldset>
