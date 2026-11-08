@@ -21,12 +21,19 @@ const dbContainer = "supabase_db_bookforest",
 const authClone = "bookforest-recovery-auth",
   restClone = "bookforest-recovery-rest";
 function docker(args: string[], input?: Buffer | string) {
-  return execFileSync("docker", args, {
+  try{return execFileSync("docker", args, {
     input,
     stdio: ["pipe", "pipe", "pipe"],
     maxBuffer: 64 * 1024 * 1024,
     timeout: 120000,
-  });
+  });}catch(error){
+    const stderr=String((error as {stderr?:unknown}).stderr??"");
+    const reason=/no space left/i.test(stderr)?"DISK_FULL":/port.*allocated|address already in use/i.test(stderr)?"PORT_IN_USE":/conflict.*container|container name.*already in use/i.test(stderr)?"CONTAINER_CONFLICT":/network.*not found/i.test(stderr)?"NETWORK_MISSING":/no such image|pull access denied/i.test(stderr)?"IMAGE_UNAVAILABLE":/permission denied/i.test(stderr)?"PERMISSION_DENIED":"COMMAND_FAILED";
+    // Classify daemon errors without logging environment files, command SQL,
+    // Auth configuration, URLs, credentials or database contents.
+    console.error(JSON.stringify({dockerOperation:args[0],reason,exitStatus:(error as {status?:number}).status??null}));
+    throw Error("DOCKER_"+reason);
+  }
 }
 function sql(query: string, database = "postgres") {
   return docker([
@@ -264,8 +271,9 @@ try {
     ]);
     startedClones.push(name);
   }
-  stage = "independent-services";
+  stage = "independent-auth-service";
   await clone(authContainer, authClone, "GOTRUE_DB_DATABASE_URL", 55431, 9999);
+  stage = "independent-rest-service";
   await clone(restContainer, restClone, "PGRST_DB_URI", 55432, 3000);
   let ready = false;
   for (let i = 0; i < 40; i++) {
