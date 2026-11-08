@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { totp } from "./totp";
+import { watchBrowserErrors } from "./browser-errors";
 const fixture = JSON.parse(
   fs.readFileSync("e2e/.runtime/fixtures.json", "utf8"),
 );
@@ -25,7 +26,7 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   const teacher = await tc.newPage(),
     operator = await oc.newPage(),
     student = await sc.newPage();
-  student.on("pageerror",error=>console.log("SYNTHETIC_STUDENT_PAGE_ERROR",error.message.slice(0,500)));
+  const browserChecks = [teacher, operator, student].map(watchBrowserErrors);
   await login(
     operator,
     fixture.accounts[0].email,
@@ -363,6 +364,7 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   ).toBeVisible();
   await student.reload();
   await expect(student.getByText(/검토 완료·게시 중단/)).toBeVisible();
+  browserChecks.forEach(check => check());
   await tc.close();
   await oc.close();
   await sc.close();
