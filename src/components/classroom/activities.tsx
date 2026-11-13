@@ -351,6 +351,7 @@ function PaperConfirmation({
           <label className="field">
             종이로 확인할 배부 활동
             <select
+              aria-label="종이로 확인할 배부 활동"
               required
               value={activity}
               onChange={(e) => {
@@ -368,6 +369,7 @@ function PaperConfirmation({
           <label className="field">
             종이 활동을 제출한 학생
             <select
+              aria-label="종이 활동을 제출한 학생"
               required
               value={student}
               onChange={(e) => {

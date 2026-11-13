@@ -6,8 +6,8 @@ export const metadata = {
 };
 export default function FamilyPage() {
   return (
-    <main id="main-content" className="page-shell">
+    <div className="page-shell">
       <FamilyPortfolio />
-    </main>
+    </div>
   );
 }

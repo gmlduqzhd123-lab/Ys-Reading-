@@ -167,6 +167,7 @@ export function ClassroomWorkshop({
               <label className="field">
                 오늘 참여 구분
                 <select
+                  aria-label="오늘 참여 구분"
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 >
@@ -263,6 +264,7 @@ export function ClassroomWorkshop({
                   <label className="field">
                     간편 독서 기록 필수 항목
                     <select
+                      aria-label="간편 독서 기록 필수 항목"
                       value={mode}
                       onChange={(e) => setMode(e.target.value as typeof mode)}
                     >

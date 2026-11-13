@@ -104,6 +104,7 @@ export function ActivityEditor({
           <label className="field">
             시작 양식
             <select
+              aria-label="시작 양식"
               defaultValue=""
               onChange={(e) => {
                 if (!e.target.value) return;
@@ -133,6 +134,7 @@ export function ActivityEditor({
           <label className="field">
             활동 종류
             <select
+              aria-label="활동 종류"
               value={kind}
               onChange={(e) => {
                 const k = e.target.value as "worksheet" | "quiz";
@@ -217,6 +219,7 @@ export function ActivityEditor({
                   <label className="field">
                     정답
                     <select
+                      aria-label="정답"
                       value={q.answer ?? 0}
                       onChange={(e) =>
                         editQuestion(i, {

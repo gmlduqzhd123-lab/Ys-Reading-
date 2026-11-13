@@ -131,7 +131,7 @@ export function QuickReading({
               <details>
                 <summary>저자 등 책 정보</summary>
                 <label className="field">
-                  저자
+                  간편 기록 저자
                   <input
                     maxLength={200}
                     value={book.author}

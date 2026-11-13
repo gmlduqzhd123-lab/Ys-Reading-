@@ -23,21 +23,21 @@ export default async function ClassroomPage({
   const selected = params.classroom ?? classes.data?.[0]?.id;
   if (!selected)
     return (
-      <main id="main-content" className="page-shell">
+      <div className="page-shell">
         <h1>우리 반 수업 공방</h1>
         <p>학급을 준비하면 독서 기록·활동지·도감이 연결됩니다.</p>
         <Link href="/start">우리 반 시작하기</Link>
-      </main>
+      </div>
     );
   if (
     !z.uuid().safeParse(selected).success ||
     !classes.data?.some((x) => x.id === selected)
   )
     return (
-      <main id="main-content" className="page-shell">
+      <div className="page-shell">
         <h1>학급을 확인해 주세요</h1>
         <Link href="/classroom">담당 학급으로 돌아가기</Link>
-      </main>
+      </div>
     );
   const page = Math.max(1, Math.min(10000, Number(params.page) || 1)),
     query = (params.q ?? "").slice(0, 100),
@@ -49,7 +49,7 @@ export default async function ClassroomPage({
   if (r.error)
     throw Error("수업 공방에 연결하지 못했어요. 잠시 후 다시 열어 주세요.");
   return (
-    <main id="main-content" className="page-shell">
+    <div className="page-shell">
       <ClassroomWorkshop
         key={selected + ":" + page + ":" + query}
         owner={p.id}
@@ -65,6 +65,6 @@ export default async function ClassroomPage({
             : undefined
         }
       />
-    </main>
+    </div>
   );
 }

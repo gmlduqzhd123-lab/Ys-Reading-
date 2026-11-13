@@ -14,22 +14,22 @@ export default async function ActivityPage({
     { id } = await params;
   if (!z.uuid().safeParse(id).success)
     return (
-      <main id="main-content">
+      <div>
         <h1>활동을 확인해 주세요</h1>
-      </main>
+      </div>
     );
   const c = await createClient(),
     r = await c.rpc("classroom_tool_activity", { p_activity: id });
   if (r.error || !r.data)
     return (
-      <main id="main-content" className="page-shell">
+      <div className="page-shell">
         <h1>이 활동을 열 수 없어요</h1>
         <Link href="/classroom">담당 학급으로 돌아가기</Link>
-      </main>
+      </div>
     );
   const state = r.data as ClassroomToolState;
   return (
-    <main id="main-content" className="classroom-workshop">
+    <div className="classroom-workshop">
       <Link href={"/classroom?classroom=" + state.classroom.id}>
         수업 공방으로
       </Link>
@@ -38,6 +38,6 @@ export default async function ActivityPage({
         state={state}
         student={profile.role === "student"}
       />
-    </main>
+    </div>
   );
 }

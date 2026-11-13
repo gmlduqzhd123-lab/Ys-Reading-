@@ -51,6 +51,7 @@ export function FamilyShare({
           <label className="field">
             공유할 공개 보고서
             <select
+              aria-label="공유할 공개 보고서"
               required
               value={report}
               onChange={(e) => {
@@ -70,6 +71,7 @@ export function FamilyShare({
           <label className="field">
             링크 유효 기간
             <select
+              aria-label="링크 유효 기간"
               value={days}
               onChange={(e) => {
                 setDays(Number(e.target.value));

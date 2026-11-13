@@ -51,6 +51,7 @@ export function ClassroomEvidence({
           <label className="field">
             근거를 살펴볼 학생
             <select
+              aria-label="근거를 살펴볼 학생"
               required
               value={selected}
               onChange={(e) => {
