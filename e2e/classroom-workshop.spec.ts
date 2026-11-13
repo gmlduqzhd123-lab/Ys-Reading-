@@ -26,7 +26,7 @@ test("ten classroom improvements with real teacher, student and anonymous family
     student = await sc.newPage(),
     parent = await pc.newPage();
   const checks = [teacher, student, parent].map(watchBrowserErrors),
-    path = "/classroom?classroom=" + f.workshop.classroom;
+    path = "/classroom?section=all&classroom=" + f.workshop.classroom;
   await login(teacher, f.accounts[1].email, f.accounts[1].password);
   await teacher.goto(path);
   await teacher
@@ -209,10 +209,10 @@ test("ten classroom improvements with real teacher, student and anonymous family
   ).toBeVisible();
   await student.goto(path);
   await student
-    .getByLabel("보유 도서 제목·저자·ISBN", { exact: true })
+    .getByLabel("보유 도서 검색어", { exact: true })
     .fill("CI 교실");
   await student
-    .getByRole("button", { name: "교실 도서 검색", exact: true })
+    .getByRole("button", { name: "보유 도서 검색", exact: true })
     .click();
   await expect(
     student

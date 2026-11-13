@@ -1,5 +1,7 @@
 import type { ExportBundle } from "./export-documents";
+import type { ReportEvidence } from "./workshop-operations";
 export interface ReportSnapshot {
+  sources?: ReportEvidence[];
   asOf: string;
   student: { id: string; name: string };
   classroom: {
@@ -43,6 +45,9 @@ export interface GrowthReport {
   review_revision?: number;
 }
 export interface ReportState extends ReportSnapshot {
+  evidenceCandidates?: ReportEvidence[];
+  evidenceTotal?: number;
+  evidencePage?: number;
   sourceToken: string;
   page: number;
   candidateTotal: number;
@@ -96,6 +101,14 @@ export function reportBundle(report: GrowthReport): ExportBundle {
             ]
           : [final];
       }),
+      ...(s.sources ?? []).map((v) => ({
+        title: v.title,
+        body: v.body,
+        meta:
+          v.kind === "paper"
+            ? "선생님이 선택한 종이 활동 관찰"
+            : "선생님이 선택한 활동지·퀴즈 · " + v.version + "번째 제출",
+      })),
     ],
   };
 }

@@ -55,12 +55,14 @@ export function parseLibraryCsv(input: string): LibraryBook[] {
     if (r.length !== 5 || !isbn || seen.has(isbn))
       throw Error(i + 2 + "번째 줄의 ISBN·중복·열 수를 확인해 주세요.");
     seen.add(isbn);
-    return libraryBookSchema.parse({
+    const parsed=libraryBookSchema.safeParse({
       isbn,
       title: r[1],
       author: r[2],
       location: r[3],
       copies: Number(r[4]),
     });
+    if(!parsed.success)throw Error(i+2+"번째 줄의 제목·저자·위치 글자 수와 권수(1~999)를 확인해 주세요.");
+    return parsed.data;
   });
 }

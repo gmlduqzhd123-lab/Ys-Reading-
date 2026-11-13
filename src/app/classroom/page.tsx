@@ -5,6 +5,8 @@ import { ClassroomWorkshop } from "@/components/classroom/workshop";
 import type { ClassroomToolState } from "@/lib/classroom-tools";
 import { z } from "zod";
 import { quizAiReady } from "@/lib/quiz-config";
+import { loadWorkshopLists } from "@/lib/load-workshop";
+import { workshopSection } from "@/lib/workshop-operations";
 export const metadata = { title: "수업 공방 · 매일 읽는 책숲" };
 export default async function ClassroomPage({
   searchParams,
@@ -43,18 +45,26 @@ export default async function ClassroomPage({
     query = (params.q ?? "").slice(0, 100),
     r = await c.rpc("classroom_tool_state", {
       p_classroom: selected,
-      p_query: query,
-      p_page: page,
+      p_query: "",
+      p_page: 1,
     });
   if (r.error)
     throw Error("수업 공방에 연결하지 못했어요. 잠시 후 다시 열어 주세요.");
+  const state = await loadWorkshopLists(
+    c,
+    r.data as ClassroomToolState,
+    params,
+    p.role === "student",
+  );
   return (
     <div className="page-shell">
       <ClassroomWorkshop
-        key={selected + ":" + page + ":" + query}
+        key={selected + ":" + JSON.stringify(params)}
         owner={p.id}
         student={p.role === "student"}
-        state={r.data as ClassroomToolState}
+        state={state}
+        section={workshopSection(params.section)}
+        params={params}
         classes={classes.data ?? []}
         page={page}
         query={query}

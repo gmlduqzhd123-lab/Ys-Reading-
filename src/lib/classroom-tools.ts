@@ -56,6 +56,10 @@ export type LibraryBook = z.infer<typeof libraryBookSchema>;
 const uuid = z.uuid(),
   revision = z.number().int().min(0);
 export const toolPayloads = {
+  activity_schedule:z.object({id:uuid,revision,active:z.boolean(),dueAt:z.union([z.iso.datetime({offset:true}),z.literal('')]),confirmed:z.literal(true)}).strict(),
+  library_update:libraryBookSchema.extend({revision}),
+  library_delete:z.object({isbn:z.string().regex(/^[0-9X-]{10,20}$/),revision,confirmed:z.literal(true)}).strict(),
+  share_revoke_student:z.object({student:uuid,confirmed:z.literal(true)}).strict(),
   paper_confirm: z
     .object({
       activity: z.uuid(),
@@ -180,6 +184,7 @@ export interface ActivityTemplate {
   published: boolean;
 }
 export interface ClassActivity {
+  revision?:number;
   id: string;
   created_at: string;
   due_at: string | null;
@@ -187,6 +192,7 @@ export interface ClassActivity {
   snapshot: Omit<ActivityTemplate, "id" | "owned" | "published">;
 }
 export interface ActivityAnswer {
+  activity_snapshot?:ClassActivity['snapshot'];
   id: string;
   activity_id: string;
   student_id: string;
@@ -208,6 +214,7 @@ export interface ActivityAnswer {
   };
 }
 export interface ClassroomToolState {
+  lists?:Record<string,{total:number;page:number;size:number}>;
   papers: {
     activity_id: string;
     student_id: string;
@@ -237,7 +244,7 @@ export interface ClassroomToolState {
   collection: string[];
   rhythm: { target: number; revision: number };
   days: string[];
-  library: (LibraryBook & { updated_at: string })[];
+  library: (LibraryBook & { updated_at: string;revision?:number })[];
   libraryTotal: number;
   reports: {
     id: string;
@@ -247,6 +254,9 @@ export interface ClassroomToolState {
     created_at: string;
   }[];
   shares: {
+    student_name?:string;
+    student_id?:string;
+    version?:number;
     id: string;
     title: string;
     expires_at: string;

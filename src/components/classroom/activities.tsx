@@ -9,6 +9,11 @@ import { formatOperationsDate } from "@/lib/operations";
 import { downloadActivity } from "@/lib/activity-print";
 import { useToolAction } from "./use-tool-action";
 import { feedbackStarters } from "@/lib/participation";
+
+import { useWorkshopDraft, WorkshopDraftNotice } from "./work-draft";
+import { workshopDraftPayloads } from "@/lib/workshop-operations";
+import { ActivitySchedule } from "./schedule";
+import { WorkshopListControls } from "./list-controls";
 function StudentActivity({
   owner,
   classroom,
@@ -35,6 +40,30 @@ function StudentActivity({
       !activity.active ||
       (activity.due_at && Date.parse(activity.due_at) <= Date.now()),
     locked = sent || (!!previous && previous.status !== "revision_requested");
+  const draft = useWorkshopDraft({
+    owner,
+    scope: "answer",
+    context: {
+      classroom,
+      activity: activity.id,
+      version: previous?.version ?? 0,
+    },
+    payload: { answers, step },
+    enabled: !locked && !closed,
+    apply: (p) => {
+      if (!Object.keys(p).length) {
+        setAnswers({});
+        setStep(0);
+        return;
+      }
+      const v = workshopDraftPayloads.answer.parse(p);
+      const ids = new Set(questions.map((q) => q.id));
+      if (Object.keys(v.answers).some((id) => !ids.has(id)))
+        throw Error("현재 배부한 질문과 일치하지 않아요.");
+      setAnswers(v.answers);
+      setStep(Math.min(v.step, questions.length - 1));
+    },
+  });
   useEffect(() => {
     if (action.blocked) setAnswers({});
   }, [action.blocked]);
@@ -103,6 +132,7 @@ function StudentActivity({
           )}
         </aside>
       )}
+      {!closed && !locked && <WorkshopDraftNotice draft={draft} />}
       {!closed && !locked && (
         <form
           data-tool-dirty={Object.keys(answers).length > 0}
@@ -119,6 +149,7 @@ function StudentActivity({
                 answers,
               })
             ) {
+              await draft.clear().catch(() => {});
               setSent(true);
               setAnswers({});
             }
@@ -126,7 +157,9 @@ function StudentActivity({
         >
           <fieldset
             className="hub-fieldset"
-            disabled={action.busy || action.blocked}
+            disabled={
+              action.busy || action.blocked || draft.blocked || !draft.ready
+            }
           >
             {quiz && (
               <>
@@ -214,7 +247,28 @@ function ReviewAnswer({
 }) {
   const action = useToolAction(owner, state.classroom.id),
     [feedback, setFeedback] = useState(""),
-    activity = state.activities.find((a) => a.id === answer.activity_id);
+    activity =
+      state.activities.find((a) => a.id === answer.activity_id) ??
+      (answer.activity_snapshot
+        ? {
+            id: answer.activity_id,
+            snapshot: answer.activity_snapshot,
+            active: true,
+            due_at: null,
+            created_at: "",
+          }
+        : undefined);
+  const draft = useWorkshopDraft({
+    owner,
+    scope: "feedback",
+    context: { classroom: state.classroom.id, answer: answer.id },
+    payload: { feedback },
+    enabled:
+      answer.status === "submitted" &&
+      state.classroom.canReview &&
+      !state.classroom.archived,
+    apply: (p) => setFeedback(typeof p.feedback === "string" ? p.feedback : ""),
+  });
   return (
     <article className="tool-card">
       <h4>
@@ -244,7 +298,11 @@ function ReviewAnswer({
       {answer.status === "submitted" &&
       state.classroom.canReview &&
       !state.classroom.archived ? (
-        <form onSubmit={(e) => e.preventDefault()}>
+        <form
+          data-tool-dirty={draft.unsaved}
+          onSubmit={(e) => e.preventDefault()}
+        >
+          <WorkshopDraftNotice draft={draft} />
           <div className="button-row">
             {feedbackStarters.map((text, i) => (
               <button
@@ -422,10 +480,14 @@ export function ClassroomActivities({
   owner,
   state,
   student,
+  params = {},
+  basePath,
 }: {
   owner: string;
   state: ClassroomToolState;
   student: boolean;
+  params?: Record<string, string | undefined>;
+  basePath?: string;
 }) {
   const action = useToolAction(owner, state.classroom.id);
   return (
@@ -433,6 +495,20 @@ export function ClassroomActivities({
       <h2>
         {student ? "우리 반 활동·생각 다리" : "배부한 활동·확인할 제출본"}
       </h2>
+      {state.lists?.activities && (
+        <WorkshopListControls
+          classroom={state.classroom.id}
+          section="activities"
+          prefix="activity"
+          label="배부 활동"
+          list={state.lists.activities}
+          params={params}
+          statuses={[
+            ["active", "진행 중"],
+            ["closed", "마감·종료"],
+          ]}
+        />
+      )}
       {!student && state.classroom.canReview && (
         <PaperConfirmation owner={owner} state={state} />
       )}
@@ -444,7 +520,7 @@ export function ClassroomActivities({
         </article>
       ))}
       <p>
-        최근 배부 활동 20개 · 전체 {state.activityTotal}개. 제출본은 버전으로
+        배부 활동 목록 · 전체 {state.activityTotal}개. 제출본은 버전으로
         보존합니다. 교사 확인이 완료된 활동만 학급 보상 기준에 따라 한 번
         반영됩니다.
       </p>
@@ -479,19 +555,34 @@ export function ClassroomActivities({
             >
               활동지 인쇄 파일
             </button>
-            {state.classroom.owner && a.active && (
-              <button
-                disabled={
-                  action.busy || action.blocked || state.classroom.archived
-                }
-                className="button button-outline"
-                onClick={() => void action.run("activity_close", { id: a.id })}
-              >
-                이 활동 마감
-              </button>
+            {state.classroom.owner && a.revision && (
+              <ActivitySchedule
+                owner={owner}
+                classroom={state.classroom.id}
+                activity={a}
+                archived={state.classroom.archived}
+              />
             )}
           </article>
         ),
+      )}
+      {!student && state.lists?.answers && (
+        <WorkshopListControls
+          classroom={state.classroom.id}
+          section="activities"
+          prefix="answer"
+          basePath={basePath}
+          label="제출본"
+          list={state.lists.answers}
+          params={params}
+          students={state.today}
+          dates
+          statuses={[
+            ["submitted", "확인 대기"],
+            ["revision_requested", "고쳐쓰기 요청"],
+            ["completed", "확인 완료"],
+          ]}
+        />
       )}
       {!student &&
         state.answers.map((w) => (

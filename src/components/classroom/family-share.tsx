@@ -3,12 +3,15 @@ import { useRef, useState } from "react";
 import { shareHash, type ClassroomToolState } from "@/lib/classroom-tools";
 import { formatOperationsDate } from "@/lib/operations";
 import { useToolAction } from "./use-tool-action";
+import { WorkshopListControls } from "./list-controls";
 export function FamilyShare({
   owner,
   state,
+  params = {},
 }: {
   owner: string;
   state: ClassroomToolState;
+  params?: Record<string, string | undefined>;
 }) {
   const action = useToolAction(owner, state.classroom.id),
     [report, setReport] = useState(state.reports[0]?.id ?? ""),
@@ -16,6 +19,8 @@ export function FamilyShare({
     [confirmed, setConfirmed] = useState(false),
     [url, setUrl] = useState(""),
     [copyMessage, setCopyMessage] = useState(""),
+    [bulkStudent, setBulkStudent] = useState(""),
+    [bulkConfirmed, setBulkConfirmed] = useState(false),
     tokens = useRef<Record<string, string>>({});
   return (
     <section className="panel" id="family">
@@ -25,6 +30,17 @@ export function FamilyShare({
         기록·학급 명단·경제 원장은 포함하지 않습니다. 링크를 가진 사람은
         만료·해제 전까지 읽을 수 있으므로 해당 보호자에게만 직접 전달해 주세요.
       </p>
+      {state.lists?.reports && (
+        <WorkshopListControls
+          classroom={state.classroom.id}
+          section="family"
+          prefix="report"
+          label="공유할 보고서"
+          list={state.lists.reports}
+          params={params}
+          students={state.today}
+        />
+      )}
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -140,10 +156,84 @@ export function FamilyShare({
       {!state.reports.length && (
         <p>먼저 성장 보고서를 검토한 뒤 학생에게 공개해 주세요.</p>
       )}
-      <h3>최근 공유 링크 관리</h3>
+      <h3>모든 보호자 공유 링크 관리</h3>
+      {state.lists?.shares && (
+        <WorkshopListControls
+          classroom={state.classroom.id}
+          section="family"
+          prefix="share"
+          label="보호자 공유"
+          list={state.lists.shares}
+          params={params}
+          students={state.today}
+          statuses={[
+            ["active", "공유 중"],
+            ["expired", "기간 만료"],
+            ["revoked", "공유 해제"],
+          ]}
+        />
+      )}
+      <details>
+        <summary>학생의 유효한 링크 모두 해제</summary>
+        <p>
+          선택한 학생의 이 학급 보고서 공유를 모두 해제합니다. 화면에 없는 이전
+          링크도 포함합니다.
+        </p>
+        <label className="field">
+          공유를 모두 해제할 학생
+          <select
+            aria-label="공유를 모두 해제할 학생"
+            value={bulkStudent}
+            onChange={(e) => {
+              setBulkStudent(e.target.value);
+              setBulkConfirmed(false);
+            }}
+          >
+            <option value="">학생 선택</option>
+            {state.today.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="tool-choice">
+          <input
+            type="checkbox"
+            checked={bulkConfirmed}
+            onChange={(e) => setBulkConfirmed(e.target.checked)}
+          />
+          선택한 학생의 이 학급 유효 공유 링크를 모두 해제합니다.
+        </label>
+        <button
+          className="button button-outline"
+          disabled={
+            !bulkStudent || !bulkConfirmed || action.busy || action.blocked
+          }
+          onClick={async () => {
+            const r = await action.run("share_revoke_student", {
+              student: bulkStudent,
+              confirmed: true,
+            });
+            if (r) {
+              setBulkConfirmed(false);
+              setUrl("");
+              tokens.current = {};
+              action.setMessage(
+                String(r.revoked) + "개의 유효한 공유 링크를 해제했어요.",
+              );
+            }
+          }}
+        >
+          확인한 학생의 공유 모두 해제
+        </button>
+      </details>
       {state.shares.map((s) => (
         <article className="tool-card" key={s.id}>
-          <strong>{s.title}</strong>
+          <strong>
+            {s.student_name ? s.student_name + " · " : ""}
+            {s.title} {s.version ? "· " + s.version + "판" : ""}
+          </strong>
           <p>
             {s.revoked_at
               ? "공유 해제"

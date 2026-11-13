@@ -2,8 +2,11 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {formatKoreanDate} from "@/lib/rules";
-import {useTeacherWorkDraft,TeacherWorkDraftNotice} from "@/components/teacher-work-draft";
+import { formatKoreanDate } from "@/lib/rules";
+import {
+  useTeacherWorkDraft,
+  TeacherWorkDraftNotice,
+} from "@/components/teacher-work-draft";
 import {
   createReport,
   reviewReport,
@@ -15,16 +18,60 @@ import {
   type GrowthReport,
   type ReportState,
 } from "@/lib/growth-report";
-export function ReportComposer({ state,owner }: { state: ReportState;owner:string }) {
+export function ReportComposer({
+  state,
+  owner,
+}: {
+  state: ReportState;
+  owner: string;
+}) {
   const router = useRouter(),
     [title, setTitle] = useState(state.student.name + "의 책숲 성장 기록"),
     [note, setNote] = useState(""),
     [works, setWorks] = useState<string[]>([]),
+    [sources, setSources] = useState<string[]>([]),
     [confirmed, setConfirmed] = useState(false),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const request = useRef(crypto.randomUUID());
-  const draft=useTeacherWorkDraft({owner,scope:"report",context:{classroom:state.classroom.id,student:state.student.id,from:state.from,until:state.until},payload:{title,note,works},apply:p=>{setTitle(typeof p.title==="string"?p.title:state.student.name+"의 책숲 성장 기록");setNote(typeof p.note==="string"?p.note:"");setWorks(Array.isArray(p.works)?p.works.filter((id):id is string=>typeof id==="string"&&state.works.some(w=>w.id===id)):[]);setConfirmed(false);request.current=crypto.randomUUID();}});
+  const draft = useTeacherWorkDraft({
+    owner,
+    scope: "report",
+    context: {
+      classroom: state.classroom.id,
+      student: state.student.id,
+      from: state.from,
+      until: state.until,
+    },
+    payload: { title, note, works, sources },
+    apply: (p) => {
+      setTitle(
+        typeof p.title === "string"
+          ? p.title
+          : state.student.name + "의 책숲 성장 기록",
+      );
+      setNote(typeof p.note === "string" ? p.note : "");
+      setWorks(
+        Array.isArray(p.works)
+          ? p.works.filter(
+              (id): id is string =>
+                typeof id === "string" && state.works.some((w) => w.id === id),
+            )
+          : [],
+      );
+      setSources(
+        Array.isArray(p.sources)
+          ? p.sources.filter(
+              (id): id is string =>
+                typeof id === "string" &&
+                /^(answer|paper):[0-9a-f-]{36}$/.test(id),
+            )
+          : [],
+      );
+      setConfirmed(false);
+      request.current = crypto.randomUUID();
+    },
+  });
   function changed() {
     request.current = crypto.randomUUID();
     setConfirmed(false);
@@ -32,8 +79,19 @@ export function ReportComposer({ state,owner }: { state: ReportState;owner:strin
   return (
     <section className="panel">
       <h2>{state.student.name}의 보고서 준비</h2>
-      <Link className="button button-outline" href={'/classroom?classroom='+state.classroom.id+'&student='+state.student.id+'#evidence'}>독서·글쓰기·수업 활동의 원기록 확인</Link>
-      <TeacherWorkDraftNotice draft={draft}/>
+      <Link
+        className="button button-outline"
+        href={
+          "/classroom?classroom=" +
+          state.classroom.id +
+          "&student=" +
+          state.student.id +
+          "#evidence"
+        }
+      >
+        독서·글쓰기·수업 활동의 원기록 확인
+      </Link>
+      <TeacherWorkDraftNotice draft={draft} />
       <p>
         {state.classroom.name} ·{" "}
         {state.from ? `${state.from} ~ ${state.until}` : "이 학급의 전체 기간"}{" "}
@@ -52,7 +110,7 @@ export function ReportComposer({ state,owner }: { state: ReportState;owner:strin
         제출한 횟수는 실력 향상을 자동 평가하지 않습니다. 출석 활동일은 학교
         출결과 다릅니다.
       </p>
-      <fieldset disabled={busy||draft.blocked}>
+      <fieldset disabled={busy || draft.blocked}>
         <legend>대표 작품 선택 · 최대 3편</legend>
         {!state.works.length && (
           <p>
@@ -89,8 +147,98 @@ export function ReportComposer({ state,owner }: { state: ReportState;owner:strin
         <p>
           완료 작품 {state.candidateTotal}편 중 현재 {state.works.length}
           편입니다. 다른 페이지로 이동하면 아직 저장하지 않은 선택과 의견은
-          달라질 수 있어요. 교사 초안 불러오기로 보관한 입력을 복원할 수 있습니다.
+          달라질 수 있어요. 교사 초안 불러오기로 보관한 입력을 복원할 수
+          있습니다.
         </p>
+        <fieldset>
+          <legend>수업 활동 근거 선택 · 최대 3개</legend>
+          <p>
+            완료한 활동지·퀴즈 제출본과 종이 활동의 교사 관찰 중 직접 확인한
+            근거를 선택합니다. 선택한 원문만 이 보고서 판에 보존되어 학생·보호자
+            공유와 파일·Google 내보내기에 포함됩니다.
+          </p>
+          {(state.evidenceCandidates ?? []).map((v) => (
+            <div className="hub-record" key={v.key}>
+              <label className="hub-check">
+                <input
+                  type="checkbox"
+                  checked={sources.includes(v.key)}
+                  disabled={!sources.includes(v.key) && sources.length >= 3}
+                  onChange={(e) => {
+                    setSources((old) =>
+                      e.target.checked
+                        ? [...old, v.key]
+                        : old.filter((x) => x !== v.key),
+                    );
+                    changed();
+                  }}
+                />
+                {v.title} ·{" "}
+                {v.kind === "paper"
+                  ? "종이 활동 관찰"
+                  : v.version + "번째 활동"}
+              </label>
+              <details>
+                <summary>수업 근거 원문 확인</summary>
+                <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                  {v.body}
+                </p>
+              </details>
+            </div>
+          ))}
+          <p>
+            수업 근거 {state.evidenceTotal ?? 0}개 · 현재 선택 {sources.length}
+            개
+          </p>
+          {sources.length > 0 && (
+            <button
+              type="button"
+              className="button button-outline"
+              onClick={() => {
+                setSources([]);
+                changed();
+              }}
+            >
+              수업 근거 선택 비우기
+            </button>
+          )}
+          <nav className="button-row" aria-label="보고서 수업 근거 목록">
+            {(state.evidencePage ?? 1) > 1 && (
+              <Link
+                href={
+                  "/reports?" +
+                  new URLSearchParams({
+                    classroom: state.classroom.id,
+                    student: state.student.id,
+                    ...(state.from
+                      ? { from: state.from, until: state.until! }
+                      : {}),
+                    evidencePage: String((state.evidencePage ?? 1) - 1),
+                  })
+                }
+              >
+                보고서 수업 근거 이전
+              </Link>
+            )}
+            {(state.evidencePage ?? 1) * 30 < (state.evidenceTotal ?? 0) && (
+              <Link
+                href={
+                  "/reports?" +
+                  new URLSearchParams({
+                    classroom: state.classroom.id,
+                    student: state.student.id,
+                    ...(state.from
+                      ? { from: state.from, until: state.until! }
+                      : {}),
+                    evidencePage: String((state.evidencePage ?? 1) + 1),
+                  })
+                }
+              >
+                보고서 수업 근거 다음
+              </Link>
+            )}
+          </nav>
+        </fieldset>
         <label className="field">
           성장 보고서 제목
           <input
@@ -140,6 +288,7 @@ export function ReportComposer({ state,owner }: { state: ReportState;owner:strin
                 from: state.from,
                 until: state.until,
                 works,
+                sources,
                 title,
                 note,
                 publish: false,
@@ -150,7 +299,7 @@ export function ReportComposer({ state,owner }: { state: ReportState;owner:strin
               });
               setMessage(r.message);
               if (r.ok) {
-                await draft.clear().catch(()=>{});
+                await draft.clear().catch(() => {});
                 request.current = crypto.randomUUID();
                 setConfirmed(false);
                 router.refresh();
@@ -434,6 +583,19 @@ export function ReportArchive({
             <p style={{ whiteSpace: "pre-wrap" }}>
               {r.teacher_note || "별도 의견 없음"}
             </p>
+            {r.snapshot.sources?.map((v) => (
+              <article className="hub-record" key={v.key}>
+                <h4>
+                  {v.title} ·{" "}
+                  {v.kind === "paper"
+                    ? "종이 활동 관찰"
+                    : v.version + "번째 활동"}
+                </h4>
+                <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                  {v.body}
+                </p>
+              </article>
+            ))}
             {r.snapshot.works.map((w) => (
               <div key={w.id}>
                 <h4>

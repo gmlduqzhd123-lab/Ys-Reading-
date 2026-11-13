@@ -9,14 +9,20 @@ import {
 import { useToolAction } from "./use-tool-action";
 import { downloadActivity } from "@/lib/activity-print";
 import { quizDraft } from "@/app/classroom/quiz-actions";
+
+import { useWorkshopDraft, WorkshopDraftNotice } from "./work-draft";
+import { workshopDraftPayloads } from "@/lib/workshop-operations";
+import { WorkshopListControls } from "./list-controls";
 export function ActivityEditor({
   owner,
   state,
   aiReady,
+  params = {},
 }: {
   owner: string;
   state: ClassroomToolState;
   aiReady: boolean;
+  params?: Record<string, string | undefined>;
 }) {
   const action = useToolAction(owner, state.classroom.id),
     [id, setId] = useState<string | undefined>(),
@@ -43,6 +49,41 @@ export function ActivityEditor({
     [aiBusy, setAiBusy] = useState(false),
     [aiConsent, setAiConsent] = useState(false),
     [aiMessage, setAiMessage] = useState("");
+  const workDraft = useWorkshopDraft({
+    owner,
+    scope: "template",
+    saveEnabled: dirty,
+    context: { classroom: state.classroom.id },
+    enabled: !state.classroom.archived,
+    payload: {
+      ...(id ? { id } : {}),
+      revision,
+      title,
+      instructions,
+      kind,
+      questions,
+    },
+    apply: (p) => {
+      if (!Object.keys(p).length) {
+        setId(undefined);
+        setRevision(0);
+        setTitle("");
+        setInstructions("");
+        setQuestions([]);
+        setDirty(false);
+        return;
+      }
+      const v = workshopDraftPayloads.template.parse(p);
+      setId(v.id);
+      setRevision(v.revision);
+      setTitle(v.title);
+      setInstructions(v.instructions);
+      setKind(v.kind);
+      setQuestions(v.questions);
+      setDirty(true);
+      setPreview(false);
+    },
+  });
   function load(t: ActivityTemplate) {
     if (
       dirty &&
@@ -76,6 +117,7 @@ export function ActivityEditor({
         같은 배부 버전으로 온라인 활동과 A4 인쇄를 준비합니다. 편집 후 다시
         배부해도 이전 학생의 활동·제출본은 유지됩니다.
       </p>
+      <WorkshopDraftNotice draft={workDraft} />
       <form
         data-tool-dirty={dirty}
         onSubmit={async (e) => {
@@ -89,6 +131,7 @@ export function ActivityEditor({
             questions,
           });
           if (r) {
+            await workDraft.clear().catch(() => {});
             setId(String(r.id));
             setRevision(Number(r.revision));
             setDirty(false);
@@ -98,7 +141,12 @@ export function ActivityEditor({
         <fieldset
           className="hub-fieldset"
           disabled={
-            action.busy || aiBusy || action.blocked || state.classroom.archived
+            action.busy ||
+            aiBusy ||
+            action.blocked ||
+            workDraft.blocked ||
+            !workDraft.ready ||
+            state.classroom.archived
           }
         >
           <label className="field">
@@ -108,6 +156,13 @@ export function ActivityEditor({
               defaultValue=""
               onChange={(e) => {
                 if (!e.target.value) return;
+                if (
+                  dirty &&
+                  !window.confirm(
+                    "저장하지 않은 편집 내용을 새 양식으로 바꿀까요?",
+                  )
+                )
+                  return;
                 const t = worksheetStarters[Number(e.target.value)];
                 setId(undefined);
                 setRevision(0);
@@ -405,6 +460,16 @@ export function ActivityEditor({
         내가 공유할 권한이 있는 질문·양식이며 학생의 글·사진이 포함되지 않았음을
         확인합니다.
       </label>
+      {state.lists?.templates && (
+        <WorkshopListControls
+          classroom={state.classroom.id}
+          section="maker"
+          prefix="template"
+          label="활동 양식"
+          list={state.lists.templates}
+          params={params}
+        />
+      )}
       <div className="tool-grid">
         {state.templates.map((t) => (
           <article className="tool-card" key={t.id}>

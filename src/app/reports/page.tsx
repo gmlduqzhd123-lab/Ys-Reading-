@@ -84,6 +84,21 @@ export default async function ReportsPage({
         "보고서를 준비하지 못했어요. 담당 학급·학생·기간을 확인해 주세요.",
       );
     state = r.data;
+    const evidencePage = Math.max(
+      1,
+      Math.min(10000, Math.trunc(Number(params.evidencePage)) || 1),
+    );
+    const evidence = await c.rpc("classroom_report_candidates", {
+      p_classroom: cls,
+      p_student: student,
+      p_from: from,
+      p_until: until,
+      p_page: evidencePage,
+    });
+    if (evidence.error) throw Error("수업 활동의 보고서 근거를 읽지 못했어요.");
+    state!.evidenceCandidates = evidence.data.items;
+    state!.evidenceTotal = evidence.data.total;
+    state!.evidencePage = evidencePage;
   }
   let query = c
     .from("term_reports")

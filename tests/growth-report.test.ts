@@ -37,6 +37,16 @@ it("preserves factual counts, teacher text and first/final work without inventin
       ],
     },
   };
+  r.snapshot.sources = [
+    {
+      key: "paper:source",
+      kind: "paper",
+      title: "종이 활동 관찰",
+      body: "직접 확인한 교사의 관찰",
+      version: 1,
+      created_at: "2026-11-02",
+    },
+  ];
   const b = reportBundle(r);
   expect(b.entries[0].body).toContain("완독 표시한 책: 1");
   expect(b.entries[0].body).toContain("학교 출결과 다릅니다");
@@ -44,6 +54,7 @@ it("preserves factual counts, teacher text and first/final work without inventin
   expect(b.entries.slice(2).map((x) => x.body)).toEqual([
     "처음 원문",
     "최종\n원문",
+    "직접 확인한 교사의 관찰",
   ]);
   expect(JSON.stringify(b)).not.toContain("우수 등급");
 });

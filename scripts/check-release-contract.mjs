@@ -32,7 +32,7 @@ try {
     !d.scopedStaff ||
     !d.operationsCompletion ||
     !d.exportJobs || !d.monitorRechecks || !d.cloudBackup || !d.batchExports || !d.learningSignals || !d.scopeCache || !d.coherentExports || !d.studentView ||
-    !d.exportCapacity || !d.copyReporting || !d.teacherDrafts || !d.durableZip || !d.recoveryOperations || !d.classroomWorkshop ||
+    !d.exportCapacity || !d.copyReporting || !d.teacherDrafts || !d.durableZip || !d.recoveryOperations || !d.classroomWorkshop || !d.classroomWorkshopOperations ||
     !d.readingDrafts || !d.signedApiBudget || !d.monitorDiagnostics || !d.recoveryReadiness || !v.passwordSafety ||
     v.service !== "bookforest-account-worker" ||
     v.protocol < d.minimumWorkerProtocol

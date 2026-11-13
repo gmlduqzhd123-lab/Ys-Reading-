@@ -4,6 +4,9 @@ import Link from "next/link";
 import type { Book } from "@/lib/hub";
 import type { ClassroomToolState } from "@/lib/classroom-tools";
 import { useToolAction } from "./use-tool-action";
+
+import { useWorkshopDraft, WorkshopDraftNotice } from "./work-draft";
+import { workshopDraftPayloads } from "@/lib/workshop-operations";
 export function QuickReading({
   owner,
   state,
@@ -25,6 +28,27 @@ export function QuickReading({
     [thought, setThought] = useState(""),
     [excerpt, setExcerpt] = useState(""),
     [saved, setSaved] = useState(false);
+  const draft = useWorkshopDraft({
+    owner,
+    scope: "quick",
+    context: { classroom: state.classroom.id },
+    payload: { book, thought, excerpt, step },
+    enabled: !saved,
+    apply: (p) => {
+      if (!Object.keys(p).length) {
+        setThought("");
+        setExcerpt("");
+        setStep(1);
+        return;
+      }
+      const v = workshopDraftPayloads.quick.parse(p);
+      setBook(v.book);
+      setThought(v.thought);
+      setExcerpt(v.excerpt);
+      setStep(v.step);
+      setSaved(false);
+    },
+  });
   useEffect(() => {
     if (action.blocked) {
       setThought("");
@@ -57,6 +81,7 @@ export function QuickReading({
         {state.classroom.name} ·{" "}
         {step === 1 ? "1. 읽은 책 고르기" : "2. 오늘의 구절과 생각"}
       </p>
+      <WorkshopDraftNotice draft={draft} />
       <form
         data-tool-dirty={!saved && (!!thought || !!excerpt)}
         data-hub-dirty={!saved && (!!thought || !!excerpt)}
@@ -72,6 +97,7 @@ export function QuickReading({
             excerpt,
           });
           if (result) {
+            await draft.clear().catch(() => {});
             setSaved(true);
             setThought("");
             setExcerpt("");
@@ -79,7 +105,13 @@ export function QuickReading({
         }}
       >
         <fieldset
-          disabled={action.busy || action.blocked || saved}
+          disabled={
+            action.busy ||
+            action.blocked ||
+            draft.blocked ||
+            !draft.ready ||
+            saved
+          }
           className="hub-fieldset"
         >
           {step === 1 ? (

@@ -38,7 +38,7 @@ jobs:
         if: failure() && steps.classroom.outcome == 'failure'
         run: node scripts/ci-failure-context.mjs
       - name: Verify mobile learning and accessibility
-        run: npx playwright test --project webkit-mobile
+        run: npx playwright test --project webkit-mobile --project android-chrome
       - name: Verify 90 concurrent student flows across three classes
         id: load
         if: always() && steps.fixtures.outcome == 'success' && !cancelled()

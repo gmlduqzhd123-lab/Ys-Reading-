@@ -259,6 +259,8 @@ const workshopLogin='workshop'+randomUUID().replaceAll('-','').slice(0,12),works
 const workshopUser=await admin.auth.admin.createUser({email:workshopLogin+'@students.bookforest.invalid',password:nextPassword,email_confirm:true,user_metadata:{display_name:'CI 공방 학생'}});
 if(workshopUser.error||!workshopUser.data.user)throw Error('CI_WORKSHOP_ACCOUNT');
 execFileSync('docker',['exec','-i','supabase_db_bookforest','psql','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-q'],{input:`update public.profiles set consent_status='verified',must_change_password=false where id='${workshopUser.data.user.id}';insert into public.classrooms(id,name,teacher_id,created_at) values('${workshopClass}','CI 수업 공방','${accounts[1].id}','2020-01-01');insert into public.enrollments(classroom_id,student_id) values('${workshopClass}','${workshopUser.data.user.id}');`,stdio:['pipe','pipe','pipe']});
+const workshopTouch:Record<string,string>={};
+for(const engine of ['android-chrome','webkit-mobile']){const id=randomUUID();workshopTouch[engine]=id;execFileSync('docker',['exec','-i','supabase_db_bookforest','psql','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-q'],{input:`insert into public.classrooms(id,name,teacher_id,created_at) values('${id}','CI 모바일 공방','${accounts[1].id}','2019-01-01');insert into public.enrollments(classroom_id,student_id) values('${id}','${workshopUser.data.user.id}');`,stdio:['pipe','pipe','pipe']});}
 fs.writeFileSync(
   "e2e/.runtime/fixtures.json",
   JSON.stringify({
@@ -272,6 +274,7 @@ fs.writeFileSync(
       id: mobileUser.data.user.id,
     },
     classroom: cls.id,
+    workshopTouch,
     workshop:{classroom:workshopClass,student:{id:workshopUser.data.user.id,loginId:workshopLogin,password:nextPassword}},
     assignment: assignment.id,
     operatorSecret: enrollment.data.totp.secret,

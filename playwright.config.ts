@@ -23,17 +23,24 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testMatch: /(?:journey|completion|teacher-accessibility|classroom-workshop)\.spec\.ts/,
+      testMatch:
+        /(?:journey|completion|teacher-accessibility|classroom-workshop)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "webkit-mobile",
-      testMatch: /(?:responsive|mobile-learning)\.spec\.ts/,
+      testMatch: /(?:responsive|mobile-learning|workshop-mobile)\.spec\.ts/,
       use: { ...devices["iPhone 13"] },
+    },
+    {
+      name: "android-chrome",
+      testMatch: /workshop-mobile\.spec\.ts/,
+      use: { ...devices["Pixel 7"] },
     },
   ],
   webServer: {
-    command: "node node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port 3096",
+    command:
+      "node node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port 3096",
     url: "http://127.0.0.1:3096/api/health",
     reuseExistingServer: false,
     env: {

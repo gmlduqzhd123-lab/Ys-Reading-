@@ -10,6 +10,10 @@ const schema = z.object({
   from: z.iso.date().nullable(),
   until: z.iso.date().nullable(),
   works: z.array(z.uuid()).max(3),
+  sources: z
+    .array(z.string().regex(/^(answer|paper):[0-9a-f-]{36}$/))
+    .max(3)
+    .default([]),
   title: z.string().trim().min(1).max(100),
   note: z.string().max(2000),
   publish: z.boolean(),
@@ -24,18 +28,22 @@ export async function createReport(input: unknown) {
     if (p.role !== "teacher") throw Error("BF_FORBIDDEN");
     const v = schema.parse(input),
       c = await createClient(),
-      r = await c.rpc("create_reviewed_report", {
-        p_classroom: v.classroom,
-        p_student: v.student,
-        p_from: v.from,
-        p_until: v.until,
-        p_works: v.works,
-        p_title: v.title,
-        p_note: v.note,
-        p_source_token: v.sourceToken,
-        p_expected_version: v.version,
-        p_request_id: v.requestId,
-      });
+      r = await c.rpc(
+        v.sources.length ? "create_classroom_report" : "create_reviewed_report",
+        {
+          ...(v.sources.length ? { p_sources: v.sources } : {}),
+          p_classroom: v.classroom,
+          p_student: v.student,
+          p_from: v.from,
+          p_until: v.until,
+          p_works: v.works,
+          p_title: v.title,
+          p_note: v.note,
+          p_source_token: v.sourceToken,
+          p_expected_version: v.version,
+          p_request_id: v.requestId,
+        },
+      );
     if (r.error) throw r.error;
     revalidatePath("/reports");
     return {

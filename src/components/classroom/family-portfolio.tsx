@@ -8,6 +8,7 @@ interface Portfolio {
   createdAt: string;
   from: string | null;
   until: string | null;
+  sources?: { title: string; body: string; version: number; kind: string }[];
   works: { title: string; body: string; version: number }[];
 }
 export function FamilyPortfolio() {
@@ -93,6 +94,17 @@ export function FamilyPortfolio() {
           </p>
           <h3>선생님의 관찰과 응원</h3>
           <p className="tool-writing">{data.teacherNote}</p>
+          {data.sources?.map((v, i) => (
+            <article className="tool-card" key={"source:" + i}>
+              <h3>
+                {v.title} ·{" "}
+                {v.kind === "paper"
+                  ? "종이 활동 관찰"
+                  : v.version + "번째 활동"}
+              </h3>
+              <p className="tool-writing">{v.body}</p>
+            </article>
+          ))}
           {data.works.map((w, i) => (
             <article className="tool-card" key={i}>
               <h3>
