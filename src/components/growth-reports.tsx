@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatKoreanDate } from "@/lib/rules";
@@ -485,12 +485,13 @@ export function ReportArchive({
 }) {
   const router = useRouter(),
     [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
+  const [refreshing, startRefresh] = useTransition();
   const [busy, setBusy] = useState(""),
     [message, setMessage] = useState(""),
     [url, setUrl] = useState("");
   const keys = useRef<Record<string, string>>({});
   async function download(report: GrowthReport, format: string) {
-    if (busy) return;
+    if (busy || refreshing) return;
     const popup =
       format === "print" ? window.open("about:blank", "_blank") : null;
     setBusy(report.id);
@@ -551,7 +552,7 @@ export function ReportArchive({
     }
   }
   return (
-    <section className="panel">
+    <section className="panel" aria-busy={!!busy || refreshing}>
       <h2>저장한 성장 보고서</h2>
       <p>
         저장한 판의 원문과 수치는 이후 수정되지 않습니다. 교사의 확인을 거쳐 새
@@ -649,8 +650,9 @@ export function ReportArchive({
               </label>
               <button
                 className="button button-outline"
-                disabled={!!busy || !confirmed[r.id]}
+                disabled={!!busy || refreshing || !confirmed[r.id]}
                 onClick={async () => {
+                  if (busy || refreshing) return;
                   const action =
                     r.review_state === "published"
                       ? "withdraw"
@@ -673,7 +675,7 @@ export function ReportArchive({
                     setMessage(result.message);
                     if (result.ok) {
                       setConfirmed((old) => ({ ...old, [r.id]: false }));
-                      router.refresh();
+                      startRefresh(() => router.refresh());
                     }
                   } catch {
                     setMessage(
@@ -707,7 +709,7 @@ export function ReportArchive({
               <button
                 key={format}
                 className="button button-outline"
-                disabled={!!busy}
+                disabled={!!busy || refreshing}
                 onClick={() => void download(r, format)}
               >
                 {busy === r.id ? "처리 중…" : label}
@@ -718,7 +720,7 @@ export function ReportArchive({
       ))}
       {message && (
         <p role="status" className="notice">
-          {message}
+          {refreshing ? "보고서 상태와 목록을 새로 확인하고 있어요." : message}
         </p>
       )}
       {url && (
