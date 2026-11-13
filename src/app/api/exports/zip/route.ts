@@ -9,6 +9,7 @@ import {exportFailure} from "@/lib/export-status";
 export const maxDuration=300;
 function failure(code:string,status:number){return NextResponse.json({code,error:exportFailure(code)},{status,headers:{"Cache-Control":"no-store","X-Bookforest-Export-Code":code,...(status===429?{"Retry-After":"60"}:{})}});}
 async function preflight(r:NextRequest,charge:boolean){
+ try {
  const p=await getCurrentProfile(),parsed=z.uuid().safeParse(r.nextUrl.searchParams.get("batch"));
  if(!accountReady(p)||!parsed.success)return {error:failure("EXPORT_FORBIDDEN",401)};
  const c=await createClient(),id=parsed.data;
@@ -19,6 +20,9 @@ async function preflight(r:NextRequest,charge:boolean){
  if(usage.data.requestsThisMinute>=60)return {error:failure("EXPORT_RATE_LIMIT",429)};
  if(charge){const budget=await c.rpc("consume_export_budget");if(budget.error)return {error:failure("EXPORT_UNAVAILABLE",503)};if(budget.data!==true)return {error:failure("EXPORT_RATE_LIMIT",429)};}
  return {c,id,parts:Number(status.data.parts)};
+ } catch {
+  return {error:failure("EXPORT_UNAVAILABLE",503)};
+ }
 }
 export async function HEAD(r:NextRequest){const result=await preflight(r,false);if(result.error)return result.error;return new NextResponse(null,{headers:{"Cache-Control":"private, no-store","X-Bookforest-Export-Code":"READY"}});}
 export async function GET(r:NextRequest){
