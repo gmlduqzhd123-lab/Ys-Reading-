@@ -19,6 +19,27 @@ async function login(p: Page, id: string, password: string) {
     .click();
   await expect(p).toHaveURL(/\/hub/);
 }
+async function persistedDraft(
+  p: Page,
+  owner: string,
+  scope: string,
+  context: Record<string, unknown>,
+  expected: Record<string, unknown>,
+) {
+  await expect
+    .poll(
+      async () => {
+        const r = await p.request.post("/api/classroom/draft", {
+          headers: { Origin: new URL(p.url()).origin },
+          data: { owner, scope, context },
+        });
+        const d = await r.json();
+        return { ok: d.ok, payload: d.payload };
+      },
+      { message: "Latest typed draft must actually be stored before leaving" },
+    )
+    .toMatchObject({ ok: true, payload: expected });
+}
 function isbn(n: number) {
   const s = "978" + String(n).padStart(9, "0"),
     sum = [...s].reduce((a, d, i) => a + Number(d) * (i % 2 ? 3 : 1), 0);
@@ -93,11 +114,22 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   await quick
     .getByLabel("오늘의 한 줄 생각", { exact: true })
     .fill("한글로 입력한 나의 생각을 다시 이어 쓰고 싶어요.");
+  await expect(quick.locator("form")).toHaveAttribute(
+    "data-tool-dirty",
+    "true",
+  );
   await expect(
     quick
       .getByRole("status")
       .filter({ hasText: /수업 작성 내용을 임시 보관했어요/ }),
   ).toBeVisible();
+  await persistedDraft(
+    student,
+    f.workshop.student.id,
+    "quick",
+    { classroom: cls },
+    { step: 2, thought: "한글로 입력한 나의 생각을 다시 이어 쓰고 싶어요." },
+  );
   await student.reload();
   await quick
     .getByRole("button", { name: "수업 초안 불러오기", exact: true })
