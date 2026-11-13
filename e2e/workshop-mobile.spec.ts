@@ -317,6 +317,7 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   await teacher
     .getByRole("link", { name: "이 학생의 성장 보고서 준비", exact: true })
     .click();
+  errors.forEach((check) => check.phase("report-compose"));
   const reportTitle = "CI 모바일 성장 기록";
   await teacher
     .getByLabel("성장 보고서 제목", { exact: true })
@@ -343,13 +344,16 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
     ),
   ).toBeVisible();
   const downloaded = teacher.waitForEvent("download");
+  errors.forEach((check) => check.phase("report-download"));
   await teacher.getByRole("button", { name: "CSV 저장", exact: true }).click();
   expect(fs.readFileSync((await (await downloaded).path())!, "utf8")).toContain(
     "꾸준한 돌봄",
   );
   const confirm =
     reportTitle + " 1판의 원문·수치·의견과 학생 공개 범위를 확인했습니다";
+  errors.forEach((check) => check.phase("report-review"));
   await teacher.getByRole("checkbox", { name: confirm, exact: true }).check();
+  errors.forEach((check) => check.phase("report-publish"));
   await teacher
     .getByRole("button", { name: "이 판 검토 완료", exact: true })
     .click();
@@ -366,6 +370,7 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   await expect(
     teacher.getByText("학생에게 공개했어요.", { exact: true }),
   ).toBeVisible();
+  errors.forEach((check) => check.phase("report-leave"));
   await teacher.goto(path("family"));
   await teacher
     .getByRole("checkbox", {
