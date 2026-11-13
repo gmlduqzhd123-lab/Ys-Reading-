@@ -378,7 +378,8 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   await expect(
     teacher.getByText("학생에게 공개했어요.", { exact: true }),
   ).toBeVisible();
-  await expect(teacher.getByRole("button", { name: "학생 공개 취소", exact: true })).toBeEnabled();
+  await expect(teacher.getByRole("button", { name: "학생 공개 취소", exact: true })).toBeVisible();
+  await expect(teacher.getByRole("heading", { name: "저장한 성장 보고서", exact: true }).locator("..")).toHaveAttribute("aria-busy", "false");
   errors.forEach((check) => check.phase("report-leave"));
   await teacher.goto(path("family"));
   await teacher
