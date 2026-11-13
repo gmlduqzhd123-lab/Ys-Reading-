@@ -15,6 +15,7 @@ import {
   loadReviewQueue,
 } from "@/lib/learning-queues-server";
 import { requireProfile } from "@/lib/auth";
+import type {ClassroomToolState} from '@/lib/classroom-tools';
 import { searchSchema } from "@/lib/classroom-insights";
 import { loadOverview, loadRecordSearch } from "@/lib/insights-server";
 import {
@@ -133,10 +134,18 @@ export default async function HubPage({
     if (r.error) throw Error("광장 확인 요청을 읽지 못했어요.");
     plazaReports = r.data;
   }
+  let classroomTools:ClassroomToolState|null=null;
+  const toolsClass=data.selectedClassroom||data.classes[0]?.id;
+  if(profile.role==='student'&&profile.consent_status==='verified'&&data.schemaReady&&toolsClass&&['today','reading'].includes(tab)){
+    const c=await createClient(),r=await c.rpc('classroom_tool_state',{p_classroom:toolsClass,p_query:'',p_page:1});
+    if(r.error)throw Error('간편 독서 기록을 읽지 못했어요. 연결을 확인해 주세요.');
+    classroomTools=r.data as ClassroomToolState;
+  }
   return (
     <>
       <LearningHub
         data={data}
+        classroomTools={classroomTools}
         learningToken={learningToken}
         initialTab={tab}
         google={google}

@@ -195,7 +195,7 @@ try {
   );
   stage = "native-counts";
   const countSql =
-    "select jsonb_build_object('profiles',(select count(*) from public.profiles),'reading',(select count(*) from public.reading_logs),'submissions',(select count(*) from public.submissions),'ledger',(select count(*) from public.economy_ledger),'staff',(select count(*) from private.classroom_staff))::text";
+    "select jsonb_build_object('profiles',(select count(*) from public.profiles),'reading',(select count(*) from public.reading_logs),'submissions',(select count(*) from public.submissions),'ledger',(select count(*) from public.economy_ledger),'staff',(select count(*) from private.classroom_staff),'activityAnswers',(select count(*) from private.activity_answers),'paperChecks',(select count(*) from private.paper_activity_checks),'familyShares',(select count(*) from private.family_shares))::text";
   const sourceCounts = sql(countSql),
     restoredCounts = sql(countSql, targetDb);
   if (sourceCounts !== restoredCounts) {
@@ -209,9 +209,10 @@ try {
   }
   // A recovery is a fresh login, never a continuation of old sessions.
   sql(
-    "truncate auth.sessions cascade;grant usage,create on schema auth to supabase_auth_admin;grant all on all tables in schema auth to supabase_auth_admin;grant all on all sequences in schema auth to supabase_auth_admin;",
+    "truncate auth.sessions cascade;update private.family_shares set revoked_at=coalesce(revoked_at,now());grant usage,create on schema auth to supabase_auth_admin;grant all on all tables in schema auth to supabase_auth_admin;grant all on all sequences in schema auth to supabase_auth_admin;",
     targetDb,
   );
+  if(sql('select count(*) from private.family_shares where revoked_at is null',targetDb)!=='0')throw Error('RESTORED_FAMILY_LINK_REACTIVATED');
   const config = JSON.parse(
     execFileSync("npx", ["--no-install", "supabase", "status", "-o", "json"], {
       encoding: "utf8",

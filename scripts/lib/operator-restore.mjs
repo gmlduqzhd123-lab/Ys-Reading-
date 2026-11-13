@@ -194,6 +194,8 @@ export async function verifyRestore(backup, checkpoint = null) {
       const configured=await db.query("select count(*)::int n from private.zip_worker_config");
       if(configured.rows[0].n!==0)throw Error("RESTORE_WORKER_REACTIVATED");
     }
+    const familyTable=await db.query("select to_regclass('private.family_shares') as table_name");
+    if(familyTable.rows[0].table_name)await db.exec("update private.family_shares set revoked_at=coalesce(revoked_at,now())");
     let privacy = null;
     if (checkpoint) {
       stage = "privacy";

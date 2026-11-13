@@ -1,5 +1,7 @@
 # 책숲(Bookforest) 개발 PRD
 
+2026-11-13 추가 승인: 벤치마킹 제안 10가지를 추천 순서대로 실제 계정용 기능으로 개발하고 검증·GitHub 푸시·Vercel 배포를 진행한다. [CLASSROOM-WORKSHOP-0.6.md](CLASSROOM-WORKSHOP-0.6.md)의 동작·권한·AI 설정·검증 범위를 따른다. 기존 `/studio` 자체는 계속 명시된 브라우저 체험 공간이며 실학급 기능과 분리한다.
+
 2026-11-08: 사용자가 현장 검증 6번을 제외한 진단·독서 임시 저장·PC/사본 감시·복구 준비·API/암호 보호·국내 검색·배포 현황 개선을 승인했습니다. 현재 범위와 실제 확인 한계는 [CURRENT-STATUS.md](CURRENT-STATUS.md)를 우선합니다.
 
 2026-11-01 추가 확정 범위: 연결 실측·장애 안내·글 복구와 암호화 학급 기록 보관, 교사용 종합 현황·읽음 알림, 권한을 보존하는 전체 기록 검색을 개발한다. [OPERATIONS-RELIABILITY.md](OPERATIONS-RELIABILITY.md)의 실제 동작·보관/복구 범위·검증을 따른다.

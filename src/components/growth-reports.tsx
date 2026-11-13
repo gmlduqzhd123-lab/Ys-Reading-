@@ -32,6 +32,7 @@ export function ReportComposer({ state,owner }: { state: ReportState;owner:strin
   return (
     <section className="panel">
       <h2>{state.student.name}의 보고서 준비</h2>
+      <Link className="button button-outline" href={'/classroom?classroom='+state.classroom.id+'&student='+state.student.id+'#evidence'}>독서·글쓰기·수업 활동의 원기록 확인</Link>
       <TeacherWorkDraftNotice draft={draft}/>
       <p>
         {state.classroom.name} ·{" "}

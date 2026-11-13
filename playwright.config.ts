@@ -23,7 +23,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testMatch: /(?:journey|completion|teacher-accessibility)\.spec\.ts/,
+      testMatch: /(?:journey|completion|teacher-accessibility|classroom-workshop)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {

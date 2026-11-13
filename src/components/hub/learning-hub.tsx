@@ -32,8 +32,11 @@ import { HandoverPanel, type HandoverState } from "./operations-batch";
 import {ClassContext} from "./class-context";
 import {LearningUpdates} from "./learning-updates";
 import {hubHref} from "@/lib/hub-navigation";
+import type {ClassroomToolState} from '@/lib/classroom-tools';
+import {QuickReading} from '@/components/classroom/quick-reading';
 export function LearningHub({
   data,
+  classroomTools,
   learningToken,
   initialTab,
   google,
@@ -50,6 +53,7 @@ export function LearningHub({
   terms,
 }: {
   data: HubData;
+  classroomTools?:ClassroomToolState|null;
   learningToken?:string;
   initialTab?: string;
   google: { configured: boolean; connected: boolean };
@@ -214,6 +218,7 @@ export function LearningHub({
           </Link>
         </div>
       </div>
+      <div className="button-row"><Link className="button button-outline" href={'/classroom'+(data.selectedClassroom?'?classroom='+data.selectedClassroom:'')}>{teacher?'우리 반 수업 공방 · 학생 화면 시연':'우리 반 활동·책숲 도감'}</Link></div>
       <nav className="workspace-tabs" aria-label="책장과 성장 메뉴">
         {primaryTabs.map(([id, label]) => (
           <Link
@@ -263,6 +268,7 @@ export function LearningHub({
             </>
           ) : (
             <>
+              {tab==='today'&&classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}
               {tab === "today" && studentToday && (
                 <Today state={studentToday} classes={data.classes} />
               )}
@@ -303,6 +309,7 @@ export function LearningHub({
               {tab === "reading" && (
                 <div className="paper-dashboard">
                   <div className="paper-main">
+                    {classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}
                     <Bookshelf data={data} />
                   </div>
                   <PaperGrowth data={data} growth={growth} />

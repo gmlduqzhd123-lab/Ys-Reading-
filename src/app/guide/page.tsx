@@ -69,6 +69,7 @@ export default function GuidePage() {
       </section>
       <section className="panel">
         <h2>나의 책장 · 함께 자라는 교실</h2>
+        <p>오늘 할 일의 ‘오늘 읽고, 한 줄 남기기’에서 읽던 책을 골라 간편하게 기록할 수 있어요. ‘수업 공방’에서는 교사가 만든 활동지를 온라인으로 배부하거나 인쇄하고, 학생은 활동·퀴즈·독서 리듬·도감을 이용합니다. 종이 제출은 교사가 관찰 기록으로 따로 확인합니다.</p><Link className="text-link" href="/classroom">우리 반 수업 공방 열기 →</Link>
         <ol className="guide-list">
           <li>
             나의 책장에서 제목·저자·ISBN으로 책을 검색하거나 직접 입력하고 독서

@@ -1,0 +1,1 @@
+export function redactBrowserContext(value){return String(value).replace(/\b[a-f0-9]{64}\b/gi,'[REDACTED_CAPABILITY]').replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,'[REDACTED_JWT]').replace(/sb_(secret|publishable)_[A-Za-z0-9_-]+/g,'[REDACTED_KEY]');}
