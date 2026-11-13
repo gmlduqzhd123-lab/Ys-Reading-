@@ -254,7 +254,9 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
       "ISBN,제목,저자,위치,권수\n9788936434120,잘못된 권수,교사,책장,0",
     ),
   });
-  await expect(teacher.getByRole("alert")).toContainText("2번째 줄");
+  await expect(teacher.locator("#library").getByRole("alert")).toContainText(
+    "2번째 줄",
+  );
   const csv =
     "ISBN,제목,저자,위치,권수\n" +
     Array.from({ length: 100 }, (_, i) =>
