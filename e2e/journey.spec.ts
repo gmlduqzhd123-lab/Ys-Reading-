@@ -277,8 +277,15 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
     .getByLabel("초대할 승인 교사의 이메일", { exact: true })
     .fill(fixture.accounts[0].email);
   await teacher
-    .getByRole("button", { name: "선택한 권한으로 교사 초대", exact: true })
+    .getByRole("button", { name: "선택한 초대 내용 확인", exact: true })
     .click();
+  const invitationPreview = teacher.getByRole("heading", { name: "초대 내용 최종 확인", exact: true });
+  await expect(invitationPreview).toBeVisible();
+  await expect(teacher.getByText("받는 교사: " + fixture.accounts[0].email, { exact: true })).toBeVisible();
+  await expect(teacher.getByText("권한: 기록 읽기", { exact: true })).toBeVisible();
+  await expect(teacher.getByLabel("이번 초대 코드", { exact: true })).toHaveCount(0);
+  await teacher.getByRole("button", { name: "확인하고 초대 만들기", exact: true }).click();
+  await expect(invitationPreview).toHaveCount(0);
   const inviteCode = await teacher
     .getByLabel("이번 초대 코드", { exact: true })
     .inputValue();
