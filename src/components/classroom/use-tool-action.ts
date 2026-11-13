@@ -12,6 +12,7 @@ export function useToolAction(owner: string, classroom: string) {
     pending = useRef(false),
     generation = useRef(0),
     [busy, setBusy] = useState(false),
+    [ready, setReady] = useState(false),
     [message, setMessage] = useState(""),
     [blocked, setBlocked] = useState(false);
   useEffect(() => {
@@ -29,6 +30,7 @@ export function useToolAction(owner: string, classroom: string) {
         );
       }
     });
+    setReady(true);
     return () => {
       generation.current++;
       subscription.unsubscribe();
@@ -68,5 +70,5 @@ export function useToolAction(owner: string, classroom: string) {
       if (g === generation.current) setBusy(false);
     }
   }
-  return { run, busy, blocked, message, setMessage };
+  return { run, busy: busy || !ready, blocked, message, setMessage };
 }

@@ -47,6 +47,7 @@ export function Discoveries({
         <label className="field">
           한 주에 기록을 남길 나의 목표
           <select
+            disabled={action.busy || action.blocked}
             aria-label="한 주에 기록을 남길 나의 목표"
             value={target}
             onChange={(e) => setTarget(Number(e.target.value))}

@@ -260,6 +260,7 @@ function ReviewAnswer({
           <label className="field">
             {answer.student_name}에게 피드백
             <textarea
+              disabled={action.busy || action.blocked}
               maxLength={2000}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}

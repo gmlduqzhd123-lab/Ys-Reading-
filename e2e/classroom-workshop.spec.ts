@@ -116,6 +116,7 @@ test("ten classroom improvements with real teacher, student and anonymous family
   const activity = student.locator("#activities .tool-card").filter({
     has: student.getByRole("heading", { name: "CI 공방 활동", exact: true }),
   });
+  await expect(activity.locator("textarea")).toHaveCount(3);
   for (const area of await activity.locator("textarea").all())
     await area.fill("씨앗에 물을 주는 장면을 보고 인물의 마음을 생각했어요.");
   await activity
@@ -223,12 +224,15 @@ test("ten classroom improvements with real teacher, student and anonymous family
   await teacher
     .getByLabel("활동 제목", { exact: true })
     .fill("CI 생각 다리 퀴즈");
-  while ((await teacher.locator(".tool-question").count()) > 1)
+  while ((await teacher.locator(".tool-question").count()) > 1) {
+    const count = await teacher.locator(".tool-question").count();
     await teacher
       .locator(".tool-question")
       .last()
       .getByRole("button", { name: "이 질문 지우기", exact: true })
       .click();
+    await expect(teacher.locator(".tool-question")).toHaveCount(count - 1);
+  }
   await teacher
     .getByLabel("질문 내용", { exact: true })
     .fill("씨앗은 무엇으로 자랐나요?");

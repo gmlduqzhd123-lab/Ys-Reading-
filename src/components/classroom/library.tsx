@@ -55,6 +55,7 @@ export function ClassLibrary({
             보유 도서 CSV 파일
             <input
               type="file"
+              disabled={action.busy || action.blocked}
               accept=".csv,text/csv"
               onChange={async (e) => {
                 setError("");
