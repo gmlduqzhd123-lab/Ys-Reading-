@@ -54,7 +54,10 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   const title = "CI 모바일 회복 활동";
   await teacher.getByLabel("활동 제목", { exact: true }).fill(title);
   await expect(
-    teacher.locator("#maker").getByText(/서버 보관 시각:/),
+    teacher
+      .locator("#maker")
+      .getByRole("status")
+      .filter({ hasText: /수업 작성 내용을 임시 보관했어요/ }),
   ).toBeVisible();
   await teacher.reload();
   await teacher
@@ -90,7 +93,11 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   await quick
     .getByLabel("오늘의 한 줄 생각", { exact: true })
     .fill("한글로 입력한 나의 생각을 다시 이어 쓰고 싶어요.");
-  await expect(quick.getByText(/서버 보관 시각:/)).toBeVisible();
+  await expect(
+    quick
+      .getByRole("status")
+      .filter({ hasText: /수업 작성 내용을 임시 보관했어요/ }),
+  ).toBeVisible();
   await student.reload();
   await quick
     .getByRole("button", { name: "수업 초안 불러오기", exact: true })
@@ -115,7 +122,11 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
     await area.fill("물 주는 장면을 근거로 꾸준한 돌봄을 생각했어요.");
   await expect(activity.getByText(/연결이 끊겼어요/)).toBeVisible();
   await sc.setOffline(false);
-  await expect(activity.getByText(/서버 보관 시각:/)).toBeVisible();
+  await expect(
+    activity
+      .getByRole("status")
+      .filter({ hasText: /수업 작성 내용을 임시 보관했어요/ }),
+  ).toBeVisible();
   await student.reload();
   await activity
     .getByRole("button", { name: "수업 초안 불러오기", exact: true })
@@ -136,7 +147,11 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   });
   await feedback.fill("장면과 나의 생각을 구체적으로 연결했어요.");
   const review = teacher.locator("form").filter({ has: feedback });
-  await expect(review.getByText(/서버 보관 시각:/)).toBeVisible();
+  await expect(
+    review
+      .getByRole("status")
+      .filter({ hasText: /수업 작성 내용을 임시 보관했어요/ }),
+  ).toBeVisible();
   await teacher.reload();
   await teacher
     .getByRole("button", { name: "수업 초안 불러오기", exact: true })

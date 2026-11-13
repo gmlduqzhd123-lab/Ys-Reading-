@@ -122,7 +122,7 @@ export function useWorkshopDraft({
           return;
         }
         revision.current = r.revision;
-        setSavedAt(r.updatedAt ?? "");
+        setSavedAt(r.payload ? (r.updatedAt ?? "") : "");
         setCandidate(r.payload ?? null);
         setReady(true);
       })
@@ -296,6 +296,7 @@ export function useWorkshopDraft({
       revision.current = r.revision;
       saved.current = draftKey(ref.current.payload);
       setCandidate(null);
+      setSavedAt("");
       setConflict(false);
       request.current = null;
       pendingClear.current = null;
@@ -441,7 +442,7 @@ export function WorkshopDraftNotice({
     <aside className="notice" aria-label="수업 입력 임시 보관 상태">
       <p>
         {draft.savedAt
-          ? "서버 보관 시각: " +
+          ? "마지막으로 완료한 보관 시각: " +
             new Intl.DateTimeFormat("ko-KR", {
               timeZone: "Asia/Seoul",
               dateStyle: "short",
