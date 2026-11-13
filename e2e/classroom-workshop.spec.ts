@@ -208,9 +208,7 @@ test("ten classroom improvements with real teacher, student and anonymous family
       .getByRole("heading", { name: "CI 교실 도서", exact: true }),
   ).toBeVisible();
   await student.goto(path);
-  await student
-    .getByLabel("보유 도서 검색어", { exact: true })
-    .fill("CI 교실");
+  await student.getByLabel("보유 도서 검색어", { exact: true }).fill("CI 교실");
   await student
     .getByRole("button", { name: "보유 도서 검색", exact: true })
     .click();
@@ -266,6 +264,11 @@ test("ten classroom improvements with real teacher, student and anonymous family
   await teacher
     .getByRole("button", { name: "확인하고 우리 반에 배부", exact: true })
     .click();
+  await expect(
+    teacher
+      .locator("#activities")
+      .getByRole("heading", { name: "CI 생각 다리 퀴즈", exact: true }),
+  ).toBeVisible();
   await student.goto(path);
   const game = student.locator("#activities .tool-card").filter({
     has: student.getByRole("heading", {

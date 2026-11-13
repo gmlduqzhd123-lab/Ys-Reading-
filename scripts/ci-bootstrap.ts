@@ -283,6 +283,7 @@ fs.writeFileSync(
 );
 execFileSync("docker",["exec","-i","supabase_db_bookforest","psql","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1","-q"],{input:`insert into public.reading_logs(classroom_id,student_id,book,read_on,status,thought) select '${cls.id}','${mobileUser.data.user.id}',jsonb_build_object('title','CI 묶음 기록 '||n),'2024-02-01'::date+(n-1),'reading','분할 내보내기 합성 자료' from generate_series(1,28)n;`,stdio:["pipe","pipe","pipe"]});
 const budgetSecret=randomBytes(32).toString("hex");
+console.log('::add-mask::'+budgetSecret);
 const dbInfo=JSON.parse(execFileSync("docker",["inspect","supabase_db_bookforest"],{encoding:"utf8"}))[0];
 const gateway=Object.values(dbInfo.NetworkSettings.Networks).map((v:any)=>String(v.Gateway)).find(v=>/^172\.[0-9.]+$/.test(v));
 if(!gateway)throw Error("ISOLATED_WORKER_GATEWAY_REQUIRED");

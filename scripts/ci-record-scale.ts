@@ -36,30 +36,39 @@ started:=clock_timestamp();baseline:=pg_temp.overview_before_v05('${f.classroom}
 started:=clock_timestamp();r:=public.teacher_overview('${f.classroom}',1);insert into scale_metrics values('overview',round(extract(epoch from(clock_timestamp()-started))*1000),null,jsonb_array_length(r->'students'));if r<>baseline then raise exception 'OVERVIEW_RESULT_MISMATCH';end if;
 started:=clock_timestamp();r:=public.classroom_workshop_query('${f.classroom}','evidence',1,jsonb_build_object('student','${f.mobile.id}','status','reading'));insert into scale_metrics values('workshop_evidence_all',round(extract(epoch from(clock_timestamp()-started))*1000),(r->>'total')::integer,jsonb_array_length(r->'items'));if(r->>'total')::integer<30000 or jsonb_array_length(r->'items')<>30 then raise exception 'WORKSHOP_PAGING_MISMATCH';end if;
 started:=clock_timestamp();r:=public.classroom_workshop_query('${f.classroom}','evidence',1,jsonb_build_object('student','${f.mobile.id}','q','CI-SCALE-29999'));insert into scale_metrics values('workshop_evidence_selective',round(extract(epoch from(clock_timestamp()-started))*1000),(r->>'total')::integer,jsonb_array_length(r->'items'));if(r->>'total')::integer<>1 then raise exception 'WORKSHOP_SEARCH_MISMATCH';end if;
-end $;reset role;select jsonb_build_object('engine','isolated-native-PostgreSQL','syntheticRecords',30000,'metrics',(select jsonb_agg(to_jsonb(x)) from scale_metrics x));rollback;`;
-const output = execFileSync(
-  "docker",
-  [
-    "exec",
-    "-i",
-    "supabase_db_bookforest",
-    "psql",
-    "-U",
-    "postgres",
-    "-d",
-    "postgres",
-    "-v",
-    "ON_ERROR_STOP=1",
-    "-Atq",
-  ],
-  {
-    input: sql,
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "pipe"],
-    timeout: 120000,
-    maxBuffer: 100000,
-  },
-);
+end $$;reset role;select jsonb_build_object('engine','isolated-native-PostgreSQL','syntheticRecords',30000,'metrics',(select jsonb_agg(to_jsonb(x)) from scale_metrics x));rollback;`;
+let output: string;
+try {
+  output = execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "supabase_db_bookforest",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-Atq",
+    ],
+    {
+      input: sql,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 120000,
+      maxBuffer: 100000,
+    },
+  );
+} catch (error) {
+  const detail = String((error as { stderr?: unknown }).stderr ?? "");
+  const code = detail.match(
+    /\b(?:BF_|WORKSHOP_|SCALE_|OVERVIEW_)[A-Z0-9_]+\b/,
+  )?.[0];
+  throw Error(code ?? "RECORD_SCALE_SQL_FAILED");
+}
 const result = JSON.parse(output.trim());
 if (result.metrics.some((m: { ms: number }) => m.ms > 10000))
   throw Error("SCALE_LATENCY_BUDGET_EXCEEDED");
