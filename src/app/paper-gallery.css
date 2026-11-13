@@ -174,6 +174,7 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
 .field label, .field, .ops-form label { color: #645a61; font-size: 12px; }
 .form-help, .source-note, .muted, .login-help { color: var(--muted); }
 .notice, .form-status { border-radius: 5px; background: #f0ebef; border-color: #dfd4dc; color: #60525d; }
+.notice p { color: inherit; }
 .form-status.error { background: #f9efed; color: #9b453e; }
 .stat-card { border: 0; border-right: 1px solid var(--line); background: transparent; border-radius: 0; }
 .stat-card > span { color: #786c74; }

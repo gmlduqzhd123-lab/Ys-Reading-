@@ -356,6 +356,7 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   expect(fs.readFileSync((await (await downloaded).path())!, "utf8")).toContain(
     "꾸준한 돌봄",
   );
+  expect((await new AxeBuilder({ page: teacher }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) }))).toEqual([]);
   const confirm =
     reportTitle + " 1판의 원문·수치·의견과 학생 공개 범위를 확인했습니다";
   errors.forEach((check) => check.phase("report-review"));
