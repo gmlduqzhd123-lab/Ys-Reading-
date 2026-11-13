@@ -188,6 +188,7 @@ export function QuickReading({
                 <label className="field">
                   기억에 남는 구절
                   <textarea
+                    aria-label="기억에 남는 구절"
                     required
                     maxLength={1000}
                     value={excerpt}
@@ -202,6 +203,7 @@ export function QuickReading({
                 <label className="field">
                   오늘의 한 줄 생각
                   <textarea
+                    aria-label="오늘의 한 줄 생각"
                     required
                     maxLength={1000}
                     value={thought}

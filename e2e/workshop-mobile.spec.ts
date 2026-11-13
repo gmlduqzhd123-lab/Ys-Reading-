@@ -112,7 +112,7 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
     .getByRole("button", { name: "이 책으로 오늘 기록하기", exact: true })
     .click();
   await quick
-    .getByLabel("오늘의 한 줄 생각", { exact: true })
+    .getByRole("textbox", { name: "오늘의 한 줄 생각", exact: true })
     .fill("한글로 입력한 나의 생각을 다시 이어 쓰고 싶어요.");
   await expect(quick.locator("form")).toHaveAttribute(
     "data-tool-dirty",
@@ -135,7 +135,7 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
     .getByRole("button", { name: "수업 초안 불러오기", exact: true })
     .click();
   await expect(
-    quick.getByLabel("오늘의 한 줄 생각", { exact: true }),
+    quick.getByRole("textbox", { name: "오늘의 한 줄 생각", exact: true }),
   ).toHaveValue("한글로 입력한 나의 생각을 다시 이어 쓰고 싶어요.");
   await quick
     .getByRole("button", { name: "오늘 독서 기록 저장", exact: true })

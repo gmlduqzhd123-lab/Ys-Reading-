@@ -195,6 +195,7 @@ function StudentActivity({
                   <label className="field">
                     {q.label}
                     <textarea
+                      aria-label={q.label}
                       required
                       maxLength={2000}
                       value={String(answers[q.id] ?? "")}
@@ -318,6 +319,7 @@ function ReviewAnswer({
           <label className="field">
             {answer.student_name}에게 피드백
             <textarea
+              aria-label={answer.student_name + "에게 피드백"}
               disabled={action.busy || action.blocked}
               maxLength={2000}
               value={feedback}
