@@ -9,11 +9,21 @@ const payload=(changes:any={})=>JSON.stringify({version:1,agent:id,sequence:1,ch
 const sign=(p:string)=>createHmac("sha256",secret).update(p).digest("hex");
 const send=async(p:string,s=sign(p))=>(await db.query<{v:any}>("select public.backup_agent_report($1,$2) v",[p,s])).rows[0].v;
 const health=async()=>(await db.query<{v:any}>("select public.service_backup_health() v")).rows[0].v;
+it("distinguishes current permission denial but does not resurrect it after a newer verified backup",async()=>{
+ await send(payload({state:"auth_required",code:"BACKUP_PERMISSION_DENIED"}));expect((await health()).code).toBe("BACKUP_PERMISSION_DENIED");
+ await db.exec("update private.backup_agents set last_failure_at=now()-interval '5 days'");
+ await db.query("insert into private.backup_runs(id,created_at,verified_at,file_name,bytes,table_count,row_count,snapshot_digest) values($1,now()-interval '3 days',now()-interval '3 days','2026-11-10T00-00-00-000Z.bfbak',1,1,1,$2)",[randomUUID(),"a".repeat(64)]);
+ expect((await health()).code).toBe("BACKUP_STALE");
+});
 it("authenticates copy reports, alerts only configured targets, preserves real backup health and fences replay",async()=>{
- const targets=[{kind:"recovery-kit",configured:true,state:"verified",external:false,digest:"a".repeat(64),verifiedAt:new Date().toISOString(),bytes:100},{kind:"cloud-mirror",configured:false,state:"unconfigured",external:false,digest:null,verifiedAt:null,bytes:null}];
- const copyPayload=(sequence:number,values=targets)=>JSON.stringify({version:1,agent:id,sequence,checkedAt:new Date().toISOString(),targets:values});
+ await db.query("insert into private.backup_runs(id,created_at,verified_at,file_name,bytes,table_count,row_count,snapshot_digest) values($1,now(),now(),'2026-11-13T00-00-00-000Z.bfbak',1,1,1,$2)",[randomUUID(),"a".repeat(64)]);
+ const targets:Array<{kind:string;configured:boolean;state:string;external:boolean;digest:string|null;verifiedAt:string|null;bytes:number|null;sourceCreatedAt:string|null}>=[{kind:"recovery-kit",configured:true,state:"verified",external:false,digest:"a".repeat(64),verifiedAt:new Date().toISOString(),bytes:100,sourceCreatedAt:new Date().toISOString()},{kind:"cloud-mirror",configured:false,state:"unconfigured",external:false,digest:null,verifiedAt:null,bytes:null,sourceCreatedAt:null}];
+ const copyPayload=(sequence:number,values=targets)=>JSON.stringify({version:2,agent:id,sequence,checkedAt:new Date().toISOString(),targets:values});
  const copySend=(p:string,s=sign(p))=>db.query<{v:any}>("select public.backup_copy_report($1,$2) v",[p,s]);
  await db.exec("set role anon");const p=copyPayload(1);await copySend(p);expect((await health()).copies).toMatchObject({configured:true,external:false,healthy:true});
+ await db.exec("reset role;update private.backup_copy_reports set source_created_at=now()-interval '5 days' where configured");
+ expect((await health()).copies).toMatchObject({healthy:false,code:"BACKUP_COPY_STALE"});
+ await db.exec("update private.backup_copy_reports set source_created_at=now() where configured;set role anon");
  expect((await copySend(p)).rows[0].v.replayed).toBe(true);
  const bad=copyPayload(2,targets.map(t=>t.kind==="recovery-kit"?{...t,state:"failed",digest:null,verifiedAt:null,bytes:null}:t));
  expect(await forbidden(db,()=>copySend(bad,sign(p)))).toContain("BF_FORBIDDEN");await copySend(bad);

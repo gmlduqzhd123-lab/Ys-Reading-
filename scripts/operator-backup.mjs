@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import { nativeMcp } from "./lib/native-mcp.mjs";
+import { operatorTransport as nativeMcp } from "./lib/operator-transport.mjs";
 import {
   projectRef,
   defaultVault,

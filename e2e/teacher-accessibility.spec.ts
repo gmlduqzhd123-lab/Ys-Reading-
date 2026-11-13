@@ -20,12 +20,23 @@ test("teacher roster, invitations, term progression, batch export and simple stu
     expect(result.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),route).toEqual([]);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(1281);
   }
+  const other=await page.context().newPage(),otherCheck=watchBrowserErrors(other);
+  await other.goto(page.url());
+  await expect(other.getByText("교사 입력은 본인만 볼 수 있도록 7일간 임시 보관합니다.",{exact:true})).toBeVisible();
   await page.getByRole("checkbox",{name:"학생 메뉴 간편 보기",exact:true}).check();
   await page.getByLabel("새 독서 기록의 작성 도움",{exact:true}).selectOption("guided");
   await expect(page.getByText("교사 작성 내용을 임시 보관했어요. 최종 저장·피드백 전송은 별도로 확인해 주세요.",{exact:true})).toBeVisible();
+  await other.getByRole("checkbox",{name:"학생 메뉴 간편 보기",exact:true}).check();
+  await other.getByLabel("새 독서 기록의 작성 도움",{exact:true}).selectOption("free");
+  await expect(other.getByRole("alert").filter({hasText:"다른 화면에서 교사 초안이 바뀌었어요"})).toBeVisible();
+  await other.getByRole("button",{name:"현재 입력으로 다시 저장",exact:true}).click();
+  await expect(other.getByText("교사 작성 내용을 임시 보관했어요. 최종 저장·피드백 전송은 별도로 확인해 주세요.",{exact:true})).toBeVisible();
+  otherCheck();await other.close();
   await page.reload();
   await page.getByRole("button",{name:"교사 초안 불러오기",exact:true}).click();
-  await expect(page.getByLabel("새 독서 기록의 작성 도움",{exact:true})).toHaveValue("guided");
+  await expect(page.getByLabel("새 독서 기록의 작성 도움",{exact:true})).toHaveValue("free");
+  await page.getByLabel("새 독서 기록의 작성 도움",{exact:true}).selectOption("guided");
+  await expect(page.getByText("교사 작성 내용을 임시 보관했어요. 최종 저장·피드백 전송은 별도로 확인해 주세요.",{exact:true})).toBeVisible();
   await page.getByRole("button",{name:"이 학급 학생 화면 설정 저장",exact:true}).click();
   await expect(page.getByText("학생 화면 시작 설정을 저장했어요.",{exact:true})).toBeVisible();
   const c=await browser.newContext(),student=await c.newPage(),studentCheck=watchBrowserErrors(student);

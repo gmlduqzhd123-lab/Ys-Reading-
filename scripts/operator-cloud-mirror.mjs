@@ -18,6 +18,6 @@ try{
     if(!proof.verified||Date.now()-Date.parse(proof.checkedAt)>48*3600000)throw Error("CLOUD_RESTORE_PROOF_REQUIRED");
     const source=path.join(vault,proof.job+".bfcloud");
     const result=copyCloudArchive(source,config.destination,proof.job,proof.cipherDigest);
-    fs.writeFileSync(statusFile,JSON.stringify(result),{mode:0o600});console.log(JSON.stringify(result));
+    fs.writeFileSync(statusFile,JSON.stringify({...result,sourceCreatedAt:proof.sourceCreatedAt??null}),{mode:0o600});console.log(JSON.stringify(result));
   }
 }catch(e){const code=/^[A-Z_]+$/.test(e.message)?e.message:"MIRROR_UNAVAILABLE";fs.writeFileSync(statusFile,JSON.stringify({verified:false,code,checkedAt:new Date().toISOString()}),{mode:0o600});console.log(JSON.stringify({verified:false,code}));process.exitCode=1;}

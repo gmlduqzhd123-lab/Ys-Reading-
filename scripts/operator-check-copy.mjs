@@ -10,8 +10,7 @@ import {
 } from "./lib/operator-vault.mjs";
 import { validateCopyDirectory, copyLocationKind } from "./lib/backup-copy.mjs";
 import { acquireBackupLock } from "./lib/backup-lock.mjs";
-import { resolveBackupCodex } from "./lib/backup-runtime.mjs";
-import { nativeMcp } from "./lib/native-mcp.mjs";
+import { operatorTransport as nativeMcp } from "./lib/operator-transport.mjs";
 const vault = defaultVault(),
   statusFile = path.join(vault, "copy-status.json");
 let release, mcp;
@@ -46,10 +45,10 @@ try {
     location_kind: kind,
     verified_at: at,
     bytes: fs.statSync(path.join(config.directory, "backup.bfbak")).size,
+    sourceCreatedAt:decryptBackup(fs.readFileSync(path.join(config.directory,"backup.bfbak"),"utf8"),key).createdAt,
     reported: false,
   };
   try {
-    process.env.BOOKFOREST_CODEX_BINARY = resolveBackupCodex();
     mcp = await nativeMcp();
     if (
       (await mcp.call("get_project_url", {}))?.url !==

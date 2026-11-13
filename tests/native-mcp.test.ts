@@ -11,7 +11,7 @@ it("classifies the observed OAuth startup failure without exposing its provider 
   );
   expect(
     mcpErrorCode({ code: 403, message: "Database permission denied" }),
-  ).toBe("MCP_REQUEST_FAILED");
+  ).toBe("BACKUP_PERMISSION_DENIED");
 });
 
 it("rejects tool-level errors, including OAuth errors returned as MCP content", () => {

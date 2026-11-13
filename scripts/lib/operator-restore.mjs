@@ -186,6 +186,14 @@ export async function verifyRestore(backup, checkpoint = null) {
       if (!denied) throw Error("ANONYMOUS_DATA_EXPOSED");
     }
     await db.exec("reset role");
+    const zipRole=await db.query("select r.rolcanlogin,r.rolbypassrls,r.rolname owner from pg_proc p join pg_namespace n on n.oid=p.pronamespace join pg_roles r on r.oid=p.proowner where n.nspname='private' and p.proname='zip_visible_part'");
+    if(zipRole.rows.length){
+      const r=zipRole.rows[0];if(r.owner!=="bookforest_export_reader"||r.rolcanlogin||r.rolbypassrls)throw Error("RESTORE_WORKER_ROLE_UNSAFE");
+      const allowed=await db.query("select has_function_privilege('anon','private.zip_visible_part(uuid,jsonb,uuid,integer)','EXECUTE') allowed");
+      if(allowed.rows[0].allowed)throw Error("RESTORE_WORKER_ROLE_UNSAFE");
+      const configured=await db.query("select count(*)::int n from private.zip_worker_config");
+      if(configured.rows[0].n!==0)throw Error("RESTORE_WORKER_REACTIVATED");
+    }
     let privacy = null;
     if (checkpoint) {
       stage = "privacy";
@@ -205,6 +213,7 @@ export async function verifyRestore(backup, checkpoint = null) {
       digest: backup.sha256,
       privacyReconciliation: privacy,
       operationalCutoverVerified: false,
+      derivedExportsRequireSetup:zipRole.rows.length>0,
     };
   } catch (error) {
     const code = String(error.code ?? error.message ?? "RESTORE_FAILED");

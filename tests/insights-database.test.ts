@@ -81,6 +81,17 @@ async function search(
   ]);
 }
 describe("Server-side classroom insights, notices and complete record search", () => {
+  it("reports only the caller's export usage and releases failed artifacts without deleting source records",async()=>{
+    const original=await reading();await actor(t);
+    const batch=await rpc("create_export_batch",["사용량","reading","csv",false,c,null,null,"all",randomUUID()]);
+    expect(await rpc("export_usage")).toMatchObject({active:1,daily:1,artifactBytes:0});
+    await actor(other);expect(await rpc("export_usage")).toMatchObject({active:0,daily:0,sourceBytes:0});
+    await db.exec("reset role");await db.query("insert into private.zip_jobs(batch_id,state,claims,updated_at) values($1,'failed','{}',now()-interval '2 days')",[batch]);
+    await db.query("insert into private.zip_parts values($1,0,decode('01','hex'),'test')",[batch]);await db.exec("select private.zip_tick()");
+    expect((await one("select count(*)::int n from private.zip_parts where batch_id=$1",[batch])).n).toBe(0);
+    expect((await one("select count(*)::int n from public.reading_logs where id=$1",[original])).n).toBe(1);
+    await db.exec("set role anon");await reject("select public.export_usage()",[],"permission denied");
+  });
   it("does not reset daily export usage after deletion and enforces account storage plus download rate",async()=>{
     await reading();await actor(t);
     for(let i=0;i<20;i++){

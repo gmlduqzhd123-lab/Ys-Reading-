@@ -1,6 +1,6 @@
 // This policy never reads OAuth tokens. A real project-scoped MCP call proves readiness.
 const minute = 60000;
-export const safeAgentCode = (value) => ["OK","MCP_AUTH_REQUIRED","MCP_TIMEOUT","MCP_UNAVAILABLE","MCP_REQUEST_FAILED","MCP_TOOL_FAILED","MCP_RESPONSE_INVALID","PROJECT_SCOPE_MISMATCH","RECOVERY_KEY_MISSING","BACKUP_FAILED","BACKUP_RUN_FAILED","BACKUP_CODEX_UNAVAILABLE","SNAPSHOT_READ_FAILED","PRIVACY_CHECKPOINT_READ_FAILED","BACKUP_ALREADY_RUNNING"].includes(value) ? value : "BACKUP_FAILED";
+export const safeAgentCode = (value) => ["BACKUP_CREDENTIAL_EXPIRED","BACKUP_PERMISSION_DENIED","BACKUP_CREDENTIAL_INVALID","BACKUP_TRANSPORT_UNAVAILABLE","BACKUP_TRANSPORT_FAILED","BACKUP_RESPONSE_INVALID","OK","MCP_AUTH_REQUIRED","MCP_TIMEOUT","MCP_UNAVAILABLE","MCP_REQUEST_FAILED","MCP_TOOL_FAILED","MCP_RESPONSE_INVALID","PROJECT_SCOPE_MISMATCH","RECOVERY_KEY_MISSING","BACKUP_FAILED","BACKUP_RUN_FAILED","BACKUP_CODEX_UNAVAILABLE","SNAPSHOT_READ_FAILED","PRIVACY_CHECKPOINT_READ_FAILED","BACKUP_ALREADY_RUNNING"].includes(value) ? value : "BACKUP_FAILED";
 export function backupDue(state, now, request) {
   if (request && Date.parse(request.requestedAt) <= now && now - Date.parse(request.requestedAt) < 86400000 && request.id !== state.completedRequest) return true;
   const verified = Date.parse(state.lastVerifiedAt);
@@ -29,7 +29,7 @@ export async function runBackupAgent({ state, now = Date.now(), request, save, r
     state.failures = Math.min(10, (state.failures || 0) + 1);
     state.needsRecovery = true;
     state.nextCheckAt = new Date(now + (code === "MCP_AUTH_REQUIRED" ? 30 : Math.min(60, 15 * 2 ** (state.failures - 1))) * minute).toISOString();
-    await signal(code === "MCP_AUTH_REQUIRED" ? "auth_required" : phase === "probe" ? "retry_wait" : "backup_failed", code, phase);
+    await signal(["MCP_AUTH_REQUIRED","BACKUP_CREDENTIAL_EXPIRED","BACKUP_PERMISSION_DENIED"].includes(code) ? "auth_required" : phase === "probe" ? "retry_wait" : "backup_failed", code, phase);
     return { ok: false, code };
   }
   try { await probe(); } catch (e) { return fail(e, "probe"); }

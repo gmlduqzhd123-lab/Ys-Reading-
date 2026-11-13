@@ -26,7 +26,7 @@ export async function reportAgent(directory, key, agent, state, code, phase) {
 }
 export async function reportCopies(directory,key,agent,targets){
  agent.sequence++;writeAgent(directory,key,agent);
- const payload=JSON.stringify({version:1,agent:agent.id,sequence:agent.sequence,checkedAt:new Date().toISOString(),targets});
+ const payload=JSON.stringify({version:2,agent:agent.id,sequence:agent.sequence,checkedAt:new Date().toISOString(),targets});
  const signature=createHmac("sha256",Buffer.from(agent.secret,"hex")).update(payload).digest("hex");
  const r=await fetch(agent.url+"/rest/v1/rpc/backup_copy_report",{method:"POST",headers:{apikey:agent.apiKey,"Content-Type":"application/json"},body:JSON.stringify({p_payload:payload,p_signature:signature}),signal:AbortSignal.timeout(12000)});
  if(!r.ok||(await r.json()).accepted!==true)throw Error("COPY_REPORT_UNAVAILABLE");

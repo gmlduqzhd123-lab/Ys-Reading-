@@ -35,6 +35,7 @@ export async function batchExportAction(owner: string, input: unknown) {
   const v = z
     .discriminatedUnion("action", [
       z.object({ action: z.literal("list") }).strict(),
+      z.object({ action: z.literal("usage") }).strict(),
       z
         .object({
           action: z.literal("start"),
@@ -75,7 +76,7 @@ export async function batchExportAction(owner: string, input: unknown) {
           p_selection: v.selection,
           p_request:v.requestId,
         })
-      : v.action==="discard"?await c.rpc("discard_export_batch",{p_id:v.id}):v.action==="zip"?await c.rpc("zip_job",{p_batch:v.id,p_action:v.operation}):await c.rpc(
+      : v.action==="usage"?await c.rpc("export_usage"):v.action==="discard"?await c.rpc("discard_export_batch",{p_id:v.id}):v.action==="zip"?await c.rpc("zip_job",{p_batch:v.id,p_action:v.operation}):await c.rpc(
           "export_batch_state",
           v.action === "list"
             ? {}

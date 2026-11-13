@@ -3,6 +3,7 @@ export const marker = "<!-- bookforest-service-incident-v1 -->";
 export const backupMarker = "<!-- bookforest-backup-incident-v1 -->";
 export function backupIncidentText(code) {
   const reasons = {
+    BACKUP_PERMISSION_DENIED:"백업 연결은 있으나 프로젝트 관리 권한이 거부됐습니다. 지정 프로젝트와 Database 읽기·쓰기 및 Project Settings 읽기 권한을 확인하세요. 새 백업·복원 검증 전에는 복구 완료로 처리하지 않습니다.",
     BACKUP_COPY_FAILED:"암호화 백업 사본 복사에 실패했습니다. 운영자 PC에서 저장 장치·네트워크 폴더 연결과 여유 공간을 확인해 주세요. 원본 백업 성공과 별도로 사본을 다시 검증해야 합니다.",
     BACKUP_COPY_STALE:"설정된 백업 사본의 보고가 오래됐거나 최신 파일 검증을 확인하지 못했습니다. 운영자 PC의 예약 작업과 저장 장치 연결을 확인해 주세요.",
     CLOUD_RESTORE_OVERDUE: "서버에 암호화 백업은 있지만 최신 파일의 복원 검증이 2시간 이상 지연되었습니다. 운영자 PC의 전원·MCP 인증·예약 복원 검사 결과를 확인해 주세요. 생성 성공을 복원 성공으로 처리하지 않습니다.",

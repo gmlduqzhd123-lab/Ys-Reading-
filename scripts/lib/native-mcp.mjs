@@ -116,6 +116,7 @@ export function startupErrorCode(notification) {
 export function mcpErrorCode(error, fallback = "MCP_REQUEST_FAILED") {
   const message =
     typeof error === "string" ? error : String(error?.message ?? "");
+  if(error?.code===403||/permission denied|do not have permission|insufficient.scope/i.test(message))return "BACKUP_PERMISSION_DENIED";
   return error?.code === 401 ||
     /oauth[^\n]{0,100}(refresh|expired|invalid)|token[^\n]{0,50}(refresh|expired)|refresh[^\n]{0,50}(token|oauth)|invalid_grant|not authenticated|not logged in|authentication required|unauthorized/i.test(
       message,

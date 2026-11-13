@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { nativeMcp } from "./lib/native-mcp.mjs";
+import { operatorTransport as nativeMcp } from "./lib/operator-transport.mjs";
 import {
   defaultVault,
   vaultKey,
@@ -95,6 +95,7 @@ try {
           ...proof,
           job: latest.id,
           cipherDigest:latest.digest,
+          sourceCreatedAt:value.snapshot.createdAt??null,
           checkedAt: new Date().toISOString(),
         }),
         { mode: 0o600 },

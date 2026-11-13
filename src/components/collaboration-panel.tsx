@@ -7,6 +7,7 @@ import type { CollaborationState } from "@/lib/collaboration";
 import { collaborationCommand } from "@/app/collaboration/actions";
 import { accountOperation } from "@/app/operations/actions";
 import { RosterImporter } from "@/components/participation/roster-importer";
+import {SchoolPicker} from "@/components/school-picker";
 export function CollaborationPanel({
   state,
   classroom,
@@ -20,6 +21,7 @@ export function CollaborationPanel({
     [code, setCode] = useState(""),
     [school, setSchool] = useState("");
   const keys = useRef<Record<string, string>>({});
+  const [invitationPreview,setInvitationPreview]=useState<Record<string,unknown>|null>(null),[inviteKind,setInviteKind]=useState("school");
   const [interactive, setInteractive] = useState(false);
   useEffect(() => setInteractive(true), []);
   const cls = state.classes.find((c) => c.id === classroom);
@@ -43,8 +45,10 @@ export function CollaborationPanel({
         if (r.data?.school) setSchool(r.data.school);
         router.refresh();
       }
+      return r.ok;
     } catch {
       setMessage("연결이 끊겼어요. 같은 입력으로 다시 시도해 주세요.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -92,7 +96,7 @@ export function CollaborationPanel({
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
-              void run("invite", {
+              setInvitationPreview({
                 kind: "classroom",
                 classroom: cls.id,
                 email: String(f.get("email")),
@@ -126,7 +130,7 @@ export function CollaborationPanel({
               있습니다.
             </p>
             <button className="button button-primary" disabled={busy}>
-              선택한 권한으로 교사 초대
+              선택한 초대 내용 확인
             </button>
           </form>
           {state.staff.map((s) => (
@@ -189,10 +193,7 @@ export function CollaborationPanel({
               });
             }}
           >
-            <label className="field">
-              학교 연결 요청 · 학교 관리자에게 받은 학교 ID
-              <input name="school" required />
-            </label>
+            <SchoolPicker schools={state.schools} label="학급을 연결할 학교"/>
             <button className="button button-outline" disabled={busy}>
               학교에 학급 연결 요청
             </button>
@@ -210,6 +211,7 @@ export function CollaborationPanel({
           <button className="button button-outline" onClick={() => setCode("")}>
             코드 화면에서 지우기
           </button>
+          <button type="button" className="button button-outline" onClick={async()=>{try{await navigator.clipboard.writeText(code);setMessage("초대 코드를 복사했어요. 지정한 교사에게만 전달하세요.");}catch{setMessage("자동 복사가 안 돼요. 위 입력칸의 코드를 직접 복사해 주세요.");}}}>초대 코드 복사</button>
         </section>
       )}
       {!!state.invitations.length && (
@@ -294,7 +296,7 @@ export function CollaborationPanel({
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
-              void run("invite", {
+              setInvitationPreview({
                 kind: String(f.get("kind")),
                 email: String(f.get("email")),
                 school: String(f.get("school") || ""),
@@ -303,7 +305,7 @@ export function CollaborationPanel({
           >
             <label className="field">
               운영 역할
-              <select name="kind">
+              <select name="kind" value={inviteKind} onChange={e=>setInviteKind(e.target.value)}>
                 <option value="school">학교 관리자</option>
                 <option value="operator">보조 전체 운영자</option>
               </select>
@@ -312,16 +314,14 @@ export function CollaborationPanel({
               초대할 승인 교사의 이메일
               <input type="email" name="email" required />
             </label>
-            <label className="field">
-              학교 ID · 학교 관리자 초대일 때 입력
-              <input name="school" />
-            </label>
+            {inviteKind==="school"&&<SchoolPicker schools={state.schools} label="학교 관리자 초대 대상 학교"/>}
             <button className="button button-outline" disabled={busy}>
-              최근 2단계 인증 후 운영 역할 초대
+              운영 역할 초대 내용 확인
             </button>
           </form>
         </section>
       )}
+      {invitationPreview&&<section className="panel"><h2>초대 내용 최종 확인</h2><p>받는 교사: {String(invitationPreview.email)}</p><p>역할: {invitationPreview.kind==="classroom"?"공동교사":invitationPreview.kind==="school"?"학교 관리자":"보조 전체 운영자"}</p><p>학교: {state.schools.find(s=>s.id===invitationPreview.school)?.name??(invitationPreview.kind==="school"?"직접 입력한 학교 연결 코드":"해당 없음")}</p><p>권한: {Array.isArray(invitationPreview.permissions)?invitationPreview.permissions.map(p=>({read:"기록 읽기",review:"피드백·검토·공개",students:"학생 계정 관리"})[String(p) as "read"|"review"|"students"]).join(" · "):invitationPreview.kind==="school"?"연결 승인된 학교의 학생 계정 관리":"전체 운영 권한 · 본인 2단계 인증 후 수락"}</p><p>초대는 지정 계정만 수락할 수 있으며 이메일을 자동 발송하지 않습니다.</p><div className="button-row"><button type="button" className="button button-primary" onClick={()=>void run("invite",invitationPreview).then(ok=>{if(ok)setInvitationPreview(null);})}>확인하고 초대 만들기</button><button type="button" className="button button-outline" onClick={()=>setInvitationPreview(null)}>돌아가서 수정</button></div></section>}
       {!!state.schools.length && (
         <section className="panel">
           <h2>나의 학교</h2>

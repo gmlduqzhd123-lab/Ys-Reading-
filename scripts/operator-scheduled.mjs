@@ -2,9 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { defaultVault, ensureVault, vaultKey, projectRef } from "./lib/operator-vault.mjs";
-import { resolveBackupCodex } from "./lib/backup-runtime.mjs";
 import { acquireBackupLock } from "./lib/backup-lock.mjs";
-import { nativeMcp } from "./lib/native-mcp.mjs";
+import { operatorTransport as nativeMcp } from "./lib/operator-transport.mjs";
 import { runBackupAgent } from "./lib/backup-agent.mjs";
 import { readAgent, reportAgent,reportCopies } from "./lib/backup-agent-channel.mjs";
 import {copyTarget} from "./lib/copy-report.mjs";
@@ -30,7 +29,6 @@ try {
     save: value => { fs.writeFileSync(stateFile + ".tmp",JSON.stringify(value),{mode:0o600}); fs.renameSync(stateFile + ".tmp",stateFile); },
     report: (status,code,phase) => reportAgent(directory,key,agent,status,code,phase),
     probe: async () => {
-      process.env.BOOKFOREST_CODEX_BINARY = resolveBackupCodex();
       const mcp = await nativeMcp();
       try {
         const project = await mcp.call("get_project_url",{});

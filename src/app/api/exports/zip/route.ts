@@ -5,15 +5,26 @@ import {getCurrentProfile} from "@/lib/auth";
 import {accountReady} from "@/lib/account-access";
 import {createClient} from "@/lib/supabase/server";
 import {zipStream} from "@/lib/zip-stream";
+import {exportFailure} from "@/lib/export-status";
 export const maxDuration=300;
-export async function GET(r:NextRequest){
+function failure(code:string,status:number){return NextResponse.json({code,error:exportFailure(code)},{status,headers:{"Cache-Control":"no-store","X-Bookforest-Export-Code":code,...(status===429?{"Retry-After":"60"}:{})}});}
+async function preflight(r:NextRequest,charge:boolean){
  const p=await getCurrentProfile(),parsed=z.uuid().safeParse(r.nextUrl.searchParams.get("batch"));
- if(!accountReady(p)||!parsed.success)return NextResponse.json({error:"현재 이용 가능한 계정과 묶음을 확인해 주세요."},{status:401});
- const c=await createClient();
- const [status,check,budget]=await Promise.all([c.rpc("zip_job",{p_batch:parsed.data}),c.rpc("check_zip_download",{p_batch:parsed.data}),c.rpc("consume_export_budget")]);
- if(status.error||status.data?.state!=="complete"||check.error||budget.error||budget.data!==true)return NextResponse.json({error:"ZIP 준비 상태·현재 권한·요청 한도를 확인해 주세요."},{status:403,headers:{"Cache-Control":"no-store"}});
- async function* entries(){for(let n=0;n<status.data.parts;n++){
-  const part=await c.rpc("read_zip_part",{p_batch:parsed.data,p_part:n});if(part.error||!part.data)throw Error("ZIP_ACCESS_CHANGED");
+ if(!accountReady(p)||!parsed.success)return {error:failure("EXPORT_FORBIDDEN",401)};
+ const c=await createClient(),id=parsed.data;
+ const [status,check,usage]=await Promise.all([c.rpc("zip_job",{p_batch:id}),c.rpc("check_zip_download",{p_batch:id}),c.rpc("export_usage")]);
+ if(status.error||check.error)return {error:failure(/BF_/.test(status.error?.message??check.error?.message??"")?"EXPORT_FORBIDDEN":"EXPORT_UNAVAILABLE",/BF_/.test(status.error?.message??check.error?.message??"")?403:503)};
+ if(usage.error)return {error:failure("EXPORT_UNAVAILABLE",503)};
+ if(status.data?.state!=="complete")return {error:failure("ZIP_NOT_READY",409)};
+ if(usage.data.requestsThisMinute>=60)return {error:failure("EXPORT_RATE_LIMIT",429)};
+ if(charge){const budget=await c.rpc("consume_export_budget");if(budget.error)return {error:failure("EXPORT_UNAVAILABLE",503)};if(budget.data!==true)return {error:failure("EXPORT_RATE_LIMIT",429)};}
+ return {c,id,parts:Number(status.data.parts)};
+}
+export async function HEAD(r:NextRequest){const result=await preflight(r,false);if(result.error)return result.error;return new NextResponse(null,{headers:{"Cache-Control":"private, no-store","X-Bookforest-Export-Code":"READY"}});}
+export async function GET(r:NextRequest){
+ const result=await preflight(r,true);if(result.error)return result.error;const {c,id,parts}=result;
+ async function* entries(){for(let n=0;n<parts;n++){
+  const part=await c.rpc("read_zip_part",{p_batch:id,p_part:n});if(part.error||!part.data)throw Error("ZIP_ACCESS_CHANGED");
   const bytes=Buffer.from(part.data.content,"base64");if(createHash("sha256").update(bytes).digest("hex")!==part.data.digest)throw Error("ZIP_INTEGRITY_FAILED");
   yield {name:String(part.data.name),data:new Uint8Array(bytes)};
  }}
