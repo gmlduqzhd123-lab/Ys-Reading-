@@ -84,7 +84,7 @@ export function ReportComposer({
         href={
           "/classroom?classroom=" +
           state.classroom.id +
-          "&student=" +
+          "&section=evidence&student=" +
           state.student.id +
           "#evidence"
         }

@@ -317,6 +317,13 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   await teacher
     .getByRole("link", { name: "이 학생의 성장 보고서 준비", exact: true })
     .click();
+  await teacher
+    .getByRole("link", { name: "독서·글쓰기·수업 활동의 원기록 확인", exact: true })
+    .click();
+  await expect(teacher.getByRole("heading", { name: "기록에서 성장 근거 살펴보기", exact: true })).toBeVisible();
+  await teacher.getByRole("button", { name: "독서·글쓰기·수업 활동 근거 불러오기", exact: true }).click();
+  await expect(teacher.getByText(title + " · 1번째 제출", { exact: true })).toBeVisible();
+  await teacher.getByRole("link", { name: "이 학생의 성장 보고서 준비", exact: true }).click();
   errors.forEach((check) => check.phase("report-compose"));
   const reportTitle = "CI 모바일 성장 기록";
   await teacher
@@ -353,7 +360,6 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
     reportTitle + " 1판의 원문·수치·의견과 학생 공개 범위를 확인했습니다";
   errors.forEach((check) => check.phase("report-review"));
   await teacher.getByRole("checkbox", { name: confirm, exact: true }).check();
-  errors.forEach((check) => check.phase("report-publish"));
   await teacher
     .getByRole("button", { name: "이 판 검토 완료", exact: true })
     .click();
@@ -363,6 +369,7 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
       { exact: true },
     ),
   ).toBeVisible();
+  errors.forEach((check) => check.phase("report-publish"));
   await teacher.getByRole("checkbox", { name: confirm, exact: true }).check();
   await teacher
     .getByRole("button", { name: "학생에게 공개", exact: true })
