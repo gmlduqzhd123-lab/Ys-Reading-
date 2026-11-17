@@ -69,8 +69,9 @@ try {
   // share agent.lock so signed report sequence numbers cannot race.
   const watchdog=inspectBackupTask("watchdog");
   await signalWatchdogFailure({state,code:watchdog.code,save:value=>{fs.writeFileSync(stateFile+".tmp",JSON.stringify(value),{mode:0o600});fs.renameSync(stateFile+".tmp",stateFile);},report:(status,code,phase)=>reportAgent(directory,key,agent,status,code,phase)});
-  fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({...result,checkedAt:new Date().toISOString(),state:state.state,code:state.code,watchdogCode:watchdog.code}),{mode:0o600});
-  process.exitCode = result.ok === false || watchdog.code!=="OK" || cloudRun.status !== 0 || cloudResult?.ok !== true || !copyReported ||targets.some(t=>t.configured&&t.state!=="verified") ? 1 : 0;
+  const taskOk=result.ok!==false&&watchdog.code==="OK"&&cloudRun.status===0&&cloudResult?.ok===true&&copyReported&&!targets.some(t=>t.configured&&t.state!=="verified");
+  fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({...result,ok:taskOk,checkedAt:new Date().toISOString(),state:state.state,code:state.code,watchdogCode:watchdog.code}),{mode:0o600});
+  process.exitCode = taskOk ? 0 : 1;
 } catch(e) {
   const code = /^[A-Z][A-Z_]{1,79}$/.test(e?.message ?? "") ? e.message : "BACKUP_RUNNER_UNAVAILABLE";
   fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({ok:false,code,checkedAt:new Date().toISOString()}),{mode:0o600});
