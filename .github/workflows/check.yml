@@ -6,6 +6,17 @@ on:
 permissions:
   contents: read
 jobs:
+  windows-backup-launcher:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Verify console-free backup launcher and failure exit codes
+        shell: powershell
+        run: ./tests/backup-launcher.test.ps1
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
