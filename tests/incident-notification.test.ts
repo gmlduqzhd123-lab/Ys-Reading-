@@ -4,7 +4,16 @@ import {
   marker,
   backupMarker,
   monitorHealthy,
+  backupIncidentText,
 } from "../scripts/lib/incident-notification.mjs";
+import {taskFailureCodes} from "../scripts/lib/backup-task-policy.mjs";
+it('provides separate actionable task/authentication reasons while keeping one owned incident',()=>{
+ for(const code of taskFailureCodes)expect(backupIncidentText(code)).toMatchObject({code,text:expect.stringMatching(/예약|작업/)});
+ expect(backupIncidentText('BACKUP_AUTH_REQUIRED').text).toContain('재인증');
+ const issue={number:9,state:'open',user:{type:'Bot'},body:backupMarker+'\n'+backupIncidentText('BACKUP_TASK_MISSING').marker};
+ expect(incidentDecision(false,[issue],backupMarker)).toEqual({create:false,close:[]});
+ expect(incidentDecision(true,[issue],backupMarker)).toEqual({create:false,close:[9]});
+});
 it("deduplicates bot owned notifications and never modifies user issues", () => {
   const issues = [
     { number: 1, state: "open", user: { type: "User" }, body: marker },

@@ -16,7 +16,8 @@ internal static class BookforestBackupLauncher
             string runner = Path.GetFullPath(args[1]);
             if (!File.Exists(node) || !File.Exists(runner) ||
                 !String.Equals(Path.GetFileName(node), "node.exe", StringComparison.OrdinalIgnoreCase) ||
-                !String.Equals(Path.GetFileName(runner), "operator-scheduled.mjs", StringComparison.OrdinalIgnoreCase)) return 1;
+                !(String.Equals(Path.GetFileName(runner), "operator-scheduled.mjs", StringComparison.OrdinalIgnoreCase) ||
+                  String.Equals(Path.GetFileName(runner), "operator-watchdog.mjs", StringComparison.OrdinalIgnoreCase))) return 1;
             ProcessStartInfo start = new ProcessStartInfo(node, "\"" + runner + "\"");
             start.WorkingDirectory = Directory.GetParent(Path.GetDirectoryName(runner)).FullName;
             start.UseShellExecute = false;

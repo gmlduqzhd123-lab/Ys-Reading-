@@ -3,6 +3,13 @@ export const marker = "<!-- bookforest-service-incident-v1 -->";
 export const backupMarker = "<!-- bookforest-backup-incident-v1 -->";
 export function backupIncidentText(code) {
   const reasons = {
+    BACKUP_TASK_MISSING:"주 백업 예약 작업이 삭제되거나 누락됐습니다. 운영자 PC에서 책숲 Install-Operator-Backup.ps1을 실행해 백업·감시 작업을 다시 등록하고 새 백업의 복원 검증까지 확인해 주세요.",
+    BACKUP_TASK_DISABLED:"주 백업 예약 작업이 꺼져 있습니다. 운영자 PC의 작업 스케줄러에서 책숲 백업 작업을 확인하고, 다시 등록한 뒤 새 백업·복원 검증을 진행해 주세요.",
+    BACKUP_TASK_MISCONFIGURED:"주 백업 작업의 실행 파일·경로 또는 Windows 계정 설정이 책숲 설치와 다릅니다. 해당 PC의 책숲 설치 도구로 다시 등록해 주세요. 다른 프로젝트의 작업을 덮어쓰지 않습니다.",
+    BACKUP_TASK_FAILED:"주 백업 예약 실행이 실패 종료했습니다. 운영자 PC에서 예약 작업의 종료 코드와 백업·사본·복원 상태를 확인해 주세요. 검증 성공 기록만 복구로 인정합니다.",
+    BACKUP_TASK_STALE:"주 백업 예약 작업이 등록돼 있지만 45분 이상 실행되지 않았습니다. PC 전원·Windows 로그인·작업 스케줄러 상태를 확인하고 설치 도구로 다시 등록해 주세요.",
+    BACKUP_TASK_CHECK_UNAVAILABLE:"감시 작업이 Windows 예약 작업 상태를 조회하지 못했습니다. 작업 스케줄러 접근과 책숲 설치 상태를 확인해 주세요. 상태 조회 실패를 정상으로 표시하지 않습니다.",
+    BACKUP_WATCHDOG_UNAVAILABLE:"독립 감시 예약 작업이 없거나 꺼져 있거나 정상 실행되지 않았습니다. 운영자 PC에서 책숲 설치 도구를 실행해 백업과 감시 작업을 함께 복구해 주세요.",
     BACKUP_PERMISSION_DENIED:"백업 연결은 있으나 프로젝트 관리 권한이 거부됐습니다. 지정 프로젝트와 Database 읽기·쓰기 및 Project Settings 읽기 권한을 확인하세요. 새 백업·복원 검증 전에는 복구 완료로 처리하지 않습니다.",
     BACKUP_COPY_FAILED:"암호화 백업 사본 복사에 실패했습니다. 운영자 PC에서 저장 장치·네트워크 폴더 연결과 여유 공간을 확인해 주세요. 원본 백업 성공과 별도로 사본을 다시 검증해야 합니다.",
     BACKUP_COPY_STALE:"설정된 백업 사본의 보고가 오래됐거나 최신 파일 검증을 확인하지 못했습니다. 운영자 PC의 예약 작업과 저장 장치 연결을 확인해 주세요.",

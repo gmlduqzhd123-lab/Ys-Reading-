@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { cloudHealth } from "./lib/cloud-health.mjs";
 import {copyWarning} from "./lib/copy-report.mjs";
+import {taskFailureCodes} from "./lib/backup-task-policy.mjs";
 let copies;
 let healthy = false,
   code = "BACKUP_CHECK_UNAVAILABLE", warning=false;
@@ -13,6 +14,7 @@ try {
     at = Date.parse(d.checkedAt);
   copies=d.copies;
   const codes = [
+    ...taskFailureCodes,
     "OK",
     "BACKUP_MISSING",
     "BACKUP_STALE",

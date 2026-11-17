@@ -2,6 +2,7 @@ import {beforeAll,afterAll,beforeEach,afterEach,it,expect} from "vitest";
 import {randomUUID,randomBytes,createHmac} from "node:crypto";
 import type {PGlite} from "@electric-sql/pglite";
 import {runtimeDb,forbidden} from "./helpers/runtime-db";
+import {taskFailureCodes} from "../scripts/lib/backup-task-policy.mjs";
 let db:PGlite;const id=randomUUID(),secret=randomBytes(32);
 beforeAll(async()=>{db=await runtimeDb();await db.query("insert into private.backup_agents(id,secret) values($1,$2)",[id,secret]);});
 afterAll(()=>db?.close());beforeEach(()=>db.exec("begin"));afterEach(()=>db.exec("rollback;reset role"));
@@ -9,6 +10,21 @@ const payload=(changes:any={})=>JSON.stringify({version:1,agent:id,sequence:1,ch
 const sign=(p:string)=>createHmac("sha256",secret).update(p).digest("hex");
 const send=async(p:string,s=sign(p))=>(await db.query<{v:any}>("select public.backup_agent_report($1,$2) v",[p,s])).rows[0].v;
 const health=async()=>(await db.query<{v:any}>("select public.service_backup_health() v")).rows[0].v;
+it('accepts every bounded task-fault code without granting backup completion capability',async()=>{
+ await db.exec('set role anon');let sequence=0;
+ for(const code of taskFailureCodes){await send(payload({sequence:++sequence,state:'retry_wait',code}));expect((await health()).code).toBe(code);expect(await forbidden(db,()=>send(payload({sequence:sequence+1,state:'completed',phase:'backup',code})))).toContain('BF_INVALID_INPUT');}
+ expect(await forbidden(db,()=>send(payload({sequence:sequence+1,state:'retry_wait',code:'UNREVIEWED_TASK_CODE'})))).toContain('BF_INVALID_INPUT');
+});
+it("reports task faults via the signed channel and requires a later real restore before recovery",async()=>{
+ await db.query("insert into private.backup_runs(id,created_at,verified_at,file_name,bytes,table_count,row_count,snapshot_digest) values($1,now(),now(),'2026-11-17T00-00-00-000Z.bfbak',1,1,1,$2)",[randomUUID(),"a".repeat(64)]);
+ await db.exec('set role anon');
+ await send(payload({state:'retry_wait',code:'BACKUP_TASK_MISSING'}));expect(await health()).toMatchObject({healthy:false,code:'BACKUP_TASK_MISSING'});
+ expect(await forbidden(db,()=>send(payload({sequence:2,state:'completed',code:'BACKUP_TASK_MISSING',phase:'backup'})))).toContain('BF_INVALID_INPUT');
+ expect(await forbidden(db,()=>send(payload({sequence:2,state:'retry_wait',code:'BACKUP_TASK_DISABLED'}),sign(payload())))).toContain('BF_FORBIDDEN');
+ await send(payload({sequence:2}));expect((await health()).code).toBe('BACKUP_RECOVERY_PENDING');
+ await db.exec('reset role;update private.backup_runs set verified_at=clock_timestamp()');expect((await health()).code).toBe('OK');
+ await db.exec("update private.backup_agents set last_failure_at=now()-interval '5 days',state='retry_wait',code='BACKUP_TASK_MISSING';update private.backup_runs set verified_at=now()-interval '3 days'");expect((await health()).code).toBe('BACKUP_STALE');
+});
 it("distinguishes current permission denial but does not resurrect it after a newer verified backup",async()=>{
  await send(payload({state:"auth_required",code:"BACKUP_PERMISSION_DENIED"}));expect((await health()).code).toBe("BACKUP_PERMISSION_DENIED");
  await db.exec("update private.backup_agents set last_failure_at=now()-interval '5 days'");

@@ -44,6 +44,13 @@ export function OperatorBackupStatus({ state }: { state: BackupState | null }) {
           자동 연결 점검 · {formatOperationsDate(state.health.agentCheckedAt)} · {state.health.code === "BACKUP_AUTH_REQUIRED"
             ? "백업 연결 인증이 필요해요. 별도 예약 토큰을 설정했다면 만료일을, MCP 방식을 사용한다면 Codex 연결 인증을 확인해 주세요."
             : state.health.code === "BACKUP_PERMISSION_DENIED" ? "백업 연결은 있으나 프로젝트 권한이 부족해요. 책숲 프로젝트와 Database 읽기·쓰기 및 Project Settings 읽기 권한을 확인해 주세요."
+            : state.health.code === "BACKUP_TASK_MISSING" ? "백업 예약 작업이 삭제됐어요. 운영자 PC에서 설치 도구로 백업·감시 작업을 다시 등록해 주세요."
+            : state.health.code === "BACKUP_TASK_DISABLED" ? "백업 예약 작업이 꺼져 있어요. Windows 작업 스케줄러에서 다시 켜 주세요."
+            : state.health.code === "BACKUP_TASK_MISCONFIGURED" ? "백업 실행 파일 또는 실행 계정이 달라졌어요. 설치 도구로 예약 작업을 복구해 주세요."
+            : state.health.code === "BACKUP_TASK_FAILED" ? "백업 예약 작업이 오류로 종료됐어요. 운영자 PC의 최근 실행 결과를 확인해 주세요."
+            : state.health.code === "BACKUP_TASK_STALE" ? "백업 예약 작업이 45분 이상 실행되지 않았어요. 예약 시간과 Windows 로그인 상태를 확인해 주세요."
+            : state.health.code === "BACKUP_TASK_CHECK_UNAVAILABLE" ? "Windows 예약 작업을 점검하지 못했어요. 운영자 PC의 작업 스케줄러를 확인해 주세요."
+            : state.health.code === "BACKUP_WATCHDOG_UNAVAILABLE" ? "독립 감시 작업이 없거나 정상 실행되지 않았어요. 설치 도구로 백업·감시 작업을 함께 복구해 주세요."
             : ["BACKUP_AGENT_MISSING","BACKUP_AGENT_OFFLINE"].includes(state.health.code) ? "백업 PC의 보고 신호가 없거나 2시간 이상 지났어요. 기존 백업 검증 시각과 별도로 PC 전원·로그인·예약 작업을 확인해 주세요."
             : state.health.code === "BACKUP_RETRY_WAIT" ? "연결을 재시도하고 있어요."
             : state.health.code === "BACKUP_RECOVERY_PENDING" ? "연결 회복 후 새 백업을 검증하고 있어요."
@@ -67,7 +74,7 @@ export function OperatorBackupStatus({ state }: { state: BackupState | null }) {
       )}
       <p>
         운영자 PC에서 매일 19시에 백업하며 로그인·연결 회복 시 누락분을 실행합니다.
-        연결은 매시간 점검하고, 실패하면 15~60분 간격으로 재시도합니다. PC가 켜져 있고 운영자
+        독립 감시 작업은 15분마다 실제 연결·권한과 백업 예약 작업을 점검하며, 백업 작업도 감시 작업의 실행 상태를 확인합니다. 실패하면 15~60분 간격으로 재시도합니다. PC가 켜져 있고 운영자
         Windows 계정이 로그인돼 있어야 합니다. 별도 프로젝트 한정 토큰을 비공개 입력 도구로 설정하면 MCP 로그인과 분리할 수 있으며, 미설정 시 기존 Codex 인증을 사용합니다. 복구 키를 별도 암호로 내보내 다른 기기에서 복원할 수 있습니다.
         복구 키 파일과 암호는 서로 다른 안전한 장소에 보관해 주세요.
       </p>

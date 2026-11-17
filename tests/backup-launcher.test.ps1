@@ -37,7 +37,15 @@ try {
   if((Invoke-TestLauncher $testNode $testRunner) -ne 0){throw 'CHILD_SUCCESS_NOT_PROPAGATED'}
   if((Invoke-TestLauncher (Join-Path $testRoot 'missing/node.exe') $testRunner) -ne 1){throw 'MISSING_RUNTIME_ACCEPTED'}
   if((Invoke-TestLauncher $testNode 'operator-scheduled.mjs') -ne 1){throw 'RELATIVE_RUNNER_ACCEPTED'}
-  Write-Output '{"passed":true,"checks":5,"consoleFree":true,"exitCodesPreserved":true,"largeStreamsDrainedWithoutDisclosure":true,"pathsWithSpaces":true}'
+  $testWatchdog=Join-Path $testScripts 'operator-watchdog.mjs'
+  [IO.File]::WriteAllText($testWatchdog,'process.stderr.write("private-fixture".repeat(40000));process.exitCode=9;')
+  if((Invoke-TestLauncher $testNode $testWatchdog) -ne 9){throw 'WATCHDOG_FAILURE_NOT_PROPAGATED'}
+  [IO.File]::WriteAllText($testWatchdog,'process.exitCode=0;')
+  if((Invoke-TestLauncher $testNode $testWatchdog) -ne 0){throw 'WATCHDOG_SUCCESS_NOT_PROPAGATED'}
+  $testArbitrary=Join-Path $testScripts 'other.mjs'
+  [IO.File]::WriteAllText($testArbitrary,'process.exitCode=0;')
+  if((Invoke-TestLauncher $testNode $testArbitrary) -ne 1){throw 'UNREVIEWED_RUNNER_ACCEPTED'}
+  Write-Output '{"passed":true,"checks":8,"consoleFree":true,"exitCodesPreserved":true,"largeStreamsDrainedWithoutDisclosure":true,"pathsWithSpaces":true,"watchdogAllowed":true,"arbitraryRunnerRejected":true}'
 } finally {
   if(Test-Path -LiteralPath $testRoot){
     $testResolved=(Resolve-Path -LiteralPath $testRoot).Path
