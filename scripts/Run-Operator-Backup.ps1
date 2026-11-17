@@ -13,14 +13,11 @@ try {
   $nodeCandidates=@($nodeCommand.Source,$NodePath,(Join-Path $env:ProgramFiles 'nodejs/node.exe'))
   $NodePath=$nodeCandidates | Where-Object {$_ -and (Test-Path -LiteralPath $_ -PathType Leaf)} | Select-Object -First 1
   if(!$NodePath){throw 'BACKUP_NODE_UNAVAILABLE'}
-  $codexCommand=Get-Command codex.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-  $codexRoot=Join-Path $env:LOCALAPPDATA 'OpenAI/Codex/bin'
-  $codexInstalled=@(Get-ChildItem -LiteralPath $codexRoot -Directory -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | ForEach-Object {Join-Path $_.FullName 'codex.exe'})
-  $codexCandidates=@($codexCommand.Source)+$codexInstalled+@($CodexPath)
-  $CodexPath=$codexCandidates | Where-Object {$_ -and (Test-Path -LiteralPath $_ -PathType Leaf)} | Select-Object -First 1
-  if(!$CodexPath){throw 'BACKUP_CODEX_UNAVAILABLE'}
+  # Keep CodexPath as a legacy parameter. The Node runner resolves the current
+  # desktop/Store installation through backup-runtime.mjs, including updates
+  # and packaged installs, instead of trusting a stale versioned task path.
   $taskRunner=Join-Path $PSScriptRoot 'operator-scheduled.mjs'
-  $taskRun=Start-Process -FilePath $NodePath -ArgumentList @('"'+$taskRunner+'"','--codex="'+$CodexPath+'"') -WorkingDirectory (Split-Path -Parent $PSScriptRoot) -WindowStyle Hidden -Wait -PassThru
+  $taskRun=Start-Process -FilePath $NodePath -ArgumentList @('"'+$taskRunner+'"') -WorkingDirectory (Split-Path -Parent $PSScriptRoot) -WindowStyle Hidden -Wait -PassThru
   exit $taskRun.ExitCode
 } catch {
   $taskCode=if($_.Exception.Message -match '^BACKUP_[A-Z_]+$'){$_.Exception.Message}else{'BACKUP_LAUNCH_FAILED'}

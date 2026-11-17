@@ -1,13 +1,15 @@
 $ErrorActionPreference='Stop'
-$taskScript=Join-Path $PSScriptRoot 'Run-Operator-Backup.ps1'
+$taskScript=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot 'Run-Operator-Backup.ps1')).Path
 $taskRunner=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot 'operator-scheduled.mjs')).Path
-$taskVbs=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot 'Run-Operator-Backup.vbs')).Path
+$taskVbs=Join-Path $PSScriptRoot 'Run-Operator-Backup.vbs'
 $taskIdentity=[Security.Principal.WindowsIdentity]::GetCurrent().Name
 $taskNode=(Get-Command node.exe -ErrorAction Stop).Source
-$null=Get-Command codex.exe -ErrorAction Stop
 $taskPrefix='-NoProfile -NonInteractive -WindowStyle Hidden -File "'+$taskScript+'"'
 $taskVbsPrefix='//B //NoLogo "'+$taskVbs+'"'
-$taskAction=New-ScheduledTaskAction -Execute (Join-Path $env:WINDIR 'System32/wscript.exe') -Argument ($taskVbsPrefix+' "'+$taskNode+'"') -WorkingDirectory (Split-Path -Parent $PSScriptRoot)
+# Use the supported PowerShell runner directly. A removed/deprecated VBScript
+# launcher must not prevent reinstalling the task. Keep the old prefix only to
+# recognize an existing task belonging to this checkout before replacing it.
+$taskAction=New-ScheduledTaskAction -Execute (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe') -Argument ($taskPrefix+' -NodePath "'+$taskNode+'"') -WorkingDirectory (Split-Path -Parent $PSScriptRoot)
 $taskTick=New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 15)
 $taskTriggers=@($taskTick,(New-ScheduledTaskTrigger -Daily -At '19:00'),(New-ScheduledTaskTrigger -AtLogOn -User $taskIdentity))
 $taskSettings=New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
