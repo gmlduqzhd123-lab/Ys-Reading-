@@ -4,6 +4,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "41 19 * * 6"
 permissions:
   contents: read
 concurrency:
@@ -56,3 +58,23 @@ jobs:
       - name: Stop isolated services
         if: always()
         run: npx --no-install supabase stop --no-backup
+  recovery-notification:
+    needs: isolated-classroom
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Notify one recovery drill incident and recovery
+        run: node scripts/notify-recovery-drill.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRILL_RESULT: ${{ needs.isolated-classroom.result }}

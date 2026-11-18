@@ -1,7 +1,9 @@
 import { loadHub } from "@/lib/hub-data";
+import { Suspense } from "react";
+import { TeacherWeeklySummary } from "@/components/participation/weekly-summary";
 import { redirect } from "next/navigation";
-import {cookies} from "next/headers";
-import {z} from "zod";
+import { cookies } from "next/headers";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   PlazaReports,
@@ -15,7 +17,7 @@ import {
   loadReviewQueue,
 } from "@/lib/learning-queues-server";
 import { requireProfile } from "@/lib/auth";
-import type {ClassroomToolState} from '@/lib/classroom-tools';
+import type { ClassroomToolState } from "@/lib/classroom-tools";
 import { searchSchema } from "@/lib/classroom-insights";
 import { loadOverview, loadRecordSearch } from "@/lib/insights-server";
 import {
@@ -31,7 +33,18 @@ export default async function HubPage({
 }) {
   const params = await searchParams;
   const profile = await requireProfile();
-  if(params.classroom===undefined){const remembered=(await cookies()).get("bf_class_"+profile.id)?.value;if(remembered&&z.uuid().safeParse(remembered).success){const c=await createClient(),r=await c.from("classrooms").select("id").eq("id",remembered).maybeSingle();if(r.data)params.classroom=remembered;}}
+  if (params.classroom === undefined) {
+    const remembered = (await cookies()).get("bf_class_" + profile.id)?.value;
+    if (remembered && z.uuid().safeParse(remembered).success) {
+      const c = await createClient(),
+        r = await c
+          .from("classrooms")
+          .select("id")
+          .eq("id", remembered)
+          .maybeSingle();
+      if (r.data) params.classroom = remembered;
+    }
+  }
   const allowed = [
     "today",
     "reading",
@@ -50,8 +63,17 @@ export default async function HubPage({
   const filters = parsed.success ? parsed.data : searchSchema.parse({});
   // Capture the visible version before loading page data. The first browser
   // probe can then detect updates that arrive during rendering/hydration.
-  let learningToken="";
-  if(profile.role==="teacher"||profile.consent_status==="verified")try{const client=await createClient(),r=await client.rpc("learning_change_token",{p_classroom:filters.classroom||null}).abortSignal(AbortSignal.timeout(5000));if(typeof r.data==="string")learningToken=r.data;}catch{}
+  let learningToken = "";
+  if (profile.role === "teacher" || profile.consent_status === "verified")
+    try {
+      const client = await createClient(),
+        r = await client
+          .rpc("learning_change_token", {
+            p_classroom: filters.classroom || null,
+          })
+          .abortSignal(AbortSignal.timeout(5000));
+      if (typeof r.data === "string") learningToken = r.data;
+    } catch {}
   const data = await loadHub(
     ["search", "overview"].includes(tab) ? 1 : Number(params.page ?? 1),
     tab,
@@ -134,12 +156,24 @@ export default async function HubPage({
     if (r.error) throw Error("광장 확인 요청을 읽지 못했어요.");
     plazaReports = r.data;
   }
-  let classroomTools:ClassroomToolState|null=null;
-  const toolsClass=data.selectedClassroom||data.classes[0]?.id;
-  if(profile.role==='student'&&profile.consent_status==='verified'&&data.schemaReady&&toolsClass&&['today','reading'].includes(tab)){
-    const c=await createClient(),r=await c.rpc('classroom_tool_state',{p_classroom:toolsClass,p_query:'',p_page:1});
-    if(r.error)throw Error('간편 독서 기록을 읽지 못했어요. 연결을 확인해 주세요.');
-    classroomTools=r.data as ClassroomToolState;
+  let classroomTools: ClassroomToolState | null = null;
+  const toolsClass = data.selectedClassroom || data.classes[0]?.id;
+  if (
+    profile.role === "student" &&
+    profile.consent_status === "verified" &&
+    data.schemaReady &&
+    toolsClass &&
+    ["today", "reading"].includes(tab)
+  ) {
+    const c = await createClient(),
+      r = await c.rpc("classroom_tool_state", {
+        p_classroom: toolsClass,
+        p_query: "",
+        p_page: 1,
+      });
+    if (r.error)
+      throw Error("간편 독서 기록을 읽지 못했어요. 연결을 확인해 주세요.");
+    classroomTools = r.data as ClassroomToolState;
   }
   return (
     <>
@@ -166,6 +200,15 @@ export default async function HubPage({
         }
       />
       {plazaReports && <PlazaReports state={plazaReports} />}
+      {profile.role === "teacher" && tab === "overview" && (
+        <Suspense fallback={<p role="status">주간 학습 요약을 읽고 있어요…</p>}>
+          <TeacherWeeklySummary
+            classroom={filters.classroom}
+            week={params.week}
+            classes={data.availableClasses ?? data.classes}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { notificationClient } from "./lib/github-notification-client.mjs";
 import {
   incidentDecision,
   marker as serviceMarker,
@@ -17,19 +18,7 @@ const receipt = JSON.parse(
   ),
 );
 if (typeof receipt.healthy !== "boolean") throw Error("PROBE_RECEIPT_REQUIRED");
-async function api(route, method = "GET", body) {
-  const r = await fetch("https://api.github.com/repos/" + repo + route, {
-    method,
-    headers: {
-      Authorization: "Bearer " + process.env.GITHUB_TOKEN,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!r.ok) throw Error("GITHUB_NOTIFICATION_FAILED");
-  return r.status === 204 ? null : r.json();
-}
+const api = notificationClient({ token: process.env.GITHUB_TOKEN });
 const issues = [];
 for (let page = 1; page <= 10; page++) {
   const chunk = await api("/issues?state=open&per_page=100&page=" + page);
@@ -62,13 +51,32 @@ if (decision.create)
   });
 // One open incident per service. Notify again only when the actionable reason changes.
 if (backup && !receipt.healthy && !decision.create) {
-  for (const issue of issues.filter(i => i.user?.type === "Bot" && i.body?.startsWith(marker) && !i.body.includes(reason.marker))) {
-    await api("/issues/" + issue.number + "/comments", "POST", { body: reason.text + "\n\n[점검 실행](" + run + ")" });
-    await api("/issues/" + issue.number, "PATCH", { body: marker + "\n" + reason.marker + "\n\n" + reason.text + "\n\n[서비스 상태](https://reading-blush-zeta.vercel.app/status) · [점검 실행](" + run + ")" });
+  for (const issue of issues.filter(
+    (i) =>
+      i.user?.type === "Bot" &&
+      i.body?.startsWith(marker) &&
+      !i.body.includes(reason.marker),
+  )) {
+    await api("/issues/" + issue.number + "/comments", "POST", {
+      deliveryKey: issue.body + "|" + reason.code,
+      body: reason.text + "\n\n[점검 실행](" + run + ")",
+    });
+    await api("/issues/" + issue.number, "PATCH", {
+      body:
+        marker +
+        "\n" +
+        reason.marker +
+        "\n\n" +
+        reason.text +
+        "\n\n[서비스 상태](https://reading-blush-zeta.vercel.app/status) · [점검 실행](" +
+        run +
+        ")",
+    });
   }
 }
 for (const number of decision.close) {
   await api("/issues/" + number + "/comments", "POST", {
+    deliveryKey: "recovered|" + issues.find((i) => i.number === number)?.body,
     body:
       (backup
         ? "전체 백업·PC 연결 점검의 정상 상태를 확인했습니다. [점검 실행]("

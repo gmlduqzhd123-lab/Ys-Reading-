@@ -24,16 +24,48 @@ try {
       cache: "no-store",
     }),
     v = await w.json();
+  const extension = await fetch(
+      url + "/rest/v1/rpc/service_operations_extensions",
+      {
+        method: "POST",
+        headers: { apikey: key, "Content-Type": "application/json" },
+        body: "{}",
+        signal: AbortSignal.timeout(10000),
+      },
+    ),
+    x = await extension.json();
   if (
     !r.ok ||
     !w.ok ||
+    !extension.ok ||
+    x.protocol !== 1 ||
+    !x.deliveryMonitoring ||
+    !x.workspacePages ||
+    !x.weeklySummary ||
     d.protocol !== 2 ||
     !d.reportReview ||
     !d.scopedStaff ||
     !d.operationsCompletion ||
-    !d.exportJobs || !d.monitorRechecks || !d.cloudBackup || !d.batchExports || !d.learningSignals || !d.scopeCache || !d.coherentExports || !d.studentView ||
-    !d.exportCapacity || !d.copyReporting || !d.teacherDrafts || !d.durableZip || !d.recoveryOperations || !d.classroomWorkshop || !d.classroomWorkshopOperations ||
-    !d.readingDrafts || !d.signedApiBudget || !d.monitorDiagnostics || !d.recoveryReadiness || !v.passwordSafety ||
+    !d.exportJobs ||
+    !d.monitorRechecks ||
+    !d.cloudBackup ||
+    !d.batchExports ||
+    !d.learningSignals ||
+    !d.scopeCache ||
+    !d.coherentExports ||
+    !d.studentView ||
+    !d.exportCapacity ||
+    !d.copyReporting ||
+    !d.teacherDrafts ||
+    !d.durableZip ||
+    !d.recoveryOperations ||
+    !d.classroomWorkshop ||
+    !d.classroomWorkshopOperations ||
+    !d.readingDrafts ||
+    !d.signedApiBudget ||
+    !d.monitorDiagnostics ||
+    !d.recoveryReadiness ||
+    !v.passwordSafety ||
     v.service !== "bookforest-account-worker" ||
     v.protocol < d.minimumWorkerProtocol
   )

@@ -1,0 +1,107 @@
+{
+  "format": "bookforest-feature-status",
+  "schemaVersion": 1,
+  "features": [
+    {
+      "id": "delivery",
+      "label": "GitHub 알림 전달 독립 감시·중복 없는 재시도",
+      "state": "implemented",
+      "sources": [
+        "scripts/lib/delivery-monitor.mjs",
+        "scripts/lib/github-notification-client.mjs",
+        "src/components/recovery/delivery-status.tsx"
+      ],
+      "tests": [
+        "tests/delivery-monitor.test.ts",
+        "tests/delivery-database.test.ts"
+      ]
+    },
+    {
+      "id": "pagination",
+      "label": "기존 학습 화면 30건 페이지·10,000건 이후 이력 조회",
+      "state": "implemented",
+      "sources": [
+        "src/lib/data.ts",
+        "src/components/workspace-paging.tsx",
+        "src/lib/metadata-pages.ts"
+      ],
+      "tests": [
+        "tests/workspace-page-database.test.ts",
+        "tests/metadata-pages.test.ts"
+      ]
+    },
+    {
+      "id": "recovery",
+      "label": "주간 격리 복구 훈련·실패 알림·키 없는 준비 점검표",
+      "state": "implemented",
+      "sources": [
+        ".github/workflows/browser-journey.yml",
+        "scripts/notify-recovery-drill.mjs",
+        "src/components/recovery/recovery-readiness.tsx"
+      ],
+      "tests": [
+        "tests/recovery-readiness-database.test.ts",
+        "scripts/ci-recovery-drill.ts"
+      ]
+    },
+    {
+      "id": "personal-draft",
+      "label": "선택한 개인 기기의 암호화 초안·충돌 방지·로그아웃 잠금",
+      "state": "implemented",
+      "sources": [
+        "src/lib/personal-draft-vault.ts",
+        "src/components/personal-draft.tsx"
+      ],
+      "tests": ["tests/personal-draft-vault.test.ts"]
+    },
+    {
+      "id": "weekly-summary",
+      "label": "교사 주간 독서·제출·피드백 요약과 현재 확인 대기",
+      "state": "implemented",
+      "sources": [
+        "src/lib/weekly-summary.ts",
+        "src/components/participation/weekly-summary.tsx"
+      ],
+      "tests": [
+        "tests/weekly-summary.test.ts",
+        "tests/workspace-page-database.test.ts"
+      ]
+    },
+    {
+      "id": "operations-report",
+      "label": "구현 현황 문서 동기화·배포와 운영 준비 보고",
+      "state": "implemented",
+      "sources": [
+        "scripts/sync-feature-status.mjs",
+        "scripts/operations-report.mjs"
+      ],
+      "tests": ["tests/operations-report.test.ts"]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "offsite-copy",
+      "label": "독립 외부 보관처 실제 연결",
+      "state": "user-setup-required",
+      "reason": "같은 PC 폴더와 같은 Supabase 제공자 사본을 독립 외부 보관으로 판정하지 않음"
+    },
+    {
+      "id": "alternate-operator",
+      "label": "대체 운영자의 이메일 확인·MFA·본인 수락",
+      "state": "person-action-required",
+      "reason": "본인 인증·수락은 자동 수행하지 않음"
+    },
+    {
+      "id": "domestic-books",
+      "label": "국내 도서 API 키 등록·실제 응답 확인",
+      "state": "credential-required",
+      "reason": "연결 코드와 비공개 입력 도구는 준비됨"
+    },
+    {
+      "id": "operational-cutover",
+      "label": "별도 실제 운영 환경 복구·전환 확인",
+      "state": "separate-target-required",
+      "reason": "격리 CI 복원 통과와 실물 기기·운영 서버 전환을 구분함"
+    }
+  ]
+}

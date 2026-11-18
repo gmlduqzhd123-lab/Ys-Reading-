@@ -3,8 +3,18 @@ import path from "node:path";
 import { createHmac } from "node:crypto";
 import { decryptBackup, encryptBackup, projectRef } from "./operator-vault.mjs";
 export function readAgent(directory, key) {
-  const value = decryptBackup(fs.readFileSync(path.join(directory, "backup-agent.bfagent"), "utf8"), key);
-  if (value.projectRef !== projectRef || value.url !== `https://${projectRef}.supabase.co` || !/^[a-f0-9]{64}$/.test(value.secret) || !value.apiKey || !Number.isSafeInteger(value.sequence)) throw Error("BACKUP_AGENT_INVALID");
+  const value = decryptBackup(
+    fs.readFileSync(path.join(directory, "backup-agent.bfagent"), "utf8"),
+    key,
+  );
+  if (
+    value.projectRef !== projectRef ||
+    value.url !== `https://${projectRef}.supabase.co` ||
+    !/^[a-f0-9]{64}$/.test(value.secret) ||
+    !value.apiKey ||
+    !Number.isSafeInteger(value.sequence)
+  )
+    throw Error("BACKUP_AGENT_INVALID");
   return value;
 }
 export function writeAgent(directory, key, value) {
@@ -16,18 +26,70 @@ export async function reportAgent(directory, key, agent, state, code, phase) {
   // Persist before sending: crashes cannot reuse a sequence with different contents.
   agent.sequence++;
   writeAgent(directory, key, agent);
-  const payload = JSON.stringify({ version: 1, agent: agent.id, sequence: agent.sequence, checkedAt: new Date().toISOString(), state, code, phase });
-  const signature = createHmac("sha256", Buffer.from(agent.secret, "hex")).update(payload).digest("hex");
-  const r = await fetch(agent.url + "/rest/v1/rpc/backup_agent_report", {
-    method: "POST", headers: { apikey: agent.apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ p_payload: payload, p_signature: signature }), signal: AbortSignal.timeout(12000),
+  const payload = JSON.stringify({
+    version: 1,
+    agent: agent.id,
+    sequence: agent.sequence,
+    checkedAt: new Date().toISOString(),
+    state,
+    code,
+    phase,
   });
-  if (!r.ok || (await r.json()).accepted !== true) throw Error("BACKUP_REPORT_UNAVAILABLE");
+  const signature = createHmac("sha256", Buffer.from(agent.secret, "hex"))
+    .update(payload)
+    .digest("hex");
+  const r = await fetch(agent.url + "/rest/v1/rpc/backup_agent_report", {
+    method: "POST",
+    headers: { apikey: agent.apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_payload: payload, p_signature: signature }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok || (await r.json()).accepted !== true)
+    throw Error("BACKUP_REPORT_UNAVAILABLE");
 }
-export async function reportCopies(directory,key,agent,targets){
- agent.sequence++;writeAgent(directory,key,agent);
- const payload=JSON.stringify({version:2,agent:agent.id,sequence:agent.sequence,checkedAt:new Date().toISOString(),targets});
- const signature=createHmac("sha256",Buffer.from(agent.secret,"hex")).update(payload).digest("hex");
- const r=await fetch(agent.url+"/rest/v1/rpc/backup_copy_report",{method:"POST",headers:{apikey:agent.apiKey,"Content-Type":"application/json"},body:JSON.stringify({p_payload:payload,p_signature:signature}),signal:AbortSignal.timeout(12000)});
- if(!r.ok||(await r.json()).accepted!==true)throw Error("COPY_REPORT_UNAVAILABLE");
+export async function reportCopies(directory, key, agent, targets) {
+  agent.sequence++;
+  writeAgent(directory, key, agent);
+  const payload = JSON.stringify({
+    version: 2,
+    agent: agent.id,
+    sequence: agent.sequence,
+    checkedAt: new Date().toISOString(),
+    targets,
+  });
+  const signature = createHmac("sha256", Buffer.from(agent.secret, "hex"))
+    .update(payload)
+    .digest("hex");
+  const r = await fetch(agent.url + "/rest/v1/rpc/backup_copy_report", {
+    method: "POST",
+    headers: { apikey: agent.apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_payload: payload, p_signature: signature }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok || (await r.json()).accepted !== true)
+    throw Error("COPY_REPORT_UNAVAILABLE");
+}
+export async function reportDelivery(directory, key, agent, result) {
+  agent.sequence++;
+  writeAgent(directory, key, agent);
+  const payload = JSON.stringify({
+    version: 3,
+    agent: agent.id,
+    sequence: agent.sequence,
+    checkedAt: new Date().toISOString(),
+    runId: result.runId,
+    notifiedAt: result.notifiedAt,
+    code: result.code,
+  });
+  const signature = createHmac("sha256", Buffer.from(agent.secret, "hex"))
+    .update(payload)
+    .digest("hex");
+  const r = await fetch(agent.url + "/rest/v1/rpc/delivery_agent_report", {
+    method: "POST",
+    headers: { apikey: agent.apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_payload: payload, p_signature: signature }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok || (await r.json()).accepted !== true)
+    throw Error("DELIVERY_REPORT_UNAVAILABLE");
 }

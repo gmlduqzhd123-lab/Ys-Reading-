@@ -17,11 +17,17 @@ export async function releaseReadiness() {
       return null;
     }
   };
-  const [db, w] = await Promise.all([
+  const [db, w, x] = await Promise.all([
     read(config.url + "/rest/v1/rpc/service_release_contract", "{}"),
     read(config.url + "/functions/v1/account-operations?health=1"),
+    read(config.url + "/rest/v1/rpc/service_operations_extensions", "{}"),
   ]);
   return {
+    extensions:
+      x?.protocol === 1 &&
+      x.deliveryMonitoring === true &&
+      x.workspacePages === true &&
+      x.weeklySummary === true,
     database:
       db?.protocol === 2 &&
       db.readingDrafts === true &&
@@ -29,7 +35,21 @@ export async function releaseReadiness() {
       db.monitorDiagnostics === true &&
       db.recoveryReadiness === true &&
       db.exportJobs === true,
-    operations:db?.monitorRechecks===true&&db.cloudBackup===true&&db.batchExports===true&&db.learningSignals===true&&db.scopeCache===true&&db.coherentExports===true&&db.studentView===true&&db.exportCapacity===true&&db.copyReporting===true&&db.teacherDrafts===true&&db.durableZip===true&&db.recoveryOperations===true&&db.classroomWorkshop===true&&db.classroomWorkshopOperations===true,
+    operations:
+      db?.monitorRechecks === true &&
+      db.cloudBackup === true &&
+      db.batchExports === true &&
+      db.learningSignals === true &&
+      db.scopeCache === true &&
+      db.coherentExports === true &&
+      db.studentView === true &&
+      db.exportCapacity === true &&
+      db.copyReporting === true &&
+      db.teacherDrafts === true &&
+      db.durableZip === true &&
+      db.recoveryOperations === true &&
+      db.classroomWorkshop === true &&
+      db.classroomWorkshopOperations === true,
     worker:
       w?.service === "bookforest-account-worker" &&
       typeof db?.minimumWorkerProtocol === "number" &&

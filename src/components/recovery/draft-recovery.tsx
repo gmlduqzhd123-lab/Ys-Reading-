@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { PersonalDraftTools } from "@/components/personal-draft";
 import {
   readRecovery,
   recoveryKey,
@@ -81,6 +82,22 @@ export function DraftRecovery({
   }
   return (
     <aside className="draft-recovery">
+      <PersonalDraftTools
+        owner={userId}
+        scope="writing"
+        context={{ assignmentId }}
+        payload={{ title, body }}
+        apply={(p) => {
+          if (
+            typeof p.title !== "string" ||
+            typeof p.body !== "string" ||
+            p.title.length > 100 ||
+            p.body.length > 10000
+          )
+            throw Error("LOCAL_DRAFT_INVALID");
+          onRestore(p.title, p.body);
+        }}
+      />
       <label className="hub-check">
         <input
           type="checkbox"

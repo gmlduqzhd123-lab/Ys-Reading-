@@ -1,6 +1,6 @@
 {
   "name": "bookforest",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,9 @@
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm run docs:check && npm test && npm run build",
+    "docs:sync": "node scripts/sync-feature-status.mjs",
+    "docs:check": "node scripts/sync-feature-status.mjs --check"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",

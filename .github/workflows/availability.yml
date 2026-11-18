@@ -38,3 +38,17 @@ jobs:
         run: node scripts/notify-incident.mjs --backup
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      - name: Check independent notification delivery and retry pending incidents
+        if: always() && !cancelled()
+        run: node scripts/notify-monitor-delivery.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Generate bounded operational readiness report
+        if: always() && !cancelled()
+        run: node scripts/operations-report.mjs
+      - uses: actions/upload-artifact@v4
+        if: always() && !cancelled()
+        with:
+          name: operations-readiness
+          path: operations-report.json
+          retention-days: 14

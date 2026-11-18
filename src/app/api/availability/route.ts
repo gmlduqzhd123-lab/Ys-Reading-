@@ -10,18 +10,23 @@ export async function GET() {
   } catch {}
   try {
     const r = await fetch(
-      "https://api.github.com/repos/gmlduqzhd123-lab/Ys-Reading-/actions/workflows/availability.yml/runs?per_page=1",
+      "https://api.github.com/repos/gmlduqzhd123-lab/Ys-Reading-/actions/workflows/availability.yml/runs?per_page=5",
       {
         headers: { Accept: "application/vnd.github+json" },
         signal: AbortSignal.timeout(5000),
-        cache: "no-store",
+        cache: "force-cache",
+        next: { revalidate: 300 },
       },
     );
     if (!r.ok) throw Error();
-    const run = (await r.json()).workflow_runs?.[0];
+    const run = (await r.json()).workflow_runs?.find(
+      (r: { head_branch: string; event: string }) =>
+        r.head_branch === "main" &&
+        ["schedule", "push", "workflow_dispatch"].includes(r.event),
+    );
     if (!run) throw Error();
     const age = Date.now() - Date.parse(run.updated_at),
-      stale = age > 3 * 3600000;
+      stale = age > 60 * 60000;
     return NextResponse.json(
       {
         available: true,

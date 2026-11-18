@@ -5,15 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 export type { Profile } from "@/lib/auth";
 export interface Classroom {
   simple_student_view?: boolean;
-  reading_guidance?: "line"|"guided"|"free";
+  reading_guidance?: "line" | "guided" | "free";
   id: string;
   name: string;
   teacher_id: string;
   created_at: string;
-  academic_year?: number|null;
-  semester?: number|null;
-  grade_level?: number|null;
-  term_state?: "open"|"archived";
+  academic_year?: number | null;
+  semester?: number | null;
+  grade_level?: number | null;
+  term_state?: "open" | "archived";
   term_revision?: number;
 }
 export interface MissionSnapshot {
@@ -113,6 +113,17 @@ export interface Review {
   created_at: string;
 }
 export interface DashboardData {
+  pagination?: {
+    page: number;
+    total: number;
+    hasNext: boolean;
+    classroom: string | null;
+    status: string;
+  };
+  entryPage?: number;
+  entryTotal?: number;
+  eligibleTotal?: number;
+  progress?: { completed: number; badges: Record<string, number> };
   gradeGroups?: { id: string; name: string }[];
   gradeMembers?: {
     group_id: string;
@@ -131,78 +142,33 @@ export interface DashboardData {
   reviews: Review[];
 }
 
-export async function loadDashboard(): Promise<DashboardData> {
+export async function loadDashboard(
+  options: {
+    view?: string;
+    classroom?: string;
+    page?: number;
+    assignment?: string;
+    status?: string;
+    entryPage?: number;
+  } = {},
+): Promise<DashboardData> {
   const profile = await requireProfile();
   const supabase = await createClient();
-  const tables = [
-    "classrooms",
-    "assignments",
-    "drafts",
-    "submissions",
-    "feedback",
-    "badges",
-    "contests",
-    "entries",
-    "reviews",
-  ] as const;
-  // Every query uses the user's JWT and RLS. Never replace with a secret-key client.
-  const results = await Promise.all(
-    tables.map(async (table) => {
-      const rows: unknown[] = [];
-      const pageSize = 500;
-      for (let offset = 0; offset < 10000; offset += pageSize) {
-        const { data, error } = await supabase
-          .from(table)
-          .select("*")
-          .order("created_at", { ascending: false })
-          .order("id")
-          .range(offset, offset + pageSize - 1);
-        if (error)
-          throw new Error(
-            "학습 정보를 불러오지 못했습니다. 연결 상태와 데이터베이스 설정을 확인해 주세요.",
-          );
-        rows.push(...(data ?? []));
-        if (!data || data.length < pageSize) return rows;
-      }
-      // Avoid silently showing an incomplete review queue if this pilot grows beyond its initial scope.
-      throw new Error(
-        "학습 기록이 많아 한 번에 불러올 수 없습니다. 운영자에게 학급별 조회 설정을 문의해 주세요.",
-      );
-    }),
-  );
-  const [
-    classes,
-    assignments,
-    drafts,
-    submissions,
-    feedback,
-    badges,
-    contests,
-    entries,
-    reviews,
-  ] = results;
-  const [groups, members] = await Promise.all([
-    supabase.from("grade_groups").select("id,name").limit(500),
-    supabase
-      .from("grade_members")
-      .select("group_id,classroom_id,approved")
-      .limit(500),
-  ]);
-  for (const response of [groups, members])
-    if (response.error && !["42P01", "PGRST205"].includes(response.error.code))
-      throw new Error("학년 연결 정보를 읽지 못했습니다.");
-  return {
-    profile,
-    classes,
-    assignments,
-    drafts,
-    submissions,
-    feedback,
-    badges,
-    contests,
-    entries,
-    reviews,
-    gradeGroups: groups.data ?? [],
-    gradeMembers: members.data ?? [],
-  } as DashboardData;
+  const r = await supabase.rpc("workspace_page", {
+    p_view: options.assignment ? "work" : (options.view ?? "missions"),
+    p_classroom: options.classroom || null,
+    p_page: options.page ?? 1,
+    p_assignment: options.assignment || null,
+    p_status:
+      options.status ??
+      (profile.role === "teacher" && options.view === "feedback"
+        ? "submitted"
+        : "all"),
+    p_entry_page: options.entryPage ?? 1,
+  });
+  if (r.error || !r.data)
+    throw Error(
+      "학습 목록을 읽지 못했어요. 학급·페이지와 연결 상태를 확인해 주세요.",
+    );
+  return { ...r.data, profile } as DashboardData;
 }

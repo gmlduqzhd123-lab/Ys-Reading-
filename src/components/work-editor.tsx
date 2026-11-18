@@ -831,6 +831,60 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
           <p className="form-help">
             제출한 내용은 그대로 남아요. 고친 글은 새로운 버전으로 쌓여요.
           </p>
+          {data.pagination && (
+            <>
+              <p>
+                전체 {data.pagination.total}개 판 · {data.pagination.page}쪽 ·
+                최신 제출본은 항상 함께 표시합니다.
+              </p>
+              <div className="button-row">
+                {data.pagination.page > 1 && (
+                  <button
+                    type="button"
+                    className="button button-outline"
+                    onClick={() => {
+                      if (
+                        sameContent(content, savedContentRef.current) ||
+                        window.confirm(
+                          "현재 입력을 먼저 저장했는지 확인해 주세요. 이전 판 목록으로 이동할까요?",
+                        )
+                      )
+                        router.push(
+                          "/app/work/" +
+                            assignment.id +
+                            "?historyPage=" +
+                            (data.pagination!.page - 1),
+                        );
+                    }}
+                  >
+                    이전 제출 이력
+                  </button>
+                )}
+                {data.pagination.hasNext && (
+                  <button
+                    type="button"
+                    className="button button-outline"
+                    onClick={() => {
+                      if (
+                        sameContent(content, savedContentRef.current) ||
+                        window.confirm(
+                          "현재 입력을 먼저 저장했는지 확인해 주세요. 다음 판 목록으로 이동할까요?",
+                        )
+                      )
+                        router.push(
+                          "/app/work/" +
+                            assignment.id +
+                            "?historyPage=" +
+                            (data.pagination!.page + 1),
+                        );
+                    }}
+                  >
+                    다음 제출 이력
+                  </button>
+                )}
+              </div>
+            </>
+          )}
           {submissions.length ? (
             submissions.map((submission) => (
               <details className="feedback-item" key={submission.id}>

@@ -1,3 +1,4 @@
+import { lockPersonalDrafts } from "./personal-draft-vault";
 import { z } from "zod";
 const prefix = "bookforest.recovery.v1:";
 const schema = z
@@ -35,10 +36,15 @@ export function readRecovery(
   }
 }
 export function clearDraftRecovery() {
+  lockPersonalDrafts();
   try {
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
       const k = sessionStorage.key(i);
-      if (k?.startsWith(prefix)||k?.startsWith("bookforest.reading-recovery:")) sessionStorage.removeItem(k);
+      if (
+        k?.startsWith(prefix) ||
+        k?.startsWith("bookforest.reading-recovery:")
+      )
+        sessionStorage.removeItem(k);
     }
   } catch {
     /* Storage may be blocked. */

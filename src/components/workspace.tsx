@@ -1,5 +1,6 @@
 "use client";
 import { notifyDraftLogout } from "@/lib/draft-recovery";
+import { WorkspacePaging } from "./workspace-paging";
 
 import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
@@ -182,7 +183,9 @@ export function Workspace({
             {teacher ? "A CLASSROOM OF GROWING MINDS" : "YOUR LITTLE FOREST"}
           </span>
           <h1>
-            {teacher ? `${data.profile.display_name.replace(/\s*선생님$/, "")} 선생님의 교실` : `${data.profile.display_name}의 책숲`}
+            {teacher
+              ? `${data.profile.display_name.replace(/\s*선생님$/, "")} 선생님의 교실`
+              : `${data.profile.display_name}의 책숲`}
           </h1>
           <p>
             {teacher
@@ -209,6 +212,7 @@ export function Workspace({
           나의 책장 · 기록 내보내기 · 캐릭터 · 광장 · 경제 교실
         </Link>
       </p>
+      <WorkspacePaging data={data} view={view} />
       {data.profile.role === "student" &&
         data.profile.consent_status !== "verified" && (
           <div className="notice">
@@ -245,12 +249,14 @@ export function Workspace({
             <div className="stat-card">
               <span>배정된 미션</span>
               <strong>
-                {data.assignments.length}
+                {data.pagination?.total ?? data.assignments.length}
                 <small>개</small>
               </strong>
             </div>
             <div className="stat-card">
-              <span>{teacher ? "검토를 기다리는 글" : "제출한 글"}</span>
+              <span>
+                {teacher ? "이쪽 미션의 검토 대기" : "이쪽 미션에 제출한 글"}
+              </span>
               <strong>
                 {teacher
                   ? latest.filter((s) => s.status === "submitted").length
@@ -261,7 +267,7 @@ export function Workspace({
             <div className="stat-card">
               <span>완성한 작품</span>
               <strong>
-                {completed.length}
+                {data.progress?.completed ?? completed.length}
                 <small>편</small>
               </strong>
             </div>
@@ -372,18 +378,20 @@ export function Workspace({
             {badgeDefinitions.map(
               ({ code, title, description, icon: Icon }) => {
                 const earned = data.badges.filter((b) => b.code === code);
+                const earnedCount =
+                  data.progress?.badges[code] ?? earned.length;
                 return (
                   <div
-                    className={`badge-card ${earned.length ? "" : "locked"}`}
+                    className={`badge-card ${earnedCount ? "" : "locked"}`}
                     key={code}
                   >
                     <Icon size={36} />
                     <h3>{title}</h3>
                     <p>{description}</p>
                     <span className="status-pill">
-                      {earned.length
+                      {earnedCount
                         ? teacher
-                          ? `${earned.length}명 획득`
+                          ? `${earnedCount}명 획득`
                           : `${formatKoreanDate(earned[0].created_at)} 획득`
                         : "다음 성장을 기다려요"}
                     </span>
@@ -439,12 +447,22 @@ function ClassManagement({ data }: { data: DashboardData }) {
       <section className="panel" style={{ marginBottom: 22 }}>
         <h2>우리 반 시작 순서</h2>
         <ol>
-          <li>학급을 만든 뒤 아래 학급의 ‘학생 계정 발급·동의 확인’으로 이동해요.</li>
-          <li>담당 교사가 계정을 발급하고 학생이 첫 비밀번호를 변경해요. 발급된 학생은 해당 학급에 자동 연결됩니다.</li>
+          <li>
+            학급을 만든 뒤 아래 학급의 ‘학생 계정 발급·동의 확인’으로 이동해요.
+          </li>
+          <li>
+            담당 교사가 계정을 발급하고 학생이 첫 비밀번호를 변경해요. 발급된
+            학생은 해당 학급에 자동 연결됩니다.
+          </li>
           <li>교사가 확인한 참여 동의 근거를 제출하고 운영자가 승인해요.</li>
-          <li>독서미션을 배정하고 독서 기록·제출 글을 확인하면 경험치와 학급 화폐가 지급돼요.</li>
+          <li>
+            독서미션을 배정하고 독서 기록·제출 글을 확인하면 경험치와 학급
+            화폐가 지급돼요.
+          </li>
         </ol>
-        <Link className="text-link" href="/hub?tab=economy">경제 교실에서 보상 기준·상품 준비하기 <ArrowRight size={14} /></Link>
+        <Link className="text-link" href="/hub?tab=economy">
+          경제 교실에서 보상 기준·상품 준비하기 <ArrowRight size={14} />
+        </Link>
       </section>
       <div className="teacher-forms">
         <section className="panel">
@@ -468,18 +486,20 @@ function ClassManagement({ data }: { data: DashboardData }) {
         </section>
         <section className="panel">
           <h2>독서미션 배정</h2>
-          {!data.classes.some(c=>c.term_state!=="archived") ? (
+          {!data.classes.some((c) => c.term_state !== "archived") ? (
             <p>진행 중인 우리 반을 만들거나 학기를 다시 열어 주세요.</p>
           ) : (
             <Form action={assignMission} submitLabel="미션 배정하기">
               <div className="field">
                 <label htmlFor="assignment-class">학급</label>
                 <select id="assignment-class" name="classroomId" required>
-                  {data.classes.filter(c=>c.term_state!=="archived").map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {data.classes
+                    .filter((c) => c.term_state !== "archived")
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                 </select>
               </div>
               <div className="field">
@@ -510,7 +530,12 @@ function ClassManagement({ data }: { data: DashboardData }) {
           data.classes.map((c) => (
             <div className="class-row" key={c.id}>
               <strong>{c.name}</strong>
-              <Link className="button button-outline" href={`/operations?classroom=${c.id}`}>학생 계정 발급·동의 확인</Link>
+              <Link
+                className="button button-outline"
+                href={`/operations?classroom=${c.id}`}
+              >
+                학생 계정 발급·동의 확인
+              </Link>
             </div>
           ))
         )}
@@ -526,7 +551,8 @@ function TeacherReviews({
   data: DashboardData;
   submissions: Submission[];
 }) {
-  const [filter, setFilter] = useState("submitted");
+  const router = useRouter();
+  const filter = data.pagination?.status ?? "submitted";
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const filtered = submissions.filter(
     (s) => filter === "all" || s.status === filter,
@@ -546,7 +572,16 @@ function TeacherReviews({
               className={filter === f.key ? "selected" : ""}
               aria-pressed={filter === f.key}
               onClick={() => {
-                setFilter(f.key);
+                router.push(
+                  "/app?" +
+                    new URLSearchParams({
+                      view: "feedback",
+                      status: f.key,
+                      ...(data.pagination?.classroom
+                        ? { classroom: data.pagination.classroom }
+                        : {}),
+                    }),
+                );
                 setSelectedId(null);
               }}
               key={f.key}
@@ -600,7 +635,8 @@ function TeacherReviews({
                       submissionId: selected.id,
                       body: String(f.get("body")),
                       decision: String(f.get("decision")) as
-                        "revision_requested" | "completed",
+                        | "revision_requested"
+                        | "completed",
                     })
                   }
                   submitLabel="피드백 전하기"

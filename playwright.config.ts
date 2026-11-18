@@ -11,7 +11,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   timeout: 120000,
-  globalTimeout: 10 * 60000,
+  globalTimeout: 15 * 60000,
   reporter: "list",
   use: {
     actionTimeout: 15000,
@@ -24,17 +24,18 @@ export default defineConfig({
     {
       name: "chromium",
       testMatch:
-        /(?:journey|completion|teacher-accessibility|classroom-workshop)\.spec\.ts/,
+        /(?:journey|completion|teacher-accessibility|classroom-workshop|reliability-operations)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "webkit-mobile",
-      testMatch: /(?:responsive|mobile-learning|workshop-mobile)\.spec\.ts/,
+      testMatch:
+        /(?:responsive|mobile-learning|workshop-mobile|reliability-operations)\.spec\.ts/,
       use: { ...devices["iPhone 13"] },
     },
     {
       name: "android-chrome",
-      testMatch: /workshop-mobile\.spec\.ts/,
+      testMatch: /(?:workshop-mobile|reliability-operations)\.spec\.ts/,
       use: { ...devices["Pixel 7"] },
     },
   ],

@@ -1,9 +1,9 @@
 "use client";
-import {formatKoreanDate} from "@/lib/rules";
+import { formatKoreanDate } from "@/lib/rules";
 import Link from "next/link";
 import { useState, useTransition, useRef } from "react";
 import { saveRecoveryCheck } from "@/app/account/recovery-actions";
-import {manageOperatorInvitation} from "@/app/hub/completion-actions";
+import { manageOperatorInvitation } from "@/app/hub/completion-actions";
 const labels = {
   backup: "외부 파일의 복호화·복원 확인",
   database: "운영과 다른 DB의 자료 복원",
@@ -18,6 +18,13 @@ const empty = Object.fromEntries(
   Object.keys(labels).map((k) => [k, false]),
 ) as Record<keyof typeof labels, boolean>;
 export type RecoveryReadiness = {
+  asOf?: string;
+  evidence?: {
+    backup: { healthy: boolean; verifiedAt: string | null };
+    copies: { external: boolean; healthy: boolean };
+    cloud: { restoreVerified: boolean; separateProvider: boolean };
+    delivery: { healthy: boolean };
+  };
   operatorCount: number;
   pendingEmails: { email: string; expiresAt: string }[];
   rehearsals: {
@@ -38,7 +45,9 @@ export function RecoveryReadinessPanel({
     [message, setMessage] = useState(""),
     [busy, start] = useTransition();
   const request = useRef<{ hash: string; id: string } | null>(null);
-  const [email,setEmail]=useState(""),[name,setName]=useState(""),[revoke,setRevoke]=useState(false);
+  const [email, setEmail] = useState(""),
+    [name, setName] = useState(""),
+    [revoke, setRevoke] = useState(false);
   return (
     <section className="panel">
       <h2>복구 훈련·대체 운영자 준비</h2>
@@ -56,13 +65,128 @@ export function RecoveryReadinessPanel({
               ? "대체 운영자의 본인 수락과 2단계 인증이 필요해요."
               : "복수 운영자 등록 확인"}
           </p>
+          {state.evidence && (
+            <>
+              <p>
+                현재 전체 백업:{" "}
+                {state.evidence.backup.healthy ? "복원 검증 정상" : "확인 필요"}{" "}
+                · 실제 외부 사본:{" "}
+                {state.evidence.copies.external && state.evidence.copies.healthy
+                  ? "확인"
+                  : "아직 확인되지 않음"}{" "}
+                · 별도 제공자 보관:{" "}
+                {state.evidence.cloud.separateProvider
+                  ? "확인"
+                  : "아직 확인되지 않음"}
+              </p>
+              <p>
+                격리된 PostgreSQL·Auth 자동 훈련은 매주 일요일 04:41(한국
+                시각)에 예약하며 GitHub 실행이 지연될 수 있습니다. 실제 다른
+                PC·운영 클라우드 전환은 별도 확인합니다.
+              </p>
+              <Link href="https://github.com/gmlduqzhd123-lab/Ys-Reading-/actions/workflows/browser-journey.yml">
+                자동 복구 훈련 결과 보기 →
+              </Link>
+              <p>
+                <button
+                  type="button"
+                  className="button button-outline"
+                  onClick={() => {
+                    const value = {
+                      format: "bookforest-recovery-readiness",
+                      version: 1,
+                      checkedAt: state.asOf ?? null,
+                      operatorCount: state.operatorCount,
+                      pendingInvitationCount: state.pendingEmails.length,
+                      evidence: state.evidence,
+                      recordedExternalRehearsals: state.rehearsals.length,
+                      operationalCutoverVerified: false,
+                      containsRecoveryKeys: false,
+                    };
+                    const u = URL.createObjectURL(
+                        new Blob([JSON.stringify(value, null, 2)], {
+                          type: "application/json",
+                        }),
+                      ),
+                      a = document.createElement("a");
+                    a.href = u;
+                    a.download = "책숲-복구준비-점검.json";
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(u), 10000);
+                  }}
+                >
+                  키 없는 복구 준비 점검표 저장
+                </button>
+              </p>
+            </>
+          )}
           {state.pendingEmails.map((p) => (
             <p key={p.email}>
               수락 대기: {p.email} ·{" "}
-              {formatKoreanDate(p.expiresAt,{year:"numeric",month:"numeric",day:"numeric"})}까지
+              {formatKoreanDate(p.expiresAt, {
+                year: "numeric",
+                month: "numeric",
+                day: "numeric",
+              })}
+              까지
             </p>
           ))}
-          <details><summary>대체 운영자 초대 준비·재발급·취소</summary><p>최근 2단계 인증이 필요합니다. 이메일을 자동 발송하지 않으며 소유자가 직접 수락해야 합니다.</p><form onSubmit={e=>{e.preventDefault();start(async()=>{try{setMessage((await manageOperatorInvitation({email,name,revoke})).message);}catch(e){setMessage(e instanceof Error?e.message:"연결을 확인해 주세요.");}});}}><label className="field">초대할 이메일<input type="email" value={email} required maxLength={254} onChange={e=>setEmail(e.target.value)}/></label><label className="field">운영자 표시 이름<input value={name} required minLength={2} maxLength={40} onChange={e=>setName(e.target.value)}/></label><label className="hub-check"><input type="checkbox" checked={revoke} onChange={e=>setRevoke(e.target.checked)}/>이 이메일의 대기 중 초대 취소</label><button className="button button-outline" disabled={busy}>초대 설정 저장</button></form></details>
+          <details>
+            <summary>대체 운영자 초대 준비·재발급·취소</summary>
+            <p>
+              최근 2단계 인증이 필요합니다. 이메일을 자동 발송하지 않으며
+              소유자가 직접 수락해야 합니다.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                start(async () => {
+                  try {
+                    setMessage(
+                      (await manageOperatorInvitation({ email, name, revoke }))
+                        .message,
+                    );
+                  } catch (e) {
+                    setMessage(
+                      e instanceof Error ? e.message : "연결을 확인해 주세요.",
+                    );
+                  }
+                });
+              }}
+            >
+              <label className="field">
+                초대할 이메일
+                <input
+                  type="email"
+                  value={email}
+                  required
+                  maxLength={254}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                운영자 표시 이름
+                <input
+                  value={name}
+                  required
+                  minLength={2}
+                  maxLength={40}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
+              <label className="hub-check">
+                <input
+                  type="checkbox"
+                  checked={revoke}
+                  onChange={(e) => setRevoke(e.target.checked)}
+                />
+                이 이메일의 대기 중 초대 취소
+              </label>
+              <button className="button button-outline" disabled={busy}>
+                초대 설정 저장
+              </button>
+            </form>
+          </details>
           <details>
             <summary>다른 프로젝트의 복구 훈련 기록</summary>
             <form
@@ -117,8 +241,7 @@ export function RecoveryReadinessPanel({
             {state.rehearsals.map((r) => (
               <p key={r.id}>
                 {r.target_ref} · {Object.values(r.steps).filter(Boolean).length}
-                /8개 본인 확인 ·{" "}
-                {formatKoreanDate(r.updated_at)}
+                /8개 본인 확인 · {formatKoreanDate(r.updated_at)}
               </p>
             ))}
           </details>

@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {createClient} from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
+import { PersonalDraftTools } from "@/components/personal-draft";
 import { hubCommand } from "@/app/hub/actions";
 import { readingDraftAction } from "@/app/hub/reading-draft-actions";
 import {
@@ -25,7 +26,9 @@ export function ReadingEditor({
 }) {
   const classes = data.classes.filter((c) => c.term_state !== "archived"),
     router = useRouter();
-  const initial = (classId=edit?.classroom_id??classes[0]?.id): ReadingDraftPayload => ({
+  const initial = (
+    classId = edit?.classroom_id ?? classes[0]?.id,
+  ): ReadingDraftPayload => ({
     title: book?.title ?? edit?.book.title ?? "",
     author: book?.author ?? edit?.book.author ?? "",
     publisher: book?.publisher ?? edit?.book.publisher ?? "",
@@ -36,7 +39,9 @@ export function ReadingEditor({
     thought: edit?.thought ?? "",
     question: edit?.question ?? "",
     guidance: JSON.stringify({
-      mode: edit?.thought ? "free" : (classes.find(c=>c.id===classId)?.reading_guidance??"line"),
+      mode: edit?.thought
+        ? "free"
+        : (classes.find((c) => c.id === classId)?.reading_guidance ?? "line"),
       scene: "",
       feeling: "",
       idea: "",
@@ -54,7 +59,8 @@ export function ReadingEditor({
     [busy, setBusy] = useState(false),
     [local, setLocal] = useState(false),
     [retry, setRetry] = useState(0),
-    [composing, setComposing] = useState(false),[blocked,setBlocked]=useState(false);
+    [composing, setComposing] = useState(false),
+    [blocked, setBlocked] = useState(false);
   const revision = useRef(0),
     generation = useRef(0),
     request = useRef<{ hash: string; id: string } | null>(null),
@@ -65,9 +71,28 @@ export function ReadingEditor({
   const context = classroom + ":" + (edit?.id ?? "new"),
     storageKey =
       "bookforest.reading-recovery:" + data.profile.id + ":" + context;
-  const firstClassroom=classes[0]?.id;
-  useEffect(()=>{const {data:{subscription}}=createClient().auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"||session?.user&&session.user.id!==data.profile.id){generation.current++;setBlocked(true);setDirty(false);try{sessionStorage.removeItem(storageKey);}catch{}}});return()=>subscription.unsubscribe();},[data.profile.id,storageKey]);
-  useEffect(()=>{if(!classroom&&firstClassroom)setClassroom(firstClassroom);},[classroom,firstClassroom]);
+  const firstClassroom = classes[0]?.id;
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = createClient().auth.onAuthStateChange((event, session) => {
+      if (
+        event === "SIGNED_OUT" ||
+        (session?.user && session.user.id !== data.profile.id)
+      ) {
+        generation.current++;
+        setBlocked(true);
+        setDirty(false);
+        try {
+          sessionStorage.removeItem(storageKey);
+        } catch {}
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [data.profile.id, storageKey]);
+  useEffect(() => {
+    if (!classroom && firstClassroom) setClassroom(firstClassroom);
+  }, [classroom, firstClassroom]);
   useEffect(() => {
     let active = true;
     generation.current++;
@@ -77,7 +102,12 @@ export function ReadingEditor({
     revision.current = 0;
     request.current = null;
     if (!classroom) return;
-    readingDraftAction({ owner:data.profile.id,action: "load", classroom, record: edit?.id ?? null })
+    readingDraftAction({
+      owner: data.profile.id,
+      action: "load",
+      classroom,
+      record: edit?.id ?? null,
+    })
       .then((r) => {
         if (!active) return;
         revision.current = r.draft?.revision ?? 0;
@@ -143,7 +173,8 @@ export function ReadingEditor({
   }, [dirty]);
   useEffect(() => {
     if (
-      blocked || !dirty ||
+      blocked ||
+      !dirty ||
       !loaded ||
       candidate ||
       conflict ||
@@ -168,7 +199,7 @@ export function ReadingEditor({
       if (request.current?.hash !== captured)
         request.current = { hash: captured, id: crypto.randomUUID() };
       const operation = readingDraftAction({
-        owner:data.profile.id,
+        owner: data.profile.id,
         action: "save",
         classroom,
         record: edit?.id ?? null,
@@ -269,7 +300,7 @@ export function ReadingEditor({
       if (formalRequest.current?.hash !== hash)
         formalRequest.current = { hash, id: crypto.randomUUID() };
       const r = await hubCommand({
-        expectedActor:data.profile.id,
+        expectedActor: data.profile.id,
         command: "reading_save",
         payload: parsed.data,
         requestId: formalRequest.current.id,
@@ -280,7 +311,7 @@ export function ReadingEditor({
       }
       try {
         await readingDraftAction({
-          owner:data.profile.id,
+          owner: data.profile.id,
           action: "discard",
           classroom,
           record: edit?.id ?? null,
@@ -300,7 +331,12 @@ export function ReadingEditor({
       setBusy(false);
     }
   }
-  if(blocked)return <p role="alert">로그인 계정이 바뀌었어요. 현재 계정으로 화면을 다시 열어 주세요.</p>;
+  if (blocked)
+    return (
+      <p role="alert">
+        로그인 계정이 바뀌었어요. 현재 계정으로 화면을 다시 열어 주세요.
+      </p>
+    );
   return (
     <form
       data-reading-editor="true"
@@ -312,6 +348,21 @@ export function ReadingEditor({
       onCompositionStart={() => setComposing(true)}
       onCompositionEnd={() => setComposing(false)}
     >
+      <PersonalDraftTools
+        owner={data.profile.id}
+        scope="reading"
+        context={{ classroom, record: edit?.id ?? null }}
+        payload={{ ...value }}
+        enabled={!blocked && !!classroom}
+        apply={(p) => {
+          const r = readingDraftPayload.safeParse(p);
+          if (!r.success) throw Error("LOCAL_DRAFT_INVALID");
+          setValue(r.data);
+          setCandidate(null);
+          setConflict(false);
+          setDirty(true);
+        }}
+      />
       <p className="form-help">
         작성 중인 독서 기록은 본인만 볼 수 있게 7일간 임시 저장해요. 정식 저장
         전에는 완독 확인이나 보상이 발생하지 않습니다.
@@ -493,7 +544,7 @@ export function ReadingEditor({
             setConflict(false);
             setLoaded(false);
             readingDraftAction({
-              owner:data.profile.id,
+              owner: data.profile.id,
               action: "load",
               classroom,
               record: edit?.id ?? null,

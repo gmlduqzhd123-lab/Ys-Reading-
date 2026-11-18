@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { workshopDraftAction } from "@/app/classroom/workshop-actions";
+import { PersonalDraftTools } from "@/components/personal-draft";
 import { createClient } from "@/lib/supabase/client";
 import {
   draftKey,
@@ -413,6 +414,32 @@ export function useWorkshopDraft({
       ? "수업 입력을 임시 보관하는 중이에요."
       : message;
   return {
+    personal: {
+      owner,
+      scope: "workshop:" + scope,
+      context,
+      payload,
+      enabled: enabled && !blocked,
+      apply: (p: WorkPayload) => {
+        const checked = importWorkshopDraft(
+          JSON.stringify({
+            format: "bookforest-workshop-draft",
+            version: 1,
+            owner,
+            scope,
+            context: ref.current.context,
+            payload: p,
+          }),
+          { owner, scope, context: ref.current.context },
+        );
+        ref.current.apply(checked);
+        setCandidate(null);
+        setConflict(false);
+        setPaused(false);
+        saved.current = "";
+        setTick((x) => x + 1);
+      },
+    },
     savedAt,
     candidate,
     current: payload,
@@ -440,6 +467,7 @@ export function WorkshopDraftNotice({
 }) {
   return (
     <aside className="notice" aria-label="수업 입력 임시 보관 상태">
+      <PersonalDraftTools {...draft.personal} />
       <p>
         {draft.savedAt
           ? "마지막으로 완료한 보관 시각: " +
