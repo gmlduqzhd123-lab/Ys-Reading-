@@ -10,7 +10,7 @@ import {
 } from "./lib/operator-vault.mjs";
 import { validateCopyDirectory, copyLocationKind } from "./lib/backup-copy.mjs";
 import { acquireBackupLock } from "./lib/backup-lock.mjs";
-import { operatorTransport as nativeMcp } from "./lib/operator-transport.mjs";
+import { openBackupAccess as nativeMcp } from "./lib/backup-machine.mjs";
 const vault = defaultVault(),
   statusFile = path.join(vault, "copy-status.json");
 let release, mcp;
@@ -45,7 +45,10 @@ try {
     location_kind: kind,
     verified_at: at,
     bytes: fs.statSync(path.join(config.directory, "backup.bfbak")).size,
-    sourceCreatedAt:decryptBackup(fs.readFileSync(path.join(config.directory,"backup.bfbak"),"utf8"),key).createdAt,
+    sourceCreatedAt: decryptBackup(
+      fs.readFileSync(path.join(config.directory, "backup.bfbak"), "utf8"),
+      key,
+    ).createdAt,
     reported: false,
   };
   try {
@@ -55,8 +58,12 @@ try {
       `https://${projectRef}.supabase.co`
     )
       throw Error("COPY_SCOPE_MISMATCH");
-    await mcp.call("execute_sql", {
-      query: `insert into private.backup_copy_checks values('${randomUUID()}','${at}','${receipt.digest}','${kind}',${proof.bytes});delete from private.backup_copy_checks where verified_at<now()-interval '90 days';`,
+    await mcp.request("copy-receipt", {
+      id: randomUUID(),
+      at,
+      digest: receipt.digest,
+      kind,
+      bytes: proof.bytes,
     });
     proof.reported = true;
   } catch {}

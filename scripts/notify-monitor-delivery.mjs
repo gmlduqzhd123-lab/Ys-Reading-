@@ -1,6 +1,9 @@
 import { notificationClient } from "./lib/github-notification-client.mjs";
 import { incidentDecision } from "./lib/incident-notification.mjs";
-import { deliveryLabels } from "./lib/delivery-monitor.mjs";
+import {
+  deliveryLabels,
+  probeGithubDelivery,
+} from "./lib/delivery-monitor.mjs";
 if (
   process.env.GITHUB_REPOSITORY !== "gmlduqzhd123-lab/Ys-Reading-" ||
   !process.env.GITHUB_TOKEN
@@ -18,7 +21,26 @@ if (response.status === 404) {
   console.log(JSON.stringify({ delivery: "setup-pending" }));
 } else {
   if (!response.ok) throw Error("DELIVERY_CHECK_UNAVAILABLE");
-  const r = await response.json();
+  let r = await response.json();
+  // Do not judge this run solely by the PC observation of the previous run.
+  // Both preceding notification steps can already have completed successfully.
+  const live = await probeGithubDelivery({
+    fetcher: (url, options) =>
+      fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          Authorization: "Bearer " + process.env.GITHUB_TOKEN,
+        },
+      }),
+  });
+  if (live.runId === Number(process.env.GITHUB_RUN_ID) && live.code === "OK")
+    r = {
+      configured: true,
+      healthy: true,
+      code: "OK",
+      checkedAt: new Date().toISOString(),
+    };
   if (!r.configured) {
     console.log(JSON.stringify({ delivery: "setup-pending" }));
   } else {

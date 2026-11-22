@@ -13,7 +13,8 @@
       ],
       "tests": [
         "tests/delivery-monitor.test.ts",
-        "tests/delivery-database.test.ts"
+        "tests/delivery-database.test.ts",
+        "tests/backup-monitor-result.test.ts"
       ]
     },
     {
@@ -32,16 +33,20 @@
     },
     {
       "id": "recovery",
-      "label": "주간 격리 복구 훈련·실패 알림·키 없는 준비 점검표",
+      "label": "백업 전용 인증·자동 키 교체·예약 복원 검사와 복구 훈련",
       "state": "implemented",
       "sources": [
         ".github/workflows/browser-journey.yml",
         "scripts/notify-recovery-drill.mjs",
-        "src/components/recovery/recovery-readiness.tsx"
+        "src/components/recovery/recovery-readiness.tsx",
+        "scripts/lib/backup-machine.mjs",
+        "scripts/operator-machine-auth.mjs"
       ],
       "tests": [
         "tests/recovery-readiness-database.test.ts",
-        "scripts/ci-recovery-drill.ts"
+        "scripts/ci-recovery-drill.ts",
+        "tests/backup-machine-database.test.ts",
+        "tests/backup-machine.test.ts"
       ]
     },
     {

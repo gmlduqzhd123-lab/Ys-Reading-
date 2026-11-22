@@ -2,6 +2,56 @@ import { it, expect, vi } from "vitest";
 import { probeGithubDelivery } from "../scripts/lib/delivery-monitor.mjs";
 import { notificationClient } from "../scripts/lib/github-notification-client.mjs";
 const now = Date.parse("2026-11-18T10:00:00Z");
+it("recognizes the current completed notification steps without repeatedly blaming an older scheduled run", async () => {
+  const runs = [
+    {
+      id: 2,
+      name: "Bookforest availability",
+      head_branch: "main",
+      event: "schedule",
+      status: "in_progress",
+    },
+    {
+      id: 1,
+      name: "Bookforest availability",
+      head_branch: "main",
+      event: "schedule",
+      status: "completed",
+    },
+  ];
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ workflow_runs: runs }))
+    .mockResolvedValueOnce(
+      Response.json({
+        jobs: [
+          {
+            name: "public-service",
+            steps: [
+              ...[
+                "Notify one incident and its recovery",
+                "Notify backup incident and recovery",
+              ].map((name) => ({
+                name,
+                conclusion: "success",
+                completed_at: new Date(now - 1000).toISOString(),
+              })),
+              {
+                name: "Check independent notification delivery and retry pending incidents",
+                status: "in_progress",
+                conclusion: null,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+  expect(await probeGithubDelivery({ fetcher, now })).toMatchObject({
+    code: "OK",
+    runId: 2,
+    notifiedAt: new Date(now - 1000).toISOString(),
+  });
+});
 function fixture(minutes = 1, notify = true) {
   const run = {
     id: 1,

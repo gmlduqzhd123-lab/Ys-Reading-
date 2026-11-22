@@ -1,79 +1,256 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { defaultVault, ensureVault, vaultKey, projectRef } from "./lib/operator-vault.mjs";
+import {
+  defaultVault,
+  ensureVault,
+  vaultKey,
+  projectRef,
+} from "./lib/operator-vault.mjs";
 import { acquireBackupLock } from "./lib/backup-lock.mjs";
-import { operatorTransport as nativeMcp } from "./lib/operator-transport.mjs";
+import { openBackupAccess as nativeMcp } from "./lib/backup-machine.mjs";
 import { runBackupAgent } from "./lib/backup-agent.mjs";
-import { readAgent, reportAgent,reportCopies } from "./lib/backup-agent-channel.mjs";
-import {copyTarget} from "./lib/copy-report.mjs";
-import {inspectBackupTask} from "./lib/backup-task-inspector.mjs";
-import {signalWatchdogFailure} from "./lib/backup-watchdog.mjs";
-const directory = defaultVault(), stateFile = path.join(directory, "agent-state.json");
-const read = (file) => { try { return JSON.parse(fs.readFileSync(file,"utf8")); } catch { return null; } };
+import {
+  readAgent,
+  reportAgent,
+  reportCopies,
+} from "./lib/backup-agent-channel.mjs";
+import { copyTarget } from "./lib/copy-report.mjs";
+import { inspectBackupTask } from "./lib/backup-task-inspector.mjs";
+import { signalWatchdogFailure } from "./lib/backup-watchdog.mjs";
+const directory = defaultVault(),
+  stateFile = path.join(directory, "agent-state.json");
+const read = (file) => {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+};
 let release;
 try {
   ensureVault(directory);
   release = acquireBackupLock(path.join(directory, "agent.lock"));
-  const key = vaultKey(directory), agent = readAgent(directory, key);
+  const key = vaultKey(directory),
+    agent = readAgent(directory, key);
   const state = read(stateFile) || {};
   if (!state.lastVerifiedAt) {
-    const proofs = fs.readdirSync(directory).filter(n => n.endsWith(".bfbak.verification.json")).sort().reverse();
+    const proofs = fs
+      .readdirSync(directory)
+      .filter((n) => n.endsWith(".bfbak.verification.json"))
+      .sort()
+      .reverse();
     for (const name of proofs) {
-      const proof = read(path.join(directory,name));
+      const proof = read(path.join(directory, name));
       if (proof?.verified === true && proof.projectRef === projectRef) {
-        state.lastVerifiedAt = fs.statSync(path.join(directory,name)).mtime.toISOString(); break;
+        state.lastVerifiedAt = fs
+          .statSync(path.join(directory, name))
+          .mtime.toISOString();
+        break;
       }
     }
   }
   const result = await runBackupAgent({
-    state, request: read(path.join(directory,"backup-request.json")),
-    save: value => { fs.writeFileSync(stateFile + ".tmp",JSON.stringify(value),{mode:0o600}); fs.renameSync(stateFile + ".tmp",stateFile); },
-    report: (status,code,phase) => reportAgent(directory,key,agent,status,code,phase),
+    state,
+    request: read(path.join(directory, "backup-request.json")),
+    save: (value) => {
+      fs.writeFileSync(stateFile + ".tmp", JSON.stringify(value), {
+        mode: 0o600,
+      });
+      fs.renameSync(stateFile + ".tmp", stateFile);
+    },
+    report: (status, code, phase) =>
+      reportAgent(directory, key, agent, status, code, phase),
     probe: async () => {
       const mcp = await nativeMcp();
       try {
-        const project = await mcp.call("get_project_url",{});
-        if (project?.url !== `https://${projectRef}.supabase.co`) throw Error("PROJECT_SCOPE_MISMATCH");
-      } finally { mcp.close(); }
+        const project = await mcp.call("get_project_url", {});
+        if (project?.url !== `https://${projectRef}.supabase.co`)
+          throw Error("PROJECT_SCOPE_MISMATCH");
+      } finally {
+        mcp.close();
+      }
     },
     backup: async () => {
-      spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-recovery-settings.mjs"),"export"],{cwd:path.resolve(import.meta.dirname,".."),windowsHide:true,encoding:"utf8",timeout:20000,maxBuffer:10000});
-      const r = spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-backup.mjs")],{
-        cwd:path.resolve(import.meta.dirname,".."),env:process.env,encoding:"utf8",windowsHide:true,maxBuffer:1024*1024,timeout:25*60*1000,
-      });
+      spawnSync(
+        process.execPath,
+        [
+          path.join(import.meta.dirname, "operator-recovery-settings.mjs"),
+          "export",
+        ],
+        {
+          cwd: path.resolve(import.meta.dirname, ".."),
+          windowsHide: true,
+          encoding: "utf8",
+          timeout: 20000,
+          maxBuffer: 10000,
+        },
+      );
+      const r = spawnSync(
+        process.execPath,
+        [path.join(import.meta.dirname, "operator-backup.mjs")],
+        {
+          cwd: path.resolve(import.meta.dirname, ".."),
+          env: process.env,
+          encoding: "utf8",
+          windowsHide: true,
+          maxBuffer: 1024 * 1024,
+          timeout: 25 * 60 * 1000,
+        },
+      );
       let value;
-      try { value=JSON.parse(String(r.stdout || r.stderr).trim().split(/\r?\n/).at(-1)); } catch {}
-      if(r.status !== 0 || value?.ok !== true || value.verified !== true) throw Error(value?.code || "BACKUP_RUN_FAILED");
-      return {ok:true,verified:true};
+      try {
+        value = JSON.parse(
+          String(r.stdout || r.stderr)
+            .trim()
+            .split(/\r?\n/)
+            .at(-1),
+        );
+      } catch {}
+      if (r.status !== 0 || value?.ok !== true || value.verified !== true)
+        throw Error(value?.code || "BACKUP_RUN_FAILED");
+      return { ok: true, verified: true };
     },
   });
   // Copy failures stay separate from a verified primary backup. The operator
   // sees the last verified copy and local failure state; never claim delivery.
-  let copyExit=0,mirrorExit=0,copyReported=true;
-  const copyConfigured=fs.existsSync(path.join(directory,"backup-copy.bfconfig")),mirrorConfigured=fs.existsSync(path.join(directory,"cloud-mirror.bfconfig"));
-  if(copyConfigured) {
-    copyExit=spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-check-copy.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:3*60000,maxBuffer:10000}).status??1;
+  let copyExit = 0,
+    mirrorExit = 0,
+    copyReported = true;
+  const copyConfigured = fs.existsSync(
+      path.join(directory, "backup-copy.bfconfig"),
+    ),
+    mirrorConfigured = fs.existsSync(
+      path.join(directory, "cloud-mirror.bfconfig"),
+    );
+  if (copyConfigured) {
+    copyExit =
+      spawnSync(
+        process.execPath,
+        [path.join(import.meta.dirname, "operator-check-copy.mjs")],
+        {
+          cwd: path.resolve(import.meta.dirname, ".."),
+          env: process.env,
+          windowsHide: true,
+          encoding: "utf8",
+          timeout: 3 * 60000,
+          maxBuffer: 10000,
+        },
+      ).status ?? 1;
   }
   // Cloud archives are created by server cron. A returning PC independently
   // decrypts and restores the newest archive; failure cannot claim verification.
-  const cloudRun=spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-cloud-backup.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:5*60000,maxBuffer:10000});
-  let cloudResult;try{cloudResult=JSON.parse(cloudRun.stdout.trim().split(/\r?\n/).at(-1));}catch{cloudResult={ok:false,code:"CLOUD_CHECK_UNAVAILABLE"};}
-  fs.writeFileSync(path.join(directory,"cloud-scheduled-status.json"),JSON.stringify({...cloudResult,checkedAt:new Date().toISOString()}),{mode:0o600});
-  if(mirrorConfigured)mirrorExit=spawnSync(process.execPath,[path.join(import.meta.dirname,"operator-cloud-mirror.mjs")],{cwd:path.resolve(import.meta.dirname,".."),env:process.env,windowsHide:true,encoding:"utf8",timeout:120000,maxBuffer:10000}).status??1;
-  const targets=[copyTarget("recovery-kit",copyConfigured,read(path.join(directory,"copy-status.json")),copyExit),copyTarget("cloud-mirror",mirrorConfigured,read(path.join(directory,"cloud-mirror-status.json")),mirrorExit)];
-  try{await reportCopies(directory,key,agent,targets);}catch{copyReported=false;}
-  fs.writeFileSync(path.join(directory,"copy-report-status.json"),JSON.stringify({reported:copyReported,targets,checkedAt:new Date().toISOString()}),{mode:0o600});
+  const cloudRun = spawnSync(
+    process.execPath,
+    [path.join(import.meta.dirname, "operator-cloud-backup.mjs")],
+    {
+      cwd: path.resolve(import.meta.dirname, ".."),
+      env: process.env,
+      windowsHide: true,
+      encoding: "utf8",
+      timeout: 5 * 60000,
+      maxBuffer: 10000,
+    },
+  );
+  let cloudResult;
+  try {
+    cloudResult = JSON.parse(cloudRun.stdout.trim().split(/\r?\n/).at(-1));
+  } catch {
+    cloudResult = { ok: false, code: "CLOUD_CHECK_UNAVAILABLE" };
+  }
+  fs.writeFileSync(
+    path.join(directory, "cloud-scheduled-status.json"),
+    JSON.stringify({ ...cloudResult, checkedAt: new Date().toISOString() }),
+    { mode: 0o600 },
+  );
+  if (mirrorConfigured)
+    mirrorExit =
+      spawnSync(
+        process.execPath,
+        [path.join(import.meta.dirname, "operator-cloud-mirror.mjs")],
+        {
+          cwd: path.resolve(import.meta.dirname, ".."),
+          env: process.env,
+          windowsHide: true,
+          encoding: "utf8",
+          timeout: 120000,
+          maxBuffer: 10000,
+        },
+      ).status ?? 1;
+  const targets = [
+    copyTarget(
+      "recovery-kit",
+      copyConfigured,
+      read(path.join(directory, "copy-status.json")),
+      copyExit,
+    ),
+    copyTarget(
+      "cloud-mirror",
+      mirrorConfigured,
+      read(path.join(directory, "cloud-mirror-status.json")),
+      mirrorExit,
+    ),
+  ];
+  try {
+    await reportCopies(directory, key, agent, targets);
+  } catch {
+    copyReported = false;
+  }
+  fs.writeFileSync(
+    path.join(directory, "copy-report-status.json"),
+    JSON.stringify({
+      reported: copyReported,
+      targets,
+      checkedAt: new Date().toISOString(),
+    }),
+    { mode: 0o600 },
+  );
   // Check the independent monitor after real verification/copy receipts. A
   // successful backup must not hide a missing or broken watchdog. Both tasks
   // share agent.lock so signed report sequence numbers cannot race.
-  const watchdog=inspectBackupTask("watchdog");
-  await signalWatchdogFailure({state,code:watchdog.code,save:value=>{fs.writeFileSync(stateFile+".tmp",JSON.stringify(value),{mode:0o600});fs.renameSync(stateFile+".tmp",stateFile);},report:(status,code,phase)=>reportAgent(directory,key,agent,status,code,phase)});
-  const taskOk=result.ok!==false&&watchdog.code==="OK"&&cloudRun.status===0&&cloudResult?.ok===true&&copyReported&&!targets.some(t=>t.configured&&t.state!=="verified");
-  fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({...result,ok:taskOk,checkedAt:new Date().toISOString(),state:state.state,code:state.code,watchdogCode:watchdog.code}),{mode:0o600});
+  const watchdog = inspectBackupTask("watchdog");
+  await signalWatchdogFailure({
+    state,
+    code: watchdog.code,
+    save: (value) => {
+      fs.writeFileSync(stateFile + ".tmp", JSON.stringify(value), {
+        mode: 0o600,
+      });
+      fs.renameSync(stateFile + ".tmp", stateFile);
+    },
+    report: (status, code, phase) =>
+      reportAgent(directory, key, agent, status, code, phase),
+  });
+  const taskOk =
+    result.ok !== false &&
+    watchdog.code === "OK" &&
+    cloudRun.status === 0 &&
+    cloudResult?.ok === true &&
+    copyReported &&
+    !targets.some((t) => t.configured && t.state !== "verified");
+  fs.writeFileSync(
+    path.join(directory, "scheduled-status.json"),
+    JSON.stringify({
+      ...result,
+      ok: taskOk,
+      checkedAt: new Date().toISOString(),
+      state: state.state,
+      code: state.code,
+      watchdogCode: watchdog.code,
+    }),
+    { mode: 0o600 },
+  );
   process.exitCode = taskOk ? 0 : 1;
-} catch(e) {
-  const code = /^[A-Z][A-Z_]{1,79}$/.test(e?.message ?? "") ? e.message : "BACKUP_RUNNER_UNAVAILABLE";
-  fs.writeFileSync(path.join(directory,"scheduled-status.json"),JSON.stringify({ok:false,code,checkedAt:new Date().toISOString()}),{mode:0o600});
+} catch (e) {
+  const code = /^[A-Z][A-Z_]{1,79}$/.test(e?.message ?? "")
+    ? e.message
+    : "BACKUP_RUNNER_UNAVAILABLE";
+  fs.writeFileSync(
+    path.join(directory, "scheduled-status.json"),
+    JSON.stringify({ ok: false, code, checkedAt: new Date().toISOString() }),
+    { mode: 0o600 },
+  );
   process.exitCode = code === "BACKUP_ALREADY_RUNNING" ? 0 : 1;
-} finally { release?.(); }
+} finally {
+  release?.();
+}

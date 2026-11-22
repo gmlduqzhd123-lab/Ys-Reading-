@@ -45,7 +45,10 @@ export async function probeGithubDelivery({
     const latest = runs[0];
     if (!latest || !Number.isSafeInteger(latest.id) || latest.id < 1)
       throw Error("GITHUB_STATUS_UNAVAILABLE");
-    const completed = runs.find((r) => r.status === "completed");
+    const completed =
+      latest.status === "in_progress"
+        ? latest
+        : runs.find((r) => r.status === "completed");
     if (!completed)
       return {
         code: "GITHUB_CHECK_RUNNING",
@@ -70,14 +73,39 @@ export async function probeGithubDelivery({
       required.every((name) =>
         job.steps?.some((s) => s.name === name && s.conclusion === "success"),
       ) &&
-      (!extra || extra.conclusion === "success");
+      (!extra ||
+        extra.conclusion === "success" ||
+        (completed.status === "in_progress" &&
+          ["in_progress", "queued"].includes(extra.status)));
+    if (
+      completed.status === "in_progress" &&
+      !required.every((name) =>
+        job?.steps?.some((s) => s.name === name && s.conclusion === "success"),
+      )
+    )
+      return {
+        code: "GITHUB_CHECK_RUNNING",
+        runId: completed.id,
+        notifiedAt: null,
+      };
     if (!success)
       return {
         code: "GITHUB_NOTIFY_FAILED",
         runId: completed.id,
         notifiedAt: null,
       };
-    const at = Date.parse(job.completed_at);
+    const at = Date.parse(
+      completed.status === "in_progress"
+        ? job.steps
+            ?.filter(
+              (s) => required.includes(s.name) && s.conclusion === "success",
+            )
+            .map((s) => s.completed_at)
+            .filter(Boolean)
+            .sort()
+            .at(-1)
+        : job.completed_at,
+    );
     if (!Number.isFinite(at) || at > now + 60000)
       throw Error("GITHUB_STATUS_UNAVAILABLE");
     return {

@@ -19,6 +19,7 @@ import { CloudBackupStatus } from "@/components/recovery/cloud-backup-status";
 import { BackupCopyStatus } from "@/components/recovery/backup-copy-status";
 import { ProviderCheck } from "@/components/recovery/provider-check";
 import { DeliveryStatus } from "@/components/recovery/delivery-status";
+import { BackupHealthSummary } from "@/components/recovery/backup-health-summary";
 export const metadata = { title: "연결 점검·기록 보관" };
 export default async function StatusPage() {
   let classes: { id: string; name: string }[] = [];
@@ -62,6 +63,7 @@ export default async function StatusPage() {
     <>
       <ReliabilityPanel classes={classes} teacher={teacher} />
       <ReleaseStatus />
+      <BackupHealthSummary />
       <DeliveryStatus />
       <p>
         <Link className="button button-outline" href="/device-check">

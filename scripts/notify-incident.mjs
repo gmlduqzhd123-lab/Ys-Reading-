@@ -30,8 +30,12 @@ const decision = incidentDecision(receipt.healthy, issues, marker);
 const run =
   "https://github.com/" + repo + "/actions/runs/" + process.env.GITHUB_RUN_ID;
 const reason = backupIncidentText(receipt.code);
-if (decision.create)
-  await api("/issues", "POST", {
+let confirmedIssue = issues.find(
+  (i) =>
+    i.user?.type === "Bot" && i.state === "open" && i.body?.startsWith(marker),
+)?.number;
+if (decision.create) {
+  const created = await api("/issues", "POST", {
     title: backup
       ? "[책숲 운영 알림] 전체 백업 확인 필요"
       : "[책숲 운영 알림] 서비스 연결 확인 필요",
@@ -49,6 +53,10 @@ if (decision.create)
         : "") +
       "\n\n학생 정보·글·로그인 정보는 이 알림에 포함하지 않습니다. 정상 확인 시 자동으로 복구 알림을 남기고 닫습니다.",
   });
+  if (!Number.isSafeInteger(created?.number))
+    throw Error("ISSUE_CONFIRMATION_REQUIRED");
+  confirmedIssue = created.number;
+}
 // One open incident per service. Notify again only when the actionable reason changes.
 if (backup && !receipt.healthy && !decision.create) {
   for (const issue of issues.filter(
@@ -88,6 +96,20 @@ for (const number of decision.close) {
     state: "closed",
     state_reason: "completed",
   });
+}
+if (backup) {
+  if (!receipt.healthy && !Number.isSafeInteger(confirmedIssue))
+    throw Error("ISSUE_CONFIRMATION_REQUIRED");
+  fs.writeFileSync(
+    "backup-notification-result.json",
+    JSON.stringify({
+      processed: true,
+      healthy: receipt.healthy,
+      code: receipt.code,
+      incidentOpen: !receipt.healthy && Number.isSafeInteger(confirmedIssue),
+      checkedAt: new Date().toISOString(),
+    }),
+  );
 }
 console.log(
   JSON.stringify({

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defaultVault, vaultKey, projectRef } from "./lib/operator-vault.mjs";
 import { acquireBackupLock } from "./lib/backup-lock.mjs";
-import { operatorTransport } from "./lib/operator-transport.mjs";
+import { openBackupAccess as operatorTransport } from "./lib/backup-machine.mjs";
 import {
   readAgent,
   reportAgent,

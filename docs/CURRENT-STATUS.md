@@ -1,6 +1,8 @@
-# 책숲 현재 개발 상태 · 0.8.0
+# 책숲 현재 개발 상태 · 0.8.1
 
 현재 구현 항목과 사용자 준비 조건은 자동 생성되는 [기능·준비 현황](FEATURE-STATUS.md)을 기준으로 확인합니다. 코드 변경 후 `npm run docs:sync`, CI에서 `npm run docs:check`로 누락을 검사합니다.
+
+자동 백업은 [백업 전용 인증](BACKUP-MACHINE-AUTH.md)으로 개인 MCP 로그인과 분리했습니다. 전용 키 자동 교체, 중단 후 교체 복구, 실제 알림 확인을 거친 반복 메일 억제, 공개 백업·복원 상태 표시를 포함합니다.
 
 이번 6가지 개선은 [운영 신뢰성과 작성 보호](OPERATIONS-0.8.md)에 설명합니다. 실제 연결 상태는 `/status`, 배포 커밋의 GitHub Actions와 `node scripts/operations-report.mjs`의 시각별 JSON을 기준으로 확인합니다. 구현됨은 외부 승인이나 실제 운영 전환 완료를 뜻하지 않습니다.
 

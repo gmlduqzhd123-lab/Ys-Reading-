@@ -1,12 +1,12 @@
-# 책숲 기능·준비 현황 · 0.8.0
+# 책숲 기능·준비 현황 · 0.8.1
 
 이 문서는 `config/feature-status.json`에서 자동 생성합니다. `implemented`는 코드와 검사 경로가 준비됐다는 뜻이며 실제 외부 계정 승인·배포·수업 검증 성공을 대신하지 않습니다.
 
 | 기능 | 코드 상태 | 검사 경로 |
 |---|---|---|
-| GitHub 알림 전달 독립 감시·중복 없는 재시도 | 구현 | [tests/delivery-monitor.test.ts](../tests/delivery-monitor.test.ts) · [tests/delivery-database.test.ts](../tests/delivery-database.test.ts) |
+| GitHub 알림 전달 독립 감시·중복 없는 재시도 | 구현 | [tests/delivery-monitor.test.ts](../tests/delivery-monitor.test.ts) · [tests/delivery-database.test.ts](../tests/delivery-database.test.ts) · [tests/backup-monitor-result.test.ts](../tests/backup-monitor-result.test.ts) |
 | 기존 학습 화면 30건 페이지·10,000건 이후 이력 조회 | 구현 | [tests/workspace-page-database.test.ts](../tests/workspace-page-database.test.ts) · [tests/metadata-pages.test.ts](../tests/metadata-pages.test.ts) |
-| 주간 격리 복구 훈련·실패 알림·키 없는 준비 점검표 | 구현 | [tests/recovery-readiness-database.test.ts](../tests/recovery-readiness-database.test.ts) · [scripts/ci-recovery-drill.ts](../scripts/ci-recovery-drill.ts) |
+| 백업 전용 인증·자동 키 교체·예약 복원 검사와 복구 훈련 | 구현 | [tests/recovery-readiness-database.test.ts](../tests/recovery-readiness-database.test.ts) · [scripts/ci-recovery-drill.ts](../scripts/ci-recovery-drill.ts) · [tests/backup-machine-database.test.ts](../tests/backup-machine-database.test.ts) · [tests/backup-machine.test.ts](../tests/backup-machine.test.ts) |
 | 선택한 개인 기기의 암호화 초안·충돌 방지·로그아웃 잠금 | 구현 | [tests/personal-draft-vault.test.ts](../tests/personal-draft-vault.test.ts) |
 | 교사 주간 독서·제출·피드백 요약과 현재 확인 대기 | 구현 | [tests/weekly-summary.test.ts](../tests/weekly-summary.test.ts) · [tests/workspace-page-database.test.ts](../tests/workspace-page-database.test.ts) |
 | 구현 현황 문서 동기화·배포와 운영 준비 보고 | 구현 | [tests/operations-report.test.ts](../tests/operations-report.test.ts) |

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import { operatorTransport as nativeMcp } from "./lib/operator-transport.mjs";
+import { openBackupAccess as nativeMcp } from "./lib/backup-machine.mjs";
 import {
   projectRef,
   defaultVault,
@@ -25,8 +25,13 @@ let attemptDirectory;
 const pendingFile = () => path.join(attemptDirectory, "pending-attempts.json");
 async function receipt(row) {
   if (!projectVerified) throw Error("PROJECT_SCOPE_MISMATCH");
-  const sql = `insert into private.backup_attempts(id,started_at,finished_at,status,error_code) values(${quote(row.id)},${quote(row.started)},${row.finished ? quote(row.finished) : "null"},${quote(row.status)},${row.code ? quote(row.code) : "null"}) on conflict(id) do update set finished_at=excluded.finished_at,status=excluded.status,error_code=excluded.error_code;`;
-  await mcp.call("execute_sql", { query: sql });
+  await mcp.request("attempt", {
+    id: row.id,
+    started: row.started,
+    finished: row.finished ?? null,
+    status: row.status,
+    code: row.code ?? null,
+  });
 }
 try {
   const directory = defaultVault(),
@@ -60,13 +65,7 @@ try {
       started: attemptStarted,
       status: "running",
     });
-    const rows = await mcp.call("execute_sql", {
-      query: fs.readFileSync(
-        path.join(repo, "scripts/operator-snapshot.sql"),
-        "utf8",
-      ),
-    });
-    const snapshot = rows?.[0]?.snapshot;
+    const snapshot = await mcp.request("snapshot");
     if (!snapshot) throw Error("SNAPSHOT_READ_FAILED");
     const files = fs
       .readdirSync(path.join(repo, "supabase/migrations"))
@@ -79,14 +78,11 @@ try {
         ),
       }));
     backup = prepareBackup(snapshot, files);
-    const privacyRows = await mcp.call("execute_sql", {
-      query: "select private.operator_privacy_checkpoint() checkpoint",
-    });
-    if (!privacyRows?.[0]?.checkpoint)
-      throw Error("PRIVACY_CHECKPOINT_READ_FAILED");
+    const checkpoint = await mcp.request("privacy");
+    if (!checkpoint) throw Error("PRIVACY_CHECKPOINT_READ_FAILED");
     fs.writeFileSync(
       path.join(directory, "privacy-current.bfguard"),
-      encryptBackup({ projectRef, checkpoint: privacyRows[0].checkpoint }, key),
+      encryptBackup({ projectRef, checkpoint }, key),
       { mode: 0o600 },
     );
     file = path.join(
@@ -127,8 +123,14 @@ try {
     { mode: 0o600 },
   );
   if (mcp)
-    await mcp.call("execute_sql", {
-      query: `insert into private.backup_runs(id,created_at,verified_at,file_name,bytes,table_count,row_count,snapshot_digest) values(${quote(randomUUID())},now(),now(),${quote(report.file)},${report.bytes},${report.tables},${report.rows},${quote(report.digest)});`,
+    await mcp.request("receipt", {
+      id: randomUUID(),
+      file: report.file,
+      bytes: report.bytes,
+      tables: report.tables,
+      rows: report.rows,
+      digest: report.digest,
+      verified: true,
     });
   if (mcp)
     await receipt({
