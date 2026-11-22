@@ -111,6 +111,7 @@ export function ClassroomWorkshop({
       <nav className="button-row" aria-label="수업 공방 학급 선택">
         {classes.map((c) => (
           <Link
+            prefetch={false}
             key={c.id}
             className="button button-outline"
             aria-current={c.id === state.classroom.id ? "page" : undefined}
@@ -120,6 +121,7 @@ export function ClassroomWorkshop({
           </Link>
         ))}
         <Link
+          prefetch={false}
           className="button button-outline"
           href={"/hub?tab=today&classroom=" + state.classroom.id}
         >
@@ -152,6 +154,7 @@ export function ClassroomWorkshop({
             ]
         ).map(([id, label]) => (
           <Link
+            prefetch={false}
             key={id}
             className="button button-outline"
             aria-current={section === id ? "page" : undefined}
@@ -178,6 +181,7 @@ export function ClassroomWorkshop({
                   <article className="tool-card" key={a.id}>
                     <h3>{a.snapshot.title}</h3>
                     <Link
+                      prefetch={false}
                       className="button button-primary"
                       href={"/classroom/activity/" + a.id}
                     >
@@ -185,7 +189,10 @@ export function ClassroomWorkshop({
                     </Link>
                   </article>
                 ))}
-              <Link href={workshopHref(state.classroom.id, "activities")}>
+              <Link
+                prefetch={false}
+                href={workshopHref(state.classroom.id, "activities")}
+              >
                 우리 반 활동 전체 보기
               </Link>
             </section>
@@ -273,12 +280,14 @@ export function ClassroomWorkshop({
               </div>
               <div className="button-row">
                 <Link
+                  prefetch={false}
                   className="button button-outline"
                   href={"/hub?tab=review&classroom=" + state.classroom.id}
                 >
                   독서·글쓰기 확인함
                 </Link>
                 <Link
+                  prefetch={false}
                   className="button button-outline"
                   href={"/hub?tab=overview&classroom=" + state.classroom.id}
                 >
@@ -364,7 +373,7 @@ export function ClassroomWorkshop({
                         ))}
                       </article>
                     ))}
-                    <Link href="/studio">
+                    <Link prefetch={false} href="/studio">
                       역할을 바꾸며 연습하는 별도 체험 교실
                     </Link>
                   </details>
@@ -415,6 +424,7 @@ export function ClassroomWorkshop({
       )}
       <p>
         <Link
+          prefetch={false}
           href={workshopHref(
             state.classroom.id,
             section === "all" ? "today" : "all",

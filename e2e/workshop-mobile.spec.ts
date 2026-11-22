@@ -149,11 +149,13 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   });
   await expect(activity.locator("textarea")).toHaveCount(3);
   await expect(activity.locator("textarea").first()).toBeEnabled();
+  errors.forEach((check) => check.phase("activity-offline"));
   await sc.setOffline(true);
   for (const area of await activity.locator("textarea").all())
     await area.fill("물 주는 장면을 근거로 꾸준한 돌봄을 생각했어요.");
   await expect(activity.getByText(/연결이 끊겼어요/)).toBeVisible();
   await sc.setOffline(false);
+  errors.forEach((check) => check.phase("activity-reconnected"));
   await expect(
     activity
       .getByRole("status")
@@ -318,12 +320,29 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
     .getByRole("link", { name: "이 학생의 성장 보고서 준비", exact: true })
     .click();
   await teacher
-    .getByRole("link", { name: "독서·글쓰기·수업 활동의 원기록 확인", exact: true })
+    .getByRole("link", {
+      name: "독서·글쓰기·수업 활동의 원기록 확인",
+      exact: true,
+    })
     .click();
-  await expect(teacher.getByRole("heading", { name: "기록에서 성장 근거 살펴보기", exact: true })).toBeVisible();
-  await teacher.getByRole("button", { name: "독서·글쓰기·수업 활동 근거 불러오기", exact: true }).click();
-  await expect(teacher.getByText(title + " · 1번째 제출", { exact: true })).toBeVisible();
-  await teacher.getByRole("link", { name: "이 학생의 성장 보고서 준비", exact: true }).click();
+  await expect(
+    teacher.getByRole("heading", {
+      name: "기록에서 성장 근거 살펴보기",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await teacher
+    .getByRole("button", {
+      name: "독서·글쓰기·수업 활동 근거 불러오기",
+      exact: true,
+    })
+    .click();
+  await expect(
+    teacher.getByText(title + " · 1번째 제출", { exact: true }),
+  ).toBeVisible();
+  await teacher
+    .getByRole("link", { name: "이 학생의 성장 보고서 준비", exact: true })
+    .click();
   errors.forEach((check) => check.phase("report-compose"));
   const reportTitle = "CI 모바일 성장 기록";
   await teacher
@@ -356,7 +375,16 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   expect(fs.readFileSync((await (await downloaded).path())!, "utf8")).toContain(
     "꾸준한 돌봄",
   );
-  expect((await new AxeBuilder({ page: teacher }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) }))).toEqual([]);
+  expect(
+    (
+      await new AxeBuilder({ page: teacher })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations.map((v) => ({
+      id: v.id,
+      targets: v.nodes.map((n) => n.target),
+    })),
+  ).toEqual([]);
   const confirm =
     reportTitle + " 1판의 원문·수치·의견과 학생 공개 범위를 확인했습니다";
   errors.forEach((check) => check.phase("report-review"));
@@ -378,8 +406,14 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
   await expect(
     teacher.getByText("학생에게 공개했어요.", { exact: true }),
   ).toBeVisible();
-  await expect(teacher.getByRole("button", { name: "학생 공개 취소", exact: true })).toBeVisible();
-  await expect(teacher.getByRole("heading", { name: "저장한 성장 보고서", exact: true }).locator("..")).toHaveAttribute("aria-busy", "false");
+  await expect(
+    teacher.getByRole("button", { name: "학생 공개 취소", exact: true }),
+  ).toBeVisible();
+  await expect(
+    teacher
+      .getByRole("heading", { name: "저장한 성장 보고서", exact: true })
+      .locator(".."),
+  ).toHaveAttribute("aria-busy", "false");
   errors.forEach((check) => check.phase("report-leave"));
   await teacher.goto(path("family"));
   await teacher
