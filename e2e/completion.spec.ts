@@ -23,9 +23,9 @@ test("class context, 28-record split export, resume and learning notification", 
     .getByLabel("지금 보고 있는 학급", { exact: true })
     .selectOption(f.classroom);
   await expect(page).toHaveURL(new RegExp("classroom=" + f.classroom));
-  await page
-    .getByRole("link", { name: "기록·글 내보내기", exact: true })
-    .click();
+  await page.locator(".workspace-more > summary").click();
+  await page.getByRole("navigation", { name: "추가 책숲 활동" })
+    .getByRole("link", { name: "기록·글 내보내기", exact: true }).click();
   await expect(page).toHaveURL(
     new RegExp("tab=exports.*classroom=" + f.classroom),
   );

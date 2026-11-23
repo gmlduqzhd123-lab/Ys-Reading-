@@ -3,6 +3,23 @@ import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs";
 import JSZip from "jszip";
 const f = JSON.parse(fs.readFileSync("e2e/.runtime/fixtures.json", "utf8"));
+test("mobile teacher returns to class setup and can open the review queue", async ({ page }) => {
+  await page.goto("/start?mode=new");
+  await expect(page).toHaveURL(/\/login\?mode=teacher&intent=classroom/);
+  const password = page.locator(".login-password-option");
+  await password.locator("summary").click();
+  await password.getByLabel("선생님 이메일", { exact: true }).fill(f.accounts[1].email);
+  await password.getByLabel("비밀번호", { exact: true }).fill(f.accounts[1].password);
+  await password.getByRole("button", { name: "비밀번호로 로그인", exact: true }).click();
+  await expect(page).toHaveURL(/\/start\?mode=new/);
+  await expect(page.getByRole("textbox", { name: "새 학급 이름", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "메뉴 열기", exact: true }).click();
+  await page.getByRole("navigation", { name: "주 메뉴", exact: true })
+    .getByRole("link", { name: "학생 기록 확인", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "학생 기록 확인", exact: true })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "기록 종류", exact: true })).toHaveValue("writing");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+});
 test("mobile authenticated Korean writing, reload, reconnect, export and accessibility", async ({
   page,
   context,
