@@ -79,12 +79,27 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
       { exact: true },
     ),
   ).toBeVisible();
-  await student.getByLabel("책 제목", { exact: true }).fill("CI 다음 확인 도서");
-  await student.getByLabel("독서 상태").selectOption("completed");
-  await student.getByLabel("기억에 남는 장면과 나의 생각", { exact: true })
-    .fill("두 번째 독서 기록을 같은 목록에서 이어 확인하는 합성 자료입니다.");
-  await student.getByRole("button", { name: "독서 기록 저장하기", exact: true }).click();
   await expect(student.getByText("독서 기록 저장됨", { exact: true })).toBeVisible();
+  // The restore drill expects exactly one reading record for the first student.
+  // Use a second learner to exercise the next record in the same class queue.
+  const secondReader = createClient(fixture.url, fixture.key, { auth: { persistSession: false } });
+  const readerLogin = await secondReader.auth.signInWithPassword({
+    email: fixture.mobile.loginId + "@students.bookforest.invalid",
+    password: fixture.mobile.password,
+  });
+  expect(readerLogin.error).toBeNull();
+  const secondReading = await secondReader.rpc("hub_command", {
+    p_command: "reading_save",
+    p_payload: {
+      classroomId: fixture.classroom,
+      book: { title: "CI 다음 확인 도서" },
+      readOn: new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date()),
+      status: "completed",
+      thought: "다른 학생의 독서 기록을 같은 확인 목록에서 이어 검토하는 합성 자료입니다.",
+    },
+    p_request_id: crypto.randomUUID(),
+  });
+  expect(secondReading.error).toBeNull();
   await student.goto("/app/work/" + fixture.assignment);
   await student
     .getByRole("checkbox", { name: "이 탭에 미저장 글 임시보관", exact: true })
