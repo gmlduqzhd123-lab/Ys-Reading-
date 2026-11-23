@@ -1,4 +1,5 @@
 "use client";
+import { SaveStatus } from "@/components/save-status";
 
 import {
   startTransition,
@@ -679,7 +680,10 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
               ) : (
                 <Save size={14} aria-hidden="true" />
               )}
-              {saveMessage}
+              {saveState === "saved" ? <SaveStatus kind="draft" /> :
+                saveState === "error" ? <SaveStatus kind="unconfirmed" /> :
+                saveState === "saving" ? <SaveStatus kind="saving" /> : null}
+              {saveState !== "error" && saveState !== "saving" && saveMessage}
             </span>
             <span id="writing-count">
               {content.body.length.toLocaleString("ko-KR")} / 10,000자
@@ -699,6 +703,7 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
           )}
           {submissionNotice && (
             <p className="form-status" role="status">
+              <SaveStatus kind="submitted" />{" "}
               {submissionNotice}
             </p>
           )}

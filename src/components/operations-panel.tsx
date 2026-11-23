@@ -186,7 +186,7 @@ export function OperationsPanel({
       {!cls && <p>먼저 ‘학급 초대·연결’에서 학급을 만들어 주세요.</p>}
       {cls && (
         <>
-          <section className="ops-card">
+          <section className="ops-card" id="participation-readiness">
             <h2>{cls.name} · 학습 시작 준비</h2>
             <p>
               계정 {students.length}명 · 비밀번호 변경 대기{" "}

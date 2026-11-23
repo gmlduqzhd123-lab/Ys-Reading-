@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { ClassOverview } from "@/lib/classroom-insights";
 import { searchHref } from "@/lib/classroom-insights";
+import { hubHref } from "@/lib/hub-navigation";
 import { formatOperationsDate } from "@/lib/operations";
 import { markClassNotices } from "@/app/hub/insights-actions";
 const labels: Record<string, string> = {
@@ -65,14 +66,9 @@ export function ClassOverviewPanel({
         성취도나 학교 출결을 뜻하지 않아요.
       </p>
       <div className="button-row">
-        <Link href="/start" className="button button-outline">
+        <Link href={classroom ? "/start?classroom=" + classroom : "/start"} className="button button-outline">
           기존 학급 준비 이어가기
         </Link>
-        {canReview && (
-          <Link href="/hub?tab=review" className="button button-outline">
-            학생 기록 확인
-          </Link>
-        )}
         {owns && (
           <Link href="/hub?tab=packs" className="button button-outline">
             수업 꾸러미
@@ -102,15 +98,18 @@ export function ClassOverviewPanel({
           ["참여 준비", `${totals.ready} / ${totals.students}명`],
           ["미제출 활동", `${totals.missing}건`],
           ["기한 지난 미제출", `${totals.overdue}건`],
-          ["새 글 확인", `${totals.submitted}건`],
+          ["새 글·재제출", `${totals.submitted}건`, "writing"],
           ["고쳐쓰기 기다림", `${totals.revision}건`],
-          ["완독 확인", `${totals.reading}건`],
-        ].map(([l, n]) => (
-          <div key={l}>
-            <strong>{n}</strong>
-            <span>{l}</span>
-          </div>
-        ))}
+          ["완독 확인", `${totals.reading}건`, "reading"],
+        ].map(([label, count, kind]) => {
+          const metric = <><strong>{count}</strong><span>{label}</span></>;
+          return kind && canReview ? (
+            <Link key={label} href={hubHref("review", classroom, { reviewKind: kind })}>
+              {metric}
+              <span className="metric-action">확인 목록 열기 →</span>
+            </Link>
+          ) : <div key={label}>{metric}</div>;
+        })}
       </div>
       <p className="form-help">
         집계 시각 {formatOperationsDate(data.asOf)} · 화면을 다시 열거나 ‘새

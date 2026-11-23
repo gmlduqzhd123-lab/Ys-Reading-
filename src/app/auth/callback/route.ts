@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { teacherCallbackUrl } from "@/lib/account-access";
+import { classroomLoginCookie, classroomLoginDestination, classroomLoginHref } from "@/lib/classroom-entry";
 
 export async function GET(request: NextRequest) {
   const noStore = { "Cache-Control": "private, no-store", Pragma: "no-cache" };
@@ -14,11 +15,16 @@ export async function GET(request: NextRequest) {
       { status: 503, headers: noStore },
     );
   }
-  const failed = () =>
-    NextResponse.redirect(new URL("/login?notice=email-link", origin), {
+  const intent = request.cookies.get(classroomLoginCookie)?.value;
+  const reply = (path: string) => {
+    const response = NextResponse.redirect(new URL(path, origin), {
       status: 303,
       headers: noStore,
     });
+    response.cookies.set(classroomLoginCookie, "", { path: "/auth/callback", maxAge: 0, httpOnly: true, sameSite: "lax", secure: origin.startsWith("https:") });
+    return response;
+  };
+  const failed = () => reply(intent === "classroom" ? classroomLoginHref + "&notice=email-link" : "/login?notice=email-link");
   const code = request.nextUrl.searchParams.get("code");
   if (!code || code.length > 2048) return failed();
   const client = await createClient();
@@ -32,15 +38,15 @@ export async function GET(request: NextRequest) {
   const { data: setup, error: setupError } = await client.rpc(
     "complete_operator_email_setup",
   );
-  if (setupError)
-    return NextResponse.redirect(new URL("/account?notice=setup", origin), {
-      status: 303,
-      headers: noStore,
-    });
-  if(setup?.requiresMfa)return NextResponse.redirect(new URL("/account/security?notice=operator-invitation",origin),{status:303,headers:noStore});
-  // The caller cannot choose a redirect or role through query parameters.
-  return NextResponse.redirect(new URL("/account", origin), {
-    status: 303,
-    headers: noStore,
-  });
+  if (setupError) return reply("/account?notice=setup");
+  if (setup?.requiresMfa) return reply("/account/security?notice=operator-invitation");
+  if (intent === "classroom") {
+    const { data: profile } = await client.from("profiles")
+      .select("role,account_active,must_change_password").eq("id", user.id).maybeSingle();
+    if (profile?.account_active && !profile.must_change_password) {
+      const destination = classroomLoginDestination(intent, profile.role);
+      if (destination) return reply(destination);
+    }
+  }
+  return reply("/account");
 }

@@ -30,7 +30,25 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
     .getByRole("button", { name: "내 교실로 들어가기", exact: true })
     .click();
   await expect(page).toHaveURL(/\/hub|\/account/);
-  await page.goto("/app/work/" + f.assignment);
+  await page.goto("/hub?tab=today&classroom=" + f.classroom);
+  const next = page.getByRole("region", { name: "지금 할 일" });
+  await expect(next.getByText(/마감/)).toBeVisible();
+  await page.getByRole("button", { name: "메뉴 열기", exact: true }).click();
+  const menu = page.getByRole("navigation", { name: "주 메뉴", exact: true });
+  await expect(menu.getByRole("link", { name: "받은 피드백", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "메뉴 닫기", exact: true }).click();
+  const viewSettings = page.locator(".view-settings");
+  await viewSettings.locator("summary").click();
+  await viewSettings.getByLabel("큰 글씨", { exact: true }).check();
+  await viewSettings.locator("summary").click();
+  await expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+  const taskButton = await next.getByRole("link").boundingBox();
+  expect(taskButton?.height).toBeGreaterThanOrEqual(44);
+  await viewSettings.locator("summary").click();
+  await viewSettings.getByLabel("큰 글씨", { exact: true }).uncheck();
+  await viewSettings.locator("summary").click();
+  await next.getByRole("link").click();
+  await expect(page).toHaveURL(new RegExp("/app/work/" + f.assignment));
   await page
     .getByLabel("글 제목", { exact: true })
     .fill("모바일에서 함께 쓰는 한글");

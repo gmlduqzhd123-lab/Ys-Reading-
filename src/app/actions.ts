@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { classroomLoginDestination } from "@/lib/classroom-entry";
 import type { Profile } from "@/lib/auth";
 import type { Classroom, Assignment, Draft, Submission, Contest, Entry, Review } from "@/lib/data";
 
@@ -84,6 +85,7 @@ function formDate(value: FormDataEntryValue | null, required: boolean): string |
 
 export async function login(formData: FormData): Promise<ActionResult> {
   if (!isSupabaseConfigured()) return { ok: false, message: "아직 학급 서비스 연결을 준비하고 있어요." };
+  let destination = "/app";
   try {
     const identifier = z.string().trim().min(3).max(254).parse(formData.get("identifier") ?? formData.get("email"));
     const password = z.string().min(1).max(256).parse(formData.get("password"));
@@ -94,14 +96,15 @@ export async function login(formData: FormData): Promise<ActionResult> {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) return { ok: false, message: "아이디 또는 비밀번호를 확인해 주세요." };
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("id").eq("id", data.user.id).maybeSingle();
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("id,role").eq("id", data.user.id).maybeSingle();
     if (profileError || !profile) {
       await supabase.auth.signOut();
       return { ok: false, message: "계정 준비 상태를 확인해 주세요. 선생님 또는 운영자에게 문의해 주세요." };
     }
+    destination = classroomLoginDestination(formData.get("intent"), profile.role) ?? destination;
   } catch (error) { return { ok: false, message: friendlyError(error) }; }
   revalidatePath("/app", "layout");
-  redirect("/app");
+  redirect(destination);
 }
 
 export async function logout(): Promise<void> {

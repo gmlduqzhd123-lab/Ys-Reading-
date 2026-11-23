@@ -35,6 +35,7 @@ export function ReviewQueue({
   const [body, setBody] = useState(""),
     [decision, setDecision] = useState("completed");
   const [notice, setNotice] = useState("");
+  const [nextRecord, setNextRecord] = useState<string | null>(null);
   const draft=useTeacherWorkDraft({owner,scope:"review",context:{classroom:classId||null,kind,page:state.page},payload:{selected,body,decision},enabled:selected.length>0,apply:p=>{
     const ids=Array.isArray(p.selected)?p.selected.filter((id):id is string=>typeof id==="string"):[];
     if(ids.some(id=>!queue.some(r=>r.id===id)))throw Error("원래 검토 대상이 이 페이지에서 바뀌었어요. 교사 초안을 파일로 보관하고 학생 기록을 다시 확인해 주세요.");
@@ -43,9 +44,18 @@ export function ReviewQueue({
   return (
     <div className="review-queue">
       {notice && (
-        <p className="notice" role="status">
-          {notice}
-        </p>
+        <div className="notice review-result">
+          <p role="status">{notice}</p>
+          {nextRecord && queue.some(row => row.id === nextRecord) && (
+            <button type="button" className="button button-outline" onClick={() => {
+              const details = document.getElementById("review-" + nextRecord);
+              if (details instanceof HTMLDetailsElement) {
+                details.open = true;
+                details.querySelector("summary")?.focus();
+              }
+            }}>다음 기록 보기</button>
+          )}
+        </div>
       )}
       <h2>학생 기록 확인</h2>
       <TeacherWorkDraftNotice draft={draft}/>
@@ -104,7 +114,9 @@ export function ReviewQueue({
         </label>
       </div>
       {!queue.length && (
-        <div className="hub-empty">현재 확인할 기록이 없어요.</div>
+        <div className="hub-empty">
+          {state.total ? "이 묶음의 확인을 마쳤어요. 이전 묶음을 열어 주세요." : "현재 확인할 기록이 없어요."}
+        </div>
       )}
       <p className="form-help">
         보관된 학급은 기록 검색에서 조회·내보내기할 수 있어요. 대기 기록만
@@ -113,6 +125,7 @@ export function ReviewQueue({
       {queue.map((r) => (
         <article key={r.id} className="review-card">
           <details
+            id={"review-" + r.id}
             onToggle={(e) => {
               if (e.currentTarget.open)
                 setOpened((old) => new Set([...old, r.id]));
@@ -220,7 +233,14 @@ export function ReviewQueue({
                       ? "작품을 완료했어요."
                       : "글에 고쳐쓰기 피드백을 전했어요."),
               );
+              const last = queue.findLastIndex(row => selected.includes(row.id));
+              const remaining = queue.slice(last + 1).find(row => !selected.includes(row.id))
+                ?? queue.find(row => !selected.includes(row.id));
+              setNextRecord(remaining?.id ?? null);
               setSelected([]);
+              setOpened(old => new Set([...old].filter(id => !selected.includes(id))));
+              setBody("");
+              setDecision("completed");
             }}
             payload={() => ({
               items: selected.map((id) => ({ id, kind, read: opened.has(id) })),

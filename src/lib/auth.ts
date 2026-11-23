@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { classroomLoginHref } from "./classroom-entry";
 
 export interface Profile {
   id: string;
@@ -49,10 +50,10 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   } as Profile;
 });
 
-export async function requireProfile(): Promise<Profile> {
+export async function requireProfile(intent?: "classroom"): Promise<Profile> {
   if (!isSupabaseConfigured()) redirect("/login?notice=setup");
   const profile = await getCurrentProfile();
-  if (!profile) redirect("/login?notice=account");
+  if (!profile) redirect(intent === "classroom" ? classroomLoginHref : "/login?notice=account");
   if (
     profile.account_active === false ||
     profile.must_change_password ||

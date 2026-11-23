@@ -7,6 +7,7 @@ import { ClassField, Empty, Field, HubForm, Panel, string } from "./shared";
 import { PaperBook } from "@/components/paper-book";
 import { Plus, ArrowDownRight, ArrowRight, PenLine } from "lucide-react";
 import { ReadingEditor } from "./reading-editor";
+import { SaveStatus } from "@/components/save-status";
 export function Bookshelf({ data }: { data: HubData }) {
   const [query, setQuery] = useState(""),
     [books, setBooks] = useState<Book[]>([]),
@@ -16,6 +17,7 @@ export function Bookshelf({ data }: { data: HubData }) {
     [edit, setEdit] = useState<ReadingLog | null>(null);
   const controller = useRef<AbortController | null>(null);
   const [formVersion, setFormVersion] = useState(0);
+  const [recordSaved, setRecordSaved] = useState(false);
   const teacher = data.profile.role === "teacher";
   const [filter, setFilter] = useState("");
   const ownSubmissions = data.submissions.filter((s) => s.student_id === data.profile.id);
@@ -136,7 +138,18 @@ export function Bookshelf({ data }: { data: HubData }) {
               </button>
             ))}
           </div>
-          <ReadingEditor key={`${edit ? `${edit.id}:${edit.revision}` : JSON.stringify(book)}:${formVersion}`} data={data} book={book} edit={edit} onSaved={()=>{setEdit(null);setBook(null);setFormVersion(v=>v+1);setMessage("독서 기록을 저장했어요. 아래 내 기록에서 확인할 수 있습니다.");}} />
+          {recordSaved && <div className="save-status-region" role="status">
+            <SaveStatus kind="reading" />
+            <p>독서 기록을 저장했어요. 아래 내 기록에서 확인할 수 있습니다.</p>
+          </div>}
+          <ReadingEditor key={`${edit ? `${edit.id}:${edit.revision}` : JSON.stringify(book)}:${formVersion}`} data={data} book={book} edit={edit}
+            onEdit={() => setRecordSaved(false)}
+            onSaved={() => {
+              setEdit(null);
+              setBook(null);
+              setFormVersion(v => v + 1);
+              setRecordSaved(true);
+            }} />
 
           {!data.classes.length && (
             <p className="notice">아래 학급 연결 신청을 먼저 진행해 주세요.</p>

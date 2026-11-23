@@ -13,57 +13,116 @@ import {
 import { ViewSettings } from "@/components/participation/view-settings";
 import { ConnectionBanner } from "@/components/recovery/connection-banner";
 import { ServiceAlert } from "@/components/recovery/service-alert";
+import { createClient } from "@/lib/supabase/client";
+import { newClassHref } from "@/lib/classroom-entry";
 
-const links = [
-  { href: "/hub?tab=today", label: "오늘 할 일", active: "today" },
-  { href: "/missions", label: "독서미션", active: "missions" },
-  { href: "/app?view=contests", label: "글쓰기 활동", active: "contests" },
-  { href: "/hub?tab=plaza", label: "학급 광장", active: "plaza" },
-  { href: "/hub?tab=economy", label: "경제 교실", active: "economy" },
-];
-const moreLinks = [
-  ["/start?mode=new", "학급 개설 (교사)"],
-  ["/hub?tab=reading", "나의 책장"],
-  ["/hub?tab=search", "기록 검색"],
-  ["/status", "연결 점검·기록 보관"],
+const publicLinks = [
+  ["/hub?tab=today", "내 교실"],
+  ["/missions", "독서미션"],
+  ["/login?mode=teacher", "교사 로그인"],
+] as const;
+const teacherLinks = [
+  ["/hub?tab=today", "오늘의 교실"],
+  ["/hub?tab=review", "학생 기록 확인"],
+  ["/hub?tab=manage", "학급 관리"],
+] as const;
+const studentLinks = [
   ["/hub?tab=today", "오늘 할 일"],
+  ["/hub?tab=reading", "나의 책장"],
+  ["/app?view=feedback", "받은 피드백"],
+] as const;
+const moreLinks = [
+  [newClassHref, "학급 개설 (교사)"],
+  ["/missions", "독서미션"],
+  ["/app?view=contests", "글쓰기 활동"],
+  ["/hub?tab=search", "기록 검색"],
+  ["/hub?tab=plaza", "학급 광장"],
   ["/hub?tab=exhibitions", "작은 작품 전시회"],
-  ["/app", "우리 교실"],
   ["/hub?tab=growth", "캐릭터·배지"],
+  ["/hub?tab=economy", "경제 교실"],
   ["/hub?tab=exports", "기록·글 내보내기"],
   ["/reports", "학기 성장 보고서"],
-  ["/hub?tab=today", "나의 학급과 할 일"],
   ["/studio", "책숲 놀이터"],
+  ["/status", "연결 점검·기록 보관"],
   ["/guide", "책숲 사용 안내"],
-];
-function Navigation({ close }: { close: () => void }) {
+] as const;
+
+type Role = "student" | "teacher" | null;
+
+function useNavigationRole() {
+  const path = usePathname();
+  const cached = useRef<{ id: string; role: Role; at: number } | null>(null);
+  const [role, setRole] = useState<Role>(null);
+  useEffect(() => {
+    let client;
+    try { client = createClient(); } catch { return; }
+    let request = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      const id = session?.user.id;
+      const current = ++request;
+      clearTimeout(timer);
+      if (!id || cached.current?.id !== id) {
+        cached.current = null;
+        setRole(null);
+      }
+      if (!id) return;
+      if (cached.current && Date.now() - cached.current.at < 60_000) return;
+      // Read the account's own profile outside the Auth callback lock. This only
+      // selects menu labels. Pages and actions still enforce their own access.
+      timer = setTimeout(async () => {
+        try {
+          const { data } = await client.from("profiles")
+            .select("role,account_active,must_change_password").eq("id", id).maybeSingle();
+          if (current !== request) return;
+          const next = data?.account_active && !data.must_change_password &&
+            (data.role === "teacher" || data.role === "student") ? data.role : null;
+          if (data) cached.current = { id, role: next, at: Date.now() };
+          setRole(next);
+        } catch {
+          if (current === request) setRole(null);
+        }
+      }, 0);
+    });
+    return () => {
+      request++;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
+  }, [path]);
+  return role;
+}
+
+type MenuLinks = readonly (readonly [string, string])[];
+function Navigation({ close, links }: { close: () => void; links: MenuLinks }) {
   const path = usePathname();
   const query = useSearchParams();
-  const current =
-    path === "/hub"
-      ? (query.get("tab") ?? "today")
-      : path.startsWith("/missions")
-        ? "missions"
-        : path === "/app" && query.get("view") === "contests"
-          ? "contests"
-          : "";
   return (
     <>
-      {links.map((l) => (
-        <Link
-          key={l.href}
-          href={l.href}
-          onClick={close}
-          className={current === l.active ? "selected" : ""}
-          aria-current={current === l.active ? "page" : undefined}
-        >
-          {l.label}
-        </Link>
-      ))}
+      {links.map(([href, label]) => {
+        const [linkPath, search] = href.split("?");
+        const active = linkPath === path && [...new URLSearchParams(search)].every(
+          ([key, value]) => (query.get(key) ?? (key === "tab" ? "today" : "")) === value,
+        );
+        return (
+          <Link key={href} href={href} prefetch={false} onClick={close}
+            className={active ? "selected" : ""}
+            aria-current={active ? "page" : undefined}>
+            {label}
+          </Link>
+        );
+      })}
     </>
   );
 }
 export function Shell({ children }: { children: React.ReactNode }) {
+  const role = useNavigationRole();
+  const links = role === "teacher" ? teacherLinks : role === "student" ? studentLinks : publicLinks;
+  const extraLinks = [
+    ...(role === "teacher" ? [["/hub?tab=reading", "나의 책장"]] as const : []),
+    ...moreLinks.filter(([href]) => (role !== "student" || href !== newClassHref) &&
+      !links.some(([primary]) => primary === href)),
+  ];
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const more = useRef<HTMLDetailsElement>(null);
@@ -108,21 +167,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
           aria-label="주 메뉴"
         >
           <Suspense
-            fallback={links.map((l) => (
-              <Link key={l.href} href={l.href} onClick={close}>
-                {l.label}
+            fallback={links.map(([href, label]) => (
+              <Link key={href} href={href} prefetch={false} onClick={close}>
+                {label}
               </Link>
             ))}
           >
-            <Navigation close={close} />
+            <Navigation close={close} links={links} />
           </Suspense>
           <details className="paper-more" ref={more}>
             <summary>
               더보기 <ChevronDown size={13} />
             </summary>
             <div>
-              {moreLinks.map(([href, label]) => (
-                <Link key={href} href={href} onClick={close}>
+              {extraLinks.map(([href, label]) => (
+                <Link key={href} href={href} prefetch={false} onClick={close}>
                   {label}
                 </Link>
               ))}

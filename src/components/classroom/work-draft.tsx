@@ -1,4 +1,5 @@
 "use client";
+import { SaveStatus } from "@/components/save-status";
 import { useEffect, useRef, useState } from "react";
 import { workshopDraftAction } from "@/app/classroom/workshop-actions";
 import { PersonalDraftTools } from "@/components/personal-draft";
@@ -479,7 +480,11 @@ export function WorkshopDraftNotice({
           : "임시 보관은 최종 제출·공개와 별도입니다."}
       </p>
       <p role={draft.blocked || draft.conflict ? "alert" : "status"}>
-        {draft.blocked
+        {!draft.blocked && !draft.conflict && !draft.candidate && (
+          draft.paused && draft.unsaved ? <SaveStatus kind="unconfirmed" /> :
+            !draft.unsaved && draft.savedAt ? <SaveStatus kind="draft" /> : null
+        )}{" "}
+        <span>{draft.blocked
           ? "로그인 계정이 바뀌었어요. 현재 계정으로 화면을 다시 열어 주세요."
           : !draft.ready && !draft.paused
             ? "보관한 수업 초안을 확인하고 있어요."
@@ -488,7 +493,7 @@ export function WorkshopDraftNotice({
               : draft.candidate
                 ? "이 화면에 임시 보관한 수업 작성 내용이 있어요."
                 : draft.message ||
-                  "수업 입력은 본인만 볼 수 있도록 7일간 임시 보관합니다."}
+                  "수업 입력은 본인만 볼 수 있도록 7일간 임시 보관합니다."}</span>
       </p>
       {draft.candidate && (
         <div className="button-row">

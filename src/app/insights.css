@@ -14,13 +14,24 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
-.insight-metrics > div {
+.insight-metrics > :is(div, a) {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 22px;
   display: grid;
   gap: 10px;
   background: var(--paper);
+}
+.insight-metrics > a {
+  text-decoration: none;
+  border-color: var(--green);
+}
+.insight-metrics > a:hover {
+  background: #f0f4ee;
+}
+.insight-metrics .metric-action {
+  color: var(--green);
+  text-decoration: underline;
 }
 .insight-metrics strong {
   font-size: 1.8rem;
@@ -120,7 +131,7 @@
   .insight-alerts li .text-link {
     margin-left: auto;
   }
-  .insight-metrics > div {
+  .insight-metrics > :is(div, a) {
     padding: 16px;
   }
   .insights-page .panel {

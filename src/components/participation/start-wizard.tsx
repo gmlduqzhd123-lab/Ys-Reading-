@@ -38,18 +38,21 @@ export function StartWizard({
   data,
   origin,
   createNew,
+  requestedClassroom,
 }: {
   userId: string;
   data: Pick<DashboardData, "classes">;
   origin: string;
   createNew: boolean;
+  requestedClassroom?: string;
 }) {
+  const requested = data.classes.find(c => c.id === requestedClassroom && c.term_state !== "archived");
   const router = useRouter(),
     [step, setStep] = useState(1),
     [classId, setClassId] = useState(
       createNew
         ? ""
-        : (data.classes.find((c) => c.term_state !== "archived")?.id ?? ""),
+        : (requested?.id ?? data.classes.find((c) => c.term_state !== "archived")?.id ?? ""),
     );
   const [created, setCreated] = useState<{ id: string; name: string }[]>([]),
     [className, setClassName] = useState("");
@@ -69,7 +72,7 @@ export function StartWizard({
   const [resumeReady, setResumeReady] = useState(false);
   const progressKey = "bookforest-start:" + userId;
   useEffect(() => {
-    if (createNew) {
+    if (createNew || requested) {
       setResumeReady(true);
       return;
     }
@@ -92,7 +95,7 @@ export function StartWizard({
     setResumeReady(true);
     // Initial server classes validate the restored classroom, never stored credentials.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, createNew]);
+  }, [userId, createNew, requested?.id]);
   useEffect(() => {
     if (!resumeReady || !classId) return;
     try {
@@ -108,26 +111,25 @@ export function StartWizard({
       );
     } catch {}
   }, [resumeReady, classId, step, progressKey, userId]);
-  const [roster, setRoster] = useState<{
-    total: number;
-    existing: string[];
-  } | null>(null);
+  const [roster, setRoster] = useState<Awaited<ReturnType<typeof startRoster>> | null>(null);
+  const [rosterFailed, setRosterFailed] = useState(false);
+  const [rosterReload, setRosterReload] = useState(0);
   useEffect(() => {
     let active = true;
     setRoster(null);
+    setRosterFailed(false);
     if (classId)
       startRoster(classId)
         .then((v) => {
           if (active) setRoster(v);
         })
         .catch(() => {
-          if (active)
-            setMessage("학생 명단을 읽지 못했어요. 연결을 확인해 주세요.");
+          if (active) setRosterFailed(true);
         });
     return () => {
       active = false;
     };
-  }, [classId, data]);
+  }, [classId, data, rosterReload]);
   const batchRef = useRef(batch);
   batchRef.current = batch;
   const url = classId
@@ -193,6 +195,9 @@ export function StartWizard({
       document.removeEventListener("click", protect, true);
     };
   }, []);
+  const nextStep = roster && !roster.total ? 2 : roster?.missions === 0 ? 3 : 4;
+  const needsParticipation = !!roster && roster.ready !== null && roster.ready < roster.total;
+  const progressUnknown = roster?.ready === null || roster?.missions === null;
   return (
     <div className="participation-page">
       <span className="eyebrow">FIRST DAY IN BOOKFOREST</span>
@@ -214,6 +219,36 @@ export function StartWizard({
           </button>
         ))}
       </nav>
+      {classId && (
+        <section className="panel class-prep" aria-label="학급 준비 현황">
+          <h2>학급 준비 현황</h2>
+          <p>준비 중인 학급 · {classes.find(c => c.id === classId)?.name}</p>
+          {roster ? (
+            <>
+              <dl className="class-prep-counts">
+                <div><dt>학생 계정</dt><dd>{roster.total}명</dd></div>
+                <div><dt>참여 준비</dt><dd>{roster.ready === null ? "확인 필요" : roster.ready + " / " + roster.total + "명"}</dd></div>
+                <div><dt>첫 미션</dt><dd>{roster.missions === null ? "확인 필요" : roster.missions === 0 ? "배정 전" : "배정 완료"}</dd></div>
+              </dl>
+              {!batch && !busy && !importPending && (
+                needsParticipation ? (
+                  <Link className="button button-outline" href={"/operations?classroom=" + classId + "#participation-readiness"}>
+                    다음 할 일 · 참여 준비 확인
+                  </Link>
+                ) : progressUnknown ? (
+                  <button className="button button-outline" type="button" onClick={() => setRosterReload(n => n + 1)}>준비 현황 다시 확인</button>
+                ) : step !== nextStep && (
+                  <button className="button button-outline" type="button" onClick={() => setStep(nextStep)}>
+                    {nextStep === 2 ? "다음 할 일 · 학생 계정 발급" : nextStep === 3 ? "다음 할 일 · 첫 미션 배정" : "다음 할 일 · 접속 안내"}
+                  </button>
+                )
+              )}
+            </>
+          ) : rosterFailed ? (
+            <button className="button button-outline" type="button" onClick={() => setRosterReload(n => n + 1)}>준비 현황 다시 불러오기</button>
+          ) : <p role="status">학생 계정과 미션을 확인하고 있어요.</p>}
+        </section>
+      )}
       {step === 1 && (
         <section className="panel">
           <h2>
@@ -380,6 +415,7 @@ export function StartWizard({
                     start(async () => {
                       const r = await accountOperation(batch);
                       setCompleted(r.completed);
+                      setRosterReload(n => n + 1);
                       setMessage(r.message);
                       router.refresh();
                     })
@@ -457,7 +493,10 @@ export function StartWizard({
               criteria:
                 "책 속 장면을 근거로 나의 생각을 표현했나요? 상대의 생각을 존중했나요?",
             })}
-            onSuccess={() => setStep(4)}
+            onSuccess={() => {
+              setRosterReload(n => n + 1);
+              setStep(4);
+            }}
           >
             <label className="field">
               기본 독서미션

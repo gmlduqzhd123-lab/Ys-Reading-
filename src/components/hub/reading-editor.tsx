@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PersonalDraftTools } from "@/components/personal-draft";
+import { SaveStatus, type SaveStatusKind } from "@/components/save-status";
 import { hubCommand } from "@/app/hub/actions";
 import { readingDraftAction } from "@/app/hub/reading-draft-actions";
 import {
@@ -18,11 +19,13 @@ export function ReadingEditor({
   book,
   edit,
   onSaved,
+  onEdit,
 }: {
   data: HubData;
   book: Book | null;
   edit: ReadingLog | null;
   onSaved: () => void;
+  onEdit: () => void;
 }) {
   const classes = data.classes.filter((c) => c.term_state !== "archived"),
     router = useRouter();
@@ -61,6 +64,7 @@ export function ReadingEditor({
     [retry, setRetry] = useState(0),
     [composing, setComposing] = useState(false),
     [blocked, setBlocked] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<SaveStatusKind>();
   const revision = useRef(0),
     generation = useRef(0),
     request = useRef<{ hash: string; id: string } | null>(null),
@@ -97,6 +101,7 @@ export function ReadingEditor({
     let active = true;
     generation.current++;
     setLoaded(false);
+    setDraftStatus(undefined);
     setCandidate(null);
     setConflict(false);
     revision.current = 0;
@@ -207,6 +212,7 @@ export function ReadingEditor({
         revision: revision.current,
         request: request.current.id,
       });
+      setDraftStatus("saving");
       inFlight.current = operation;
       operation
         .then((r) => {
@@ -214,25 +220,29 @@ export function ReadingEditor({
           revision.current = r.revision ?? revision.current;
           if (JSON.stringify(latest.current) === captured) {
             setDirty(false);
+            setDraftStatus("draft");
             setMessage(
               "독서 기록을 임시 저장했어요. 아래 저장 버튼을 누르면 정식 기록에 반영됩니다.",
             );
             try {
               sessionStorage.removeItem(storageKey);
             } catch {}
-          }
+          } else setDraftStatus("unsaved");
         })
         .catch((e) => {
           if (generation.current !== ownGeneration) return;
           if (String(e).includes("BF_STALE_REVISION")) {
+            setDraftStatus(undefined);
             setConflict(true);
             setMessage(
               "다른 화면에서 임시 기록이 바뀌었어요. 현재 글을 파일로 보관한 뒤 최신 임시 기록을 확인해 주세요.",
             );
-          } else
+          } else {
+            setDraftStatus("unconfirmed");
             setMessage(
               "임시 저장을 확인하지 못했어요. 입력 내용은 유지됩니다. 연결 후 다시 저장해 주세요.",
             );
+          }
         })
         .finally(() => {
           if (inFlight.current === operation) inFlight.current = null;
@@ -256,6 +266,9 @@ export function ReadingEditor({
     storageKey,
   ]);
   function change(key: keyof ReadingDraftPayload, text: string) {
+    onEdit();
+    setDraftStatus("unsaved");
+    if (!conflict) setMessage("");
     setValue((old) => ({ ...old, [key]: text }));
     setDirty(true);
   }
@@ -324,6 +337,7 @@ export function ReadingEditor({
       onSaved();
       router.refresh();
     } catch {
+      setDraftStatus("unconfirmed");
       setMessage(
         "기록 저장을 확인하지 못했어요. 입력을 유지한 채 같은 저장을 다시 시도해 주세요.",
       );
@@ -560,7 +574,10 @@ export function ReadingEditor({
           최신 임시 기록 확인
         </button>
       )}
-      {message && <p role="status">{message}</p>}
+      {(message || draftStatus || busy) && <div className="save-status-region" role="status">
+        {busy ? <SaveStatus kind="saving" /> : draftStatus && <SaveStatus kind={draftStatus} />}
+        {message && <p>{message}</p>}
+      </div>}
     </form>
   );
 }

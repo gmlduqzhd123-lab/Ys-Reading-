@@ -7,15 +7,16 @@ import {
 export function TeacherEmailLogin({
   configured,
   googleEnabled = false,
+  intent,
 }: {
   configured: boolean;
   googleEnabled?: boolean;
+  intent?: "classroom";
 }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState("");
   return (
-    <details className="teacher-email-login">
-      <summary>선생님·운영자 처음 시작하기</summary>
+    <section aria-label="교사 로그인 방법" className="teacher-email-login">
       <p>
         Google 또는 이메일로 본인 확인 후 로그인해요. 교사 권한은 운영자 확인이
         필요하며, 미리 초대된 최초 운영자는 인증 후 등록이 완료됩니다.
@@ -24,7 +25,7 @@ export function TeacherEmailLogin({
         <form
           action={() =>
             start(async () => {
-              const r = await startTeacherGoogleLogin();
+              const r = await startTeacherGoogleLogin(intent);
               if (r) setMessage(r.message);
             })
           }
@@ -48,6 +49,7 @@ export function TeacherEmailLogin({
           })
         }
       >
+        {intent && <input type="hidden" name="intent" value={intent} />}
         <label htmlFor="teacher-email">선생님 이메일</label>
         <input
           id="teacher-email"
@@ -66,9 +68,6 @@ export function TeacherEmailLogin({
         </button>
         {message && <p role="status">{message}</p>}
       </form>
-      <p className="muted">
-        학생은 선생님에게 받은 아이디와 비밀번호로 입장해 주세요.
-      </p>
-    </details>
+    </section>
   );
 }

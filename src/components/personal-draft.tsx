@@ -1,4 +1,5 @@
 "use client";
+import { SaveStatus } from "@/components/save-status";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { draftKey } from "@/lib/teacher-draft";
@@ -341,6 +342,7 @@ export function PersonalDraftTools({
     owner,
     scope,
   ]);
+  const locallySaved = !blocked && !paused && !candidate && !!saved.current && value === saved.current;
   return (
     <aside className="notice">
       {!blocked && <PersonalDraftAccess owner={owner} />}
@@ -407,7 +409,10 @@ export function PersonalDraftTools({
           </button>
         </>
       )}
-      {message && <p role="status">{message}</p>}
+      {(message || locallySaved) && <div className="save-status-region" role="status">
+        {locallySaved && <SaveStatus kind="encrypted" />}
+        {message && <p>{message}</p>}
+      </div>}
       {paused && !blocked && (
         <button
           type="button"

@@ -7,6 +7,8 @@ const state = vi.hoisted(() => ({
   user: vi.fn(),
   rpc: vi.fn(),
   oauth: vi.fn(),
+  profile: vi.fn(),
+  setCookie: vi.fn(),
   redirect: vi.fn(),
 }));
 vi.mock("@/lib/supabase/config", () => ({
@@ -21,9 +23,11 @@ vi.mock("@/lib/supabase/server", () => ({
       signInWithOAuth: state.oauth,
     },
     rpc: state.rpc,
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: state.profile }) }) }),
   }),
 }));
 vi.mock("next/navigation", () => ({ redirect: state.redirect }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ set: state.setCookie }) }));
 import {
   sendTeacherLoginLink,
   startTeacherGoogleLogin,
@@ -52,6 +56,9 @@ beforeEach(() => {
     error: null,
   });
   state.rpc.mockResolvedValue({ error: null, data: { claimed: true } });
+  state.profile.mockResolvedValue({ error: null, data: {
+    role: "teacher", account_active: true, must_change_password: false,
+  } });
 });
 describe("teacher email entry and callback", () => {
   it("starts Google sign-in through the configured Supabase project and fixed callback", async () => {
@@ -165,5 +172,29 @@ describe("teacher email entry and callback", () => {
     expect(state.rpc).toHaveBeenCalledWith("complete_operator_email_setup");
     expect(r.headers.get("location")).toBe("http://127.0.0.1:3086/account");
     expect(r.headers.get("cache-control")).toContain("no-store");
+  });
+  it("remembers only the classroom purpose through the fixed provider callback", async () => {
+    await expect(startTeacherGoogleLogin("classroom")).rejects.toThrow("NEXT_REDIRECT_TEST");
+    expect(state.setCookie).toHaveBeenCalledWith(
+      "bf_classroom_login", "classroom",
+      expect.objectContaining({ path: "/auth/callback", httpOnly: true, sameSite: "lax", maxAge: 900 }),
+    );
+    expect(state.oauth.mock.calls[0][0].options.redirectTo).toBe("http://127.0.0.1:3086/auth/callback");
+  });
+  it.each([
+    [true, "teacher", false, "/start?mode=new"],
+    [true, "student", false, "/account"],
+    [false, "teacher", false, "/account"],
+    [true, "teacher", true, "/account"],
+  ])("resumes classroom setup only with a ready teacher account", async (active, role, reset, target) => {
+    state.profile.mockResolvedValue({ error: null, data: {
+      role, account_active: active, must_change_password: reset,
+    } });
+    const r = await GET(new NextRequest(
+      "http://127.0.0.1:3086/auth/callback?code=valid&next=https://untrusted.invalid",
+      { headers: { Cookie: "bf_classroom_login=classroom" } },
+    ));
+    expect(r.headers.get("location")).toBe("http://127.0.0.1:3086" + target);
+    expect(r.headers.get("set-cookie")).toContain("Max-Age=0");
   });
 });

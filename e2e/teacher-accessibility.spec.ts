@@ -6,11 +6,16 @@ const f=JSON.parse(fs.readFileSync("e2e/.runtime/fixtures.json","utf8"));
 test.use({timezoneId:"America/Los_Angeles"});
 test("teacher roster, invitations, term progression, batch export and simple student view are accessible",async({page,browser})=>{
   const check=watchBrowserErrors(page);
-  await page.goto("/login");
-  await page.getByLabel("학생 아이디 또는 선생님 이메일",{exact:true}).fill(f.accounts[1].email);
-  await page.getByLabel("비밀번호",{exact:true}).fill(f.accounts[1].password);
-  await page.getByRole("button",{name:"내 교실로 들어가기",exact:true}).click();
-  await expect(page).toHaveURL(/\/hub/);
+  await page.goto("/start?mode=new");
+  await expect(page).toHaveURL(/\/login\?mode=teacher&intent=classroom/);
+  const passwordLogin = page.locator(".login-password-option");
+  await passwordLogin.locator("summary").click();
+  await passwordLogin.getByLabel("선생님 이메일",{exact:true}).fill(f.accounts[1].email);
+  await passwordLogin.getByLabel("비밀번호",{exact:true}).fill(f.accounts[1].password);
+  await passwordLogin.getByRole("button",{name:"비밀번호로 로그인",exact:true}).click();
+  await expect(page).toHaveURL(/\/start\?mode=new/);
+  await expect(page.getByRole("navigation", { name: "주 메뉴", exact: true })
+    .getByRole("link", { name: "오늘의 교실", exact: true })).toBeVisible();
   for(const route of ["/operations","/collaboration?classroom="+f.classroom,"/hub?tab=terms&classroom="+f.classroom,"/hub?tab=exports&classroom="+f.classroom,"/hub?tab=manage&classroom="+f.classroom]){
     await page.goto(route);
     await page.keyboard.press("Tab");
@@ -76,6 +81,7 @@ test("teacher roster, invitations, term progression, batch export and simple stu
   await page.getByRole("button", { name: "학급 개설", exact: true }).click();
   await expect(page.getByRole("heading", { name: /학생 별칭으로 계정/ })).toBeVisible();
   await expect(page.getByText(name, { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "학급 준비 현황" }).getByText("0명", { exact: true })).toBeVisible();
   await page.goto("/start");
   await expect(page.getByRole("heading", { name: /학생 별칭으로 계정/ })).toBeVisible();
   await expect(page.getByText(name, { exact: true })).toBeVisible();

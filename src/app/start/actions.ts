@@ -1,16 +1,25 @@
 "use server";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import type { ClassOverview } from "@/lib/classroom-insights";
 import { z } from "zod";
 export async function startRoster(classroom: string) {
-  await requireProfile();
-  const c = await createClient(),
-    r = await c.rpc("start_roster_state", {
-      p_classroom: z.uuid().parse(classroom),
-    });
+  const profile = await requireProfile();
+  if (profile.role !== "teacher") throw Error("선생님 계정에서 확인해 주세요.");
+  const id = z.uuid().parse(classroom);
+  const c = await createClient();
+  const [r, overview, assignments] = await Promise.all([
+    c.rpc("start_roster_state", { p_classroom: id }),
+    c.rpc("teacher_overview", { p_classroom: id, p_page: 1 }),
+    c.from("assignments").select("id", { count: "exact", head: true }).eq("classroom_id", id),
+  ]);
   if (r.error || !r.data)
     throw Error("학급 명단을 읽지 못했어요. 다시 시도해 주세요.");
-  return r.data as { total: number; existing: string[] };
+  return {
+    ...(r.data as { total: number; existing: string[] }),
+    ready: overview.error ? null : (overview.data as ClassOverview | null)?.classes.find(c => c.id === id)?.ready ?? null,
+    missions: assignments.error ? null : assignments.count,
+  };
 }
 export type IssuanceList = {
   total: number;

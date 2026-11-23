@@ -114,7 +114,10 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
     student.getByText(/1번째 글을 선생님께 제출했어요/),
   ).toBeVisible();
   await login(teacher, fixture.accounts[1].email, fixture.accounts[1].password);
-  await teacher.goto("/hub?tab=review");
+  await teacher.goto("/hub?tab=overview&classroom=" + fixture.classroom);
+  await teacher.getByRole("link", { name: /새 글·재제출.*확인 목록 열기/ }).click();
+  await expect(teacher.getByLabel("학급 필터", { exact: true })).toHaveValue(fixture.classroom);
+  await expect(teacher.getByLabel("기록 종류", { exact: true })).toHaveValue("writing");
   await teacher
     .locator("summary")
     .filter({ hasText: "CI 생각을 나눈 글" })
@@ -138,7 +141,10 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await expect(
     teacher.getByText("1건의 작품을 완료했어요.", { exact: true }),
   ).toBeVisible();
-  await teacher.goto("/hub?tab=review&reviewKind=reading");
+  await expect(teacher.getByLabel("학급 필터", { exact: true })).toHaveValue(fixture.classroom);
+  await teacher.goto("/hub?tab=overview&classroom=" + fixture.classroom);
+  await teacher.getByRole("link", { name: /완독 확인.*확인 목록 열기/ }).click();
+  await expect(teacher.getByLabel("기록 종류", { exact: true })).toHaveValue("reading");
   await teacher
     .locator("summary")
     .filter({ hasText: "CI 함께 읽은 책" })

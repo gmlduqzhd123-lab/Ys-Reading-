@@ -7,11 +7,12 @@ export const metadata = { title: "학급 개설·준비" };
 export default async function StartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string; classroom?: string }>;
 }) {
-  const profile = await requireProfile();
+  const params = await searchParams;
+  const createNew = params.mode === "new";
+  const profile = await requireProfile(createNew ? "classroom" : undefined);
   if (profile.role !== "teacher") redirect("/hub?tab=today");
-  const createNew = (await searchParams).mode === "new";
   const client = await createClient();
   const result = await client
     .from("classrooms")
@@ -26,8 +27,9 @@ export default async function StartPage({
   ).origin;
   return (
     <StartWizard
-      key={createNew ? "new-class" : "resume"}
+      key={createNew ? "new-class" : "resume-" + (params.classroom ?? "")}
       createNew={createNew}
+      requestedClassroom={createNew ? undefined : params.classroom}
       userId={profile.id}
       data={{ classes: result.data as Classroom[] }}
       origin={origin}

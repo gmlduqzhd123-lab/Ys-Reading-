@@ -208,6 +208,71 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
 .paper-login-rabbit { position: relative; display: block; margin: 30px auto 0; width: min(100%, 260px); height: auto; }
 .login-form-wrap { padding: 42px 38px; }
 .teacher-email-login { border-color: var(--line); }
+.login-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 18px;
+}
+.login-choices a {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--green);
+  text-decoration: none;
+}
+.login-choices a[aria-current] { background: #e9efe7; border-color: var(--green); font-weight: 700; }
+.login-password-option { margin-top: 12px; }
+.login-password-option > summary, .workspace-more > summary {
+  align-content: center;
+  min-height: 44px;
+  padding: 6px 4px;
+  color: var(--green);
+  font-weight: 700;
+  cursor: pointer;
+}
+.login-password-option form { margin-top: 8px; }
+.login-form-wrap form button { white-space: normal; }
+.workspace-menu { margin-block: 16px; }
+.workspace-menu .workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 0; padding: 4px; overflow: visible; }
+.workspace-menu .hub-tab { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+.workspace-more { margin-block: 5px; border-bottom: 1px solid var(--line); }
+.workspace-more[open] { padding-bottom: 9px; }
+.simple-view .workspace-heading .eyebrow { display: none; }
+.today-next, .review-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  border-color: var(--green);
+}
+.today-next h2, .today-next p, .review-result p { margin: 0; }
+.today-next .today-next-name { margin-block: 5px; font-size: 1.2em; font-weight: 700; overflow-wrap: anywhere; }
+.class-prep { min-width: 0; }
+.class-prep-counts { display: flex; flex-wrap: wrap; gap: 12px 32px; }
+.class-prep-counts dt { color: var(--muted); }
+.class-prep-counts dd { margin: 3px 0 0; font-weight: 700; }
+.save-status-region { margin-block: 8px; }
+.save-status-region p { margin: 4px 0; }
+.save-status-label {
+  display: inline-block;
+  margin-inline-end: 6px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #e9efe7;
+  color: #2c5239;
+  overflow-wrap: anywhere;
+  font-size: .92em;
+}
+.save-status-label:is([data-kind="unsaved"], [data-kind="unconfirmed"]) {
+  background: #f4ede2;
+  color: #683f30;
+}
+#participation-readiness { scroll-margin-top: 80px; }
 .field .field-hint, .editor-count, .save-indicator { color: var(--muted); }
 .save-indicator.error { color: #9b453e; }
 .loading-leaf { border-color: #e0d7dd; border-top-color: var(--green); }
@@ -306,6 +371,11 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
   .login-story h1 { font-size: 26px; }
   .paper-login-rabbit { width: 150px; margin: 16px auto 0; }
   .login-form-wrap { padding: 28px 23px; }
+  .login-form-wrap form :is(input, button), .today-next .button,
+  .class-prep .button, .review-queue .button, .setup-steps button { min-height: 44px; }
+  .login-form-wrap :is(.field input, .teacher-email-login input) { font-size: max(16px, 1em); }
+  .today-next > div { min-width: 0; }
+  .today-next .button { width: 100%; white-space: normal; }
 }
 @media (prefers-reduced-motion: reduce) {
   .paper-book { transition: none; }

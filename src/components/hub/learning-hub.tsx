@@ -96,15 +96,16 @@ export function LearningHub({
           ["plaza", "학급 광장"],
           ["exhibitions", "작은 작품 전시회"],
           ["economy", "경제 교실"],
-          ["manage", teacher ? "학급·학년 관리" : "학급 연결"],
+          ["manage", teacher ? "학급 관리" : "학급 연결"],
           ["terms", teacher ? "학기 종료·진급" : "나의 학기"],
         ]
       : []),
   ];
   const tab = tabs.some(([id]) => id === initialTab) ? initialTab! : "today";
   const simple=!teacher&&data.classes.length===1&&data.classes[0].simple_student_view===true;
-  const primaryTabs=simple?tabs.filter(([id])=>["today","reading","growth"].includes(id)):tabs;
-  const otherTabs=simple?tabs.filter(([id])=>!["today","reading","growth"].includes(id)):[];
+  const primaryIds = teacher ? ["today", "review", "manage"] : ["today", "reading"];
+  const primaryTabs = primaryIds.flatMap(id => tabs.filter(([tabId]) => id === tabId));
+  const otherTabs = tabs.filter(([id]) => !primaryIds.includes(id));
   if (teacher && data.staffClasses) {
     const permitted = new Set(
       data.staffClasses
@@ -156,7 +157,7 @@ export function LearningHub({
     return () => document.removeEventListener("click", guard, true);
   }, []);
   return (
-    <div className="learning-hub">
+    <div className={simple ? "learning-hub simple-view" : "learning-hub"}>
       <div className="paper-breadcrumb">
         <Link href="/">나의 책숲</Link>
         <span>/</span>
@@ -214,29 +215,39 @@ export function LearningHub({
                 독서 기록 쓰기
               </button>
             )}
-          <Link
-            className={teacher ? "button button-outline" : "paper-text-link"}
-            href={teacher ? "/operations" : "/app?view=missions"}
-          >
-            {teacher ? "학생 계정·기록 관리" : "미션 이어하기"}
-            <ArrowRight size={15} />
-          </Link>
+          {teacher && (
+            <Link className="button button-outline" href={data.selectedClassroom ? "/operations?classroom=" + data.selectedClassroom : "/operations"}>
+              학생 계정·기록 관리 <ArrowRight size={15} />
+            </Link>
+          )}
         </div>
       </div>
-      <div className="button-row"><Link className="button button-outline" href={'/classroom'+(data.selectedClassroom?'?classroom='+data.selectedClassroom:'')}>{teacher?'우리 반 수업 공방 · 학생 화면 시연':'우리 반 활동·책숲 도감'}</Link></div>
-      <nav className="workspace-tabs" aria-label="책장과 성장 메뉴">
-        {primaryTabs.map(([id, label]) => (
-          <Link
-            key={id}
-            className={`hub-tab ${tab === id ? "selected" : ""}`}
-            aria-current={tab === id ? "page" : undefined}
-            href={hubHref(id,data.selectedClassroom)}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
-      {otherTabs.length>0&&<details className="panel" key={data.selectedClassroom} open={otherTabs.some(([id])=>id===tab)||undefined}><summary>더 많은 활동 보기</summary><nav className="workspace-tabs" aria-label="추가 책숲 활동">{otherTabs.map(([id,label])=><Link key={id} className={`hub-tab ${tab===id?"selected":""}`} aria-current={tab===id?"page":undefined} href={hubHref(id,data.selectedClassroom)}>{label}</Link>)}</nav></details>}
+      <div className="workspace-menu">
+        <nav className="workspace-tabs" aria-label="교실 바로가기">
+          {primaryTabs.map(([id, label]) => (
+            <Link key={id} className={`hub-tab ${tab === id ? "selected" : ""}`}
+              aria-current={tab === id ? "page" : undefined} href={hubHref(id, data.selectedClassroom)}>
+              {label}
+            </Link>
+          ))}
+          {!teacher && <Link className="hub-tab" href="/app?view=feedback">받은 피드백</Link>}
+        </nav>
+        <details className="workspace-more" key={tab + ":" + data.selectedClassroom}
+          open={otherTabs.some(([id]) => id === tab) || undefined}>
+          <summary>더 많은 활동 보기</summary>
+          <nav className="workspace-tabs" aria-label="추가 책숲 활동">
+            {otherTabs.map(([id, label]) => (
+              <Link key={id} className={`hub-tab ${tab === id ? "selected" : ""}`}
+                aria-current={tab === id ? "page" : undefined} href={hubHref(id, data.selectedClassroom)}>
+                {label}
+              </Link>
+            ))}
+            <Link className="hub-tab" href={data.selectedClassroom ? "/classroom?classroom=" + data.selectedClassroom : "/classroom"}>
+              {teacher ? "우리 반 수업 공방 · 학생 화면 시연" : "우리 반 활동·책숲 도감"}
+            </Link>
+          </nav>
+        </details>
+      </div>
       {(data.availableClasses?.length??0)>0&&<ClassContext owner={data.profile.id} tab={tab} selected={data.selectedClassroom??""} classes={data.availableClasses??[]}/>}
       <LearningUpdates owner={data.profile.id} classroom={data.selectedClassroom??""} tab={tab} initialToken={learningToken}/>
       {!data.schemaReady ? (
@@ -273,10 +284,10 @@ export function LearningHub({
             </>
           ) : (
             <>
-              {tab==='today'&&classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}
               {tab === "today" && studentToday && (
                 <Today state={studentToday} classes={data.classes} />
               )}
+              {tab==='today'&&classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}
               {teacher && ["today", "overview"].includes(tab) && overview && (
                 <ClassOverviewPanel
                   owns={owns}

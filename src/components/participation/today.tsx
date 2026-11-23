@@ -18,9 +18,10 @@ export function Today({
   classes: Classroom[];
 }) {
   const active = classes.some((c) => c.term_state !== "archived"),
-    next = state.tasks.find((t) =>
+    next = state.page === 1 ? state.tasks.find((t) =>
       ["revision", "draft", "new"].includes(t.state),
-    );
+    ) : undefined;
+  const remaining = state.tasks.filter(t => t.id !== next?.id);
   return (
     <div className="today-board">
       <div className="today-intro">
@@ -28,6 +29,25 @@ export function Today({
         <h2>오늘은 어떤 생각을 남길까요?</h2>
         <p>한 가지 활동부터 골라 보세요. 진행 중인 학급의 활동만 보여드려요.</p>
       </div>
+      {next && (
+        <section className="panel today-next" aria-labelledby="today-next-title">
+          <div>
+            <h2 id="today-next-title">지금 할 일</h2>
+            <p className="today-next-name">{next.mission_snapshot.title}</p>
+            <p>
+              {[
+                classes.find(c => c.id === next.classroom_id)?.name,
+                next.due_at ? "마감 " + new Date(next.due_at).toLocaleDateString("ko-KR", {
+                  timeZone: "Asia/Seoul", month: "long", day: "numeric",
+                }) : "마감일 없음",
+              ].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <Link className="button button-primary" href={`/app/work/${next.id}`}>
+            {labels[next.state]}
+          </Link>
+        </section>
+      )}
       <div className="today-actions">
         <Link
           href={active ? "/hub?tab=reading#reading-editor" : "/hub?tab=terms"}
@@ -42,11 +62,9 @@ export function Today({
               : "새 학급 참여를 선생님과 확인해요"}
           </span>
         </Link>
-        <Link
+        {!next && <Link
           href={
-            next
-              ? `/app/work/${next.id}`
-              : active
+            active
                 ? "/app?view=missions"
                 : "/hub?tab=terms"
           }
@@ -54,13 +72,11 @@ export function Today({
           <Feather size={28} />
           <strong>오늘의 글쓰기</strong>
           <span>
-            {next
-              ? "선택한 미션에서 한 걸음 더"
-              : active
+            {active
                 ? "배정받은 독서미션 살펴보기"
                 : "학급 참여 확인 후 시작해요"}
           </span>
-        </Link>
+        </Link>}
         <Link href="/hub?tab=growth">
           <Sprout size={28} />
           <strong>내 캐릭터와 우리 숲</strong>
@@ -83,7 +99,7 @@ export function Today({
           </Link>
         </p>
       )}
-      <section className="panel">
+      {(remaining.length > 0 || !next || state.total > 8) && <section className="panel">
         <h2>나의 미션 이어가기</h2>
         {!state.tasks.length && (
           <p>
@@ -94,7 +110,7 @@ export function Today({
                 : "새 학급에 참여하면 배정된 미션을 볼 수 있어요."}
           </p>
         )}
-        {state.tasks.map((t) => (
+        {remaining.map((t) => (
           <article className="today-task" key={t.id}>
             <div>
               <h3>{t.mission_snapshot.title}</h3>
@@ -130,7 +146,7 @@ export function Today({
             </Link>
           )}
         </nav>
-      </section>
+      </section>}
       {classes.some((c) => c.term_state === "archived") && (
         <p>
           <Link href="/hub?tab=search">
