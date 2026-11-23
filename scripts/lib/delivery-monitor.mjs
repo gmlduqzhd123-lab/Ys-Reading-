@@ -51,6 +51,8 @@ export async function probeGithubDelivery({
     const latest = runs[0];
     if (!latest || !Number.isSafeInteger(latest.id) || latest.id < 1)
       throw Error("GITHUB_STATUS_UNAVAILABLE");
+    if (["queued", "waiting", "pending", "requested"].includes(latest.status))
+      return { code: "GITHUB_CHECK_RUNNING", runId: latest.id, notifiedAt: null };
     const completed =
       latest.status === "in_progress"
         ? latest

@@ -91,8 +91,10 @@ test("ten classroom improvements with real teacher, student and anonymous family
   ).toHaveCount(0);
   await login(student, f.workshop.student.loginId, f.workshop.student.password);
   await student.goto("/hub?tab=today&classroom=" + f.workshop.classroom);
-  await expect(student.getByRole("region", { name: "지금 할 일" }).getByRole("link"))
+  await expect(student.getByRole("region", { name: "지금 할 일" })
+    .getByRole("link", { name: "피드백 읽고 고쳐 쓰기" }))
     .toHaveAttribute("href", "/app/work/" + f.workshop.assignment + "?classroom=" + f.workshop.classroom);
+  await expect(student.getByText("전체 32개 · 1페이지", { exact: true })).toBeVisible();
   await student.getByRole("combobox", { name: "지금 보고 있는 학급" }).selectOption(f.workshopTouch["webkit-mobile"]);
   await expect(student).toHaveURL(new RegExp("classroom=" + f.workshopTouch["webkit-mobile"]));
   await expect(student.getByRole("region", { name: "지금 할 일" })).toHaveCount(0);
@@ -200,13 +202,18 @@ test("ten classroom improvements with real teacher, student and anonymous family
   await teacher
     .getByText("교실·학교 보유 도서 CSV 등록", { exact: true })
     .click();
+  const extraBooks = Array.from({ length: 30 }, (_, index) => {
+    const prefix = "978" + String(index).padStart(9, "0");
+    const checksum = [...prefix].reduce((sum, digit, position) => sum + Number(digit) * (position % 2 ? 3 : 1), 0);
+    return `${prefix}${(10 - checksum % 10) % 10},CI 교실 책장 ${index + 1},책숲,2번 책장,1`;
+  });
   await teacher
     .getByLabel("보유 도서 CSV 파일", { exact: true })
     .setInputFiles({
       name: "library.csv",
       mimeType: "text/csv",
       buffer: Buffer.from(
-        "ISBN,제목,저자,위치,권수\n9788936434120,CI 교실 도서,책숲,2번 책장,2\n",
+        ["ISBN,제목,저자,위치,권수", "9788936434120,CI 교실 도서,책숲,2번 책장,2", ...extraBooks].join("\n") + "\n",
         "utf8",
       ),
     });
@@ -230,10 +237,24 @@ test("ten classroom improvements with real teacher, student and anonymous family
   ).toBeVisible();
   await student.goto("/hub?tab=reading&classroom=" + f.workshop.classroom + "#reading-editor");
   const reader = student.locator("#reading-editor");
+  const outside = Promise.withResolvers<void>();
+  await student.route(
+    url => url.pathname === "/api/books" && url.searchParams.get("source") === "external",
+    async route => { await outside.promise; await route.fulfill({ json: { books: [] } }); },
+  );
   await reader.getByLabel("제목·저자·ISBN", { exact: true }).fill("CI 교실");
   await reader.getByRole("button", { name: "도서 검색", exact: true }).click();
-  await reader.getByRole("region", { name: "교실 보유 도서", exact: true })
-    .getByRole("button", { name: /CI 교실 도서/ }).click();
+  const heldBooks = reader.getByRole("region", { name: "교실 보유 도서", exact: true });
+  try {
+    await expect(heldBooks.getByRole("button", { name: /CI 교실 도서/ })).toBeVisible();
+    await expect(reader.getByText("외부 도서를 찾고 있어요.")).toBeVisible();
+    await heldBooks.getByRole("button", { name: "보유 도서 더 보기", exact: true }).click();
+    await expect(heldBooks.getByText("31권 표시 · 전체 31권")).toBeVisible();
+  } finally {
+    outside.resolve();
+  }
+  await expect(reader.getByText("추가 외부 검색 결과가 없어요.")).toBeVisible();
+  await heldBooks.getByRole("button", { name: /CI 교실 도서/ }).click();
   await expect(reader.getByLabel("책 제목", { exact: true })).toHaveValue("CI 교실 도서");
   await student.goto(path);
   await teacher.reload();

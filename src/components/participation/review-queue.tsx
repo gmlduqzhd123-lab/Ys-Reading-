@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
 import type { Classroom } from "@/lib/data";
 import type { ReviewState } from "@/lib/learning-queues";
 import { useRouter } from "next/navigation";
 import { feedbackStarters } from "@/lib/participation";
 import { ParticipationForm, TextArea, value } from "./form";
 import { Field } from "@/components/hub/shared";
+import { ReviewHistory } from "./review-history";
 import {useTeacherWorkDraft,TeacherWorkDraftNotice} from "@/components/teacher-work-draft";
 export function ReviewQueue({
   state,
@@ -137,9 +137,7 @@ export function ReviewQueue({
             </summary>
             <p className="submission-body">{r.body}</p>
             {r.kind === "writing" && (
-              <Link href={`/app?view=feedback`}>
-                제출 이력·이전 피드백 보기
-              </Link>
+              <ReviewHistory submission={r.id} />
             )}
           </details>
           <label className="hub-check">

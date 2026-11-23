@@ -10,9 +10,10 @@ export interface DeliveryHealth {
   notifiedAt: string | null;
   runId: number | null;
   lastSuccessAt?: string | null;
+  refreshCode?: string;
   source: "operator-pc" | "server-github";
 }
-export async function deliveryHealth(): Promise<DeliveryHealth> {
+export async function deliveryHealth(pendingRun?: number): Promise<DeliveryHealth> {
   const now = Date.now();
   let local: DeliveryHealth | null = null;
   try {
@@ -29,11 +30,15 @@ export async function deliveryHealth(): Promise<DeliveryHealth> {
     }
   } catch {}
   const observed = Date.parse(local?.observedAt ?? "");
-  if (
+  const freshLocal =
     local?.configured &&
     Number.isFinite(observed) &&
     observed <= now + 60000 &&
-    now - observed < 45 * 60000 &&
+    now - observed < 45 * 60000;
+  if (
+    local && freshLocal &&
+    (!pendingRun || (local.runId ?? 0) >= pendingRun) &&
+    local.code !== "GITHUB_CHECK_RUNNING" &&
     !["DELIVERY_MONITOR_STALE", "GITHUB_STATUS_UNAVAILABLE", "GITHUB_RATE_LIMITED"].includes(local.code)
   )
     return { ...local, source: "operator-pc" };
@@ -48,18 +53,26 @@ export async function deliveryHealth(): Promise<DeliveryHealth> {
         ...options,
         headers: { ...options?.headers, ...(readToken ? { Authorization: `Bearer ${readToken}` } : {}) },
         cache: "force-cache",
-        next: { revalidate: 300 },
+        next: { revalidate: pendingRun || local?.code === "GITHUB_CHECK_RUNNING" ? 20 : 300 },
       }),
   });
+  const knownRun = Math.max(pendingRun ?? 0, freshLocal && local?.code === "GITHUB_CHECK_RUNNING" ? local.runId ?? 0 : 0);
+  const previousRun = result.runId !== null && result.runId < knownRun;
+  const refreshCode = knownRun && result.runId === null ? result.code : undefined;
+  const lastSuccessAt = [result.notifiedAt, local?.lastSuccessAt, local?.notifiedAt]
+    .filter((value): value is string => !!value && Number.isFinite(Date.parse(value)) && Date.parse(value) <= now + 60000)
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
+  const code = previousRun || refreshCode ? "GITHUB_CHECK_RUNNING" : result.code;
   return {
     configured: true,
-    healthy: result.code === "OK",
-    code: result.code,
+    healthy: code === "OK",
+    code,
     checkedAt: new Date().toISOString(),
     observedAt: new Date(now).toISOString(),
-    notifiedAt: result.notifiedAt,
-    lastSuccessAt: result.notifiedAt ?? local?.lastSuccessAt ?? local?.notifiedAt ?? null,
-    runId: result.runId,
+    notifiedAt: previousRun ? null : result.notifiedAt,
+    lastSuccessAt,
+    ...(refreshCode ? { refreshCode } : {}),
+    runId: knownRun ? Math.max(knownRun, result.runId ?? 0) : result.runId,
     source: "server-github",
   };
 }

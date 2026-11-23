@@ -4,11 +4,12 @@ import { accountReady } from "@/lib/account-access";
 import { googleCallback, googleCancel } from "@/lib/google-drive";
 import { appOrigin } from "@/lib/request-origin";
 import { withClassroom } from "@/lib/hub-navigation";
+type ReturnScope = { classroom?: string; page?: number };
 export async function GET(r: NextRequest) {
-  const destination = (notice: string, classroom?: string) =>
+  const destination = (notice: string, scope?: ReturnScope) =>
     NextResponse.redirect(
       new URL(
-        withClassroom(`/hub?tab=exports&google=${notice}`, classroom),
+        withClassroom(`/hub?tab=exports&google=${notice}${scope?.page ? "&page=" + scope.page : ""}`, scope?.classroom),
         appOrigin(r.url, r.headers.get("host")),
       ),
     );
@@ -23,7 +24,7 @@ export async function GET(r: NextRequest) {
       state = r.nextUrl.searchParams.get("state");
     const denied = r.nextUrl.searchParams.get("error");
     if (denied) {
-      const classroom = await googleCancel(p.id, state ?? "");
+      const scope = await googleCancel(p.id, state ?? "");
       return destination(
         denied === "admin_policy_enforced" ||
           r.nextUrl.searchParams.get("error_subtype") ===
@@ -32,12 +33,11 @@ export async function GET(r: NextRequest) {
           : denied === "access_denied"
             ? "cancelled"
             : "failed",
-        classroom,
+        scope,
       );
     }
     if (!code || !state) throw new Error("GOOGLE_STATE_INVALID");
-    const classroom = await googleCallback(p.id, code, state);
-    return destination("connected", classroom);
+    return destination("connected", await googleCallback(p.id, code, state));
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     return destination(
@@ -46,6 +46,7 @@ export async function GET(r: NextRequest) {
         : code === "GOOGLE_NOT_CONFIGURED"
           ? "configuration"
           : "failed",
+      code === "GOOGLE_AUTH_FAILED" && error instanceof Error ? error.cause as ReturnScope : undefined,
     );
   }
 }

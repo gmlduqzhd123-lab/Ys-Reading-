@@ -2,11 +2,12 @@
 import { GoogleConnectionCheck } from "./google-connection-check";
 import {BatchExports} from "./batch-exports";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { HubData } from "@/lib/hub-data";
 import { Empty, Panel } from "./shared";
 import { googleCallbackNotice } from "@/lib/google-errors";
+import { exportSelectionKey, readExportSelection } from "@/lib/export-selection";
 export function Exports({
   data,
   google,
@@ -54,7 +55,36 @@ export function Exports({
             student: s.student_id,
           }));
   const teacher = data.profile.role === "teacher";
-  const connectHref = "/api/google/connect?" + new URLSearchParams({ classroom: data.selectedClassroom ?? "" });
+  const classroom = data.selectedClassroom ?? "";
+  const selectionKey = exportSelectionKey(data.profile.id, classroom, data.page);
+  const connectHref = "/api/google/connect?" + new URLSearchParams({ classroom, page: String(data.page) });
+  useEffect(() => {
+    if (!teacher || !googleNotice || !["connected", "cancelled", "school-policy", "expired", "configuration", "failed"].includes(googleNotice)) return;
+    try {
+      const raw = sessionStorage.getItem(selectionKey);
+      sessionStorage.removeItem(selectionKey);
+      const saved = readExportSelection(raw, Date.now(), {
+        reading: new Set(data.logs.map(record => record.id)),
+        writing: new Set(data.submissions.map(record => record.id)),
+      });
+      if (!saved) return;
+      setKind(saved.kind);
+      setTitle(saved.title);
+      setSelected(saved.ids);
+      setIncludeNames(false);
+      key.current = {};
+      setMessage(saved.omitted
+        ? "현재 내보낼 수 있는 기록을 선택했어요. 목록에서 선택을 확인해 주세요."
+        : "연결 전에 선택한 기록과 제목을 불러왔어요.");
+    } catch {}
+  }, [teacher, googleNotice, selectionKey, data.logs, data.submissions]);
+
+  function rememberSelection(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || kind === "drafts") return;
+    try {
+      sessionStorage.setItem(selectionKey, JSON.stringify({ kind, title, ids: selected, savedAt: Date.now() }));
+    } catch {}
+  }
   async function download(format: string) {
     if (busy) return;
     if (!selected.length) {
@@ -262,7 +292,7 @@ export function Exports({
                 계속 이용할 수 있습니다.
               </div>
             ) : !google.connected || requiresReconnect ? (
-              <a className="button button-primary" href={connectHref}>
+              <a className="button button-primary" href={connectHref} onClick={rememberSelection}>
                 {requiresReconnect
                   ? "Google 계정 다시 연결"
                   : "교사 Google 계정 연결"}
@@ -292,6 +322,7 @@ export function Exports({
                     <a
                       className="button button-outline"
                       href={connectHref}
+                      onClick={rememberSelection}
                     >
                       Google 계정 다시 연결
                     </a>

@@ -13,11 +13,13 @@ export async function GET(request: NextRequest) {
       { status: 403 },
     );
   let classroom = "";
+  const rawPage = Number(request.nextUrl.searchParams.get("page") ?? "1");
+  const page = Number.isSafeInteger(rawPage) && rawPage > 1 && rawPage <= 100000 ? rawPage : undefined;
   try {
     classroom = await activeClassroom(p.id, request.nextUrl.searchParams.get("classroom") ?? undefined);
-    return NextResponse.redirect(await googleStart(p.id, classroom));
+    return NextResponse.redirect(await googleStart(p.id, classroom, page));
   } catch {
-    return NextResponse.redirect(new URL(hubHref("exports", classroom, { google: "configuration" }),
+    return NextResponse.redirect(new URL(hubHref("exports", classroom, { google: "configuration", ...(page ? { page } : {}) }),
       appOrigin(request.url, request.headers.get("host"))));
   }
 }

@@ -265,6 +265,19 @@ const workshopAssignment = await result(await teacher.rpc("assign_mission", {
   p_classroom_id: workshopClass,
   p_mission_id: missions.find(m => !m.requires_revision && m.kind === "writing")!.id,
 }), "CI_WORKSHOP_ASSIGN");
+// The revision target is older than all 31 competing assignments and is
+// outside the first page even though it belongs at the top of Today.
+execFileSync("docker", ["exec", "-i", "supabase_db_bookforest", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-q"], {
+  input: `
+    insert into public.assignments (classroom_id,mission_id,mission_snapshot,due_at,created_at)
+    select classroom_id,mission_id,mission_snapshot,due_at,created_at+n*interval '1 second'
+    from public.assignments cross join generate_series(1,31) as n
+    where id='${workshopAssignment.id}';
+    insert into public.submissions (assignment_id,student_id,title,body,version,status,request_id)
+    values ('${workshopAssignment.id}','${workshopUser.data.user.id}','CI 공방 제출','우선순위 확인용 합성 글입니다.',1,'revision_requested','${randomUUID()}');
+  `,
+  stdio: ["pipe", "pipe", "pipe"],
+});
 fs.writeFileSync(
   "e2e/.runtime/fixtures.json",
   JSON.stringify({

@@ -40,7 +40,7 @@ import { POST as disconnect } from "@/app/api/google/disconnect/route";
 import { GET as books } from "@/app/api/books/route";
 import { POST as exports } from "@/app/api/export/route";
 import { GET as menus } from "@/app/api/classroom-navigation/route";
-const connectRequest = () => new NextRequest("http://127.0.0.1:3086/api/google/connect?classroom=" + classId);
+const connectRequest = (page = 1) => new NextRequest("http://127.0.0.1:3086/api/google/connect?classroom=" + classId + "&page=" + page);
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.NEXT_PUBLIC_APP_URL = "http://127.0.0.1:3086";
@@ -100,10 +100,11 @@ describe("external API gates after account/session changes", () => {
     },
   );
   it("allows a ready teacher to start their own OAuth flow", async () => {
-    expect((await connect(connectRequest())).status).toBe(307);
-    expect(state.start).toHaveBeenCalledWith("teacher", classId);
+    expect((await connect(connectRequest(2))).status).toBe(307);
+    expect(state.start).toHaveBeenCalledWith("teacher", classId, 2);
   });
   it("returns a canceled OAuth flow to exports without exposing its state", async () => {
+    state.cancel.mockResolvedValue({ classroom: classId, page: 2 });
     const r = await callback(
       new NextRequest(
         "http://127.0.0.1:3086/api/google/callback?error=access_denied&state=opaque-state",
@@ -112,7 +113,7 @@ describe("external API gates after account/session changes", () => {
     expect(state.cancel).toHaveBeenCalledWith("teacher", "opaque-state");
     expect(r.status).toBe(307);
     expect(r.headers.get("location")).toBe(
-      "http://127.0.0.1:3086/hub?tab=exports&google=cancelled",
+      "http://127.0.0.1:3086/hub?tab=exports&google=cancelled&page=2&classroom=" + classId,
     );
   });
   it("returns an expired callback to a safe reconnect page", async () => {
@@ -128,11 +129,11 @@ describe("external API gates after account/session changes", () => {
     expect(r.headers.get("location")).not.toContain("private-code");
   });
   it("returns a ready teacher to the authorized class saved in Google state", async () => {
-    state.callback.mockResolvedValue(classId);
+    state.callback.mockResolvedValue({ classroom: classId, page: 2 });
     const r = await callback(new NextRequest(
       "http://127.0.0.1:3086/api/google/callback?code=private-code&state=opaque-state",
     ));
-    expect(r.headers.get("location")).toBe("http://127.0.0.1:3086/hub?tab=exports&google=connected&classroom=" + classId);
+    expect(r.headers.get("location")).toBe("http://127.0.0.1:3086/hub?tab=exports&google=connected&page=2&classroom=" + classId);
   });
   it("publishes menu flags for the selected classroom only", async () => {
     state.rpc.mockResolvedValue({ data: { classes: [
@@ -157,6 +158,21 @@ describe("external API gates after account/session changes", () => {
     const r = await books(new NextRequest("http://127.0.0.1:3086/api/books?q=book&classroom=" + classId));
     expect(r.status).toBe(403);
     expect(state.search).not.toHaveBeenCalled();
+  });
+  it("pages classroom-only results without calling the external service or its budget", async () => {
+    state.rpc.mockResolvedValue({ data: { items: [{ isbn: "9788936434120", title: "두 번째 묶음", author: "", location: "" }], total: 61 } });
+    const r = await books(new NextRequest("http://127.0.0.1:3086/api/books?q=book&source=library&page=2&classroom=" + classId));
+    expect(await r.json()).toMatchObject({ library: [{ title: "두 번째 묶음" }], libraryTotal: 61, page: 2, hasNext: true });
+    expect(state.rpc).toHaveBeenCalledWith("classroom_workshop_query", { p_classroom: classId, p_kind: "library", p_page: 2, p_filters: { q: "book" } });
+    expect(state.budget).not.toHaveBeenCalled();
+    expect(state.search).not.toHaveBeenCalled();
+  });
+  it("handles external search independently of classroom metadata", async () => {
+    state.budget.mockResolvedValue({ allowed: true });
+    state.search.mockResolvedValue({ books: [{ title: "외부 도서" }] });
+    const r = await books(new NextRequest("http://127.0.0.1:3086/api/books?q=book&source=external&classroom=" + classId));
+    expect(await r.json()).toMatchObject({ books: [{ title: "외부 도서" }] });
+    expect(state.rpc).not.toHaveBeenCalled();
   });
 });
 vi.mock("server-only",()=>({}));

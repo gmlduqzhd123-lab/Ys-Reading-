@@ -20,21 +20,28 @@ export async function GET(request: NextRequest) {
   const classroom = request.nextUrl.searchParams.get("classroom");
   if (classroom && !z.uuid().safeParse(classroom).success)
     return reply({ error: "보유 도서를 찾을 학급을 확인해 주세요." }, 400);
+  const source = request.nextUrl.searchParams.get("source");
+  if (source !== null && source !== "library" && source !== "external")
+    return reply({ error: "도서 검색 종류를 확인해 주세요." }, 400);
+  const page = Number(request.nextUrl.searchParams.get("page") ?? "1");
+  if (source === "library" && (!classroom || !Number.isInteger(page) || page < 1 || page > 10000))
+    return reply({ error: "보유 도서를 찾을 학급과 페이지를 확인해 주세요." }, 400);
   let library: { isbn: string; title: string; author: string; location: string }[] = [];
   let libraryTotal = 0;
-  if (classroom) {
+  if (classroom && source !== "external") {
     const client = await createClient();
     const { data, error } = await client.rpc("classroom_workshop_query", {
-      p_classroom: classroom, p_kind: "library", p_page: 1, p_filters: { q },
+      p_classroom: classroom, p_kind: "library", p_page: source === "library" ? page : 1, p_filters: { q },
     });
     if (error || !data) return reply({ error: "교실 보유 도서에 접근할 수 있는 학급과 계정인지 확인해 주세요." },
       error?.message === "BF_FORBIDDEN" ? 403 : 503);
     library = data.items.map(({ isbn, title, author, location }: { isbn: string; title: string; author: string; location: string }) =>
       ({ isbn, title, author, location }));
     libraryTotal = data.total;
+    if (source === "library") return reply({ library, libraryTotal, page, hasNext: page * 30 < libraryTotal });
   }
   const partial = (message: string, status: number, retryAfter?: number) =>
-    classroom ? reply({ library, libraryTotal, books: [], domesticConfigured: domesticBookSearchConfigured(), externalMessage: message })
+    classroom && source === null ? reply({ library, libraryTotal, books: [], domesticConfigured: domesticBookSearchConfigured(), externalMessage: message })
       : NextResponse.json({ error: message }, { status, headers: {
         "Cache-Control": "private, no-store", ...(retryAfter ? { "Retry-After": String(retryAfter) } : {}),
       } });

@@ -334,7 +334,7 @@ export function LearningHub({
               )}
               {tab === "exports" && (
                 <Exports
-                  key={data.page}
+                  key={`${data.profile.id}:${data.selectedClassroom ?? ""}:${data.page}`}
                   data={data}
                   google={google}
                   googleNotice={googleNotice}

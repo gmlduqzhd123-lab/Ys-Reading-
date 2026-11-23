@@ -1,17 +1,19 @@
-export interface TodayState {
-  asOf: string;
-  page: number;
-  total: number;
-  pageSize?: number;
-  pendingClasses: number;
-  tasks: {
+export interface TodayTask {
     id: string;
     classroom_id: string;
     mission_snapshot: { title: string };
     due_at: string | null;
     state: string;
     version: number | null;
-  }[];
+}
+export interface TodayState {
+  asOf: string;
+  page: number;
+  total: number;
+  pageSize?: number;
+  pendingClasses: number;
+  tasks: TodayTask[];
+  nextTask?: TodayTask | null;
 }
 export interface ReviewState {
   asOf: string;

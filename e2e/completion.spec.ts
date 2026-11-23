@@ -29,6 +29,30 @@ test("class context, 28-record split export, resume and learning notification", 
   await expect(page).toHaveURL(
     new RegExp("tab=exports.*classroom=" + f.classroom),
   );
+  // Exercise the real application redirect and encrypted state. Stub only
+  // the external consent page so real Google accounts are never contacted.
+  await page.route("https://accounts.google.com/o/oauth2/v2/auth?**", async route => {
+    const oauth = new URL(route.request().url());
+    const callback = new URL(oauth.searchParams.get("redirect_uri")!);
+    callback.searchParams.set("state", oauth.searchParams.get("state")!);
+    callback.searchParams.set("error", "access_denied");
+    await route.fulfill({ status: 302, headers: { location: callback.href } });
+  });
+  const choice = page.locator("#file-export-choice");
+  const oneRecord = choice.getByRole("checkbox", { name: /CI 묶음 기록 28/ });
+  await oneRecord.check();
+  await choice.getByLabel("기록장·작품집 제목").fill("CI 연결 후 기록장");
+  await choice.getByLabel("파일에 작성자 표시 이름 포함").check();
+  await page.getByRole("link", { name: "교사 Google 계정 연결" }).click();
+  await expect(page).toHaveURL(/google=cancelled/);
+  await expect(oneRecord).toBeChecked();
+  await expect(choice.getByLabel("기록장·작품집 제목")).toHaveValue("CI 연결 후 기록장");
+  await expect(choice.getByLabel("파일에 작성자 표시 이름 포함")).not.toBeChecked();
+  const csvDownload = page.waitForEvent("download");
+  await choice.getByRole("button", { name: "표로 저장 · CSV" }).click();
+  const csvFile = await csvDownload;
+  expect(csvFile.suggestedFilename()).toMatch(/\.csv$/);
+  expect(fs.readFileSync((await csvFile.path())!, "utf8")).toContain("CI 묶음 기록 28");
   await page.getByLabel("묶음 제목", { exact: true }).fill("CI 학기 묶음");
   await page.getByLabel("기록 시작 날짜", { exact: true }).fill("2024-02-01");
   await page.getByLabel("기록 끝 날짜", { exact: true }).fill("2024-02-28");

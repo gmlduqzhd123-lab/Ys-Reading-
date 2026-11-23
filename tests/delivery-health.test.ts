@@ -88,3 +88,31 @@ it("does not report success when both observers are unavailable", async () => {
     code: "GITHUB_STATUS_UNAVAILABLE",
   });
 });
+
+for (const { github, expected } of [
+  { github: "completed", expected: { code: "OK", runId: 8 } },
+  { github: "older", expected: { code: "GITHUB_CHECK_RUNNING", runId: 8, notifiedAt: null } },
+  { github: "limited", expected: { code: "GITHUB_CHECK_RUNNING", runId: 8, refreshCode: "GITHUB_RATE_LIMITED" } },
+]) {
+  it(`refreshes a running PC observation with GitHub ${github}`, async () => {
+    const lastSuccessAt = new Date(Date.now() - 3600000).toISOString();
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.includes("/rpc/")) return Response.json({
+        configured: true, healthy: false, code: "GITHUB_CHECK_RUNNING",
+        observedAt: new Date().toISOString(), runId: 8, notifiedAt: null, lastSuccessAt,
+      });
+      if (github === "older" && !url.includes("/jobs?")) {
+        const { workflow_runs } = await githubResponse(url).json();
+        return Response.json({ workflow_runs: [{ ...workflow_runs[0], id: 7 }] });
+      }
+      if (github === "limited") return new Response(null, {
+        status: 403, headers: { "x-ratelimit-remaining": "0" },
+      });
+      return githubResponse(url);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const observed = await deliveryHealth();
+    expect(observed).toMatchObject({ source: "server-github", ...expected });
+    expect(Date.parse(observed.lastSuccessAt!)).toBeGreaterThanOrEqual(Date.parse(lastSuccessAt));
+  });
+}

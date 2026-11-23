@@ -21,9 +21,11 @@ export function Today({
   classroom: string;
 }) {
   const active = classes.some((c) => c.term_state !== "archived"),
-    next = state.page === 1 ? state.tasks.find((t) =>
-      ["revision", "draft", "new"].includes(t.state),
-    ) : undefined;
+    next = state.page === 1
+      ? state.nextTask === undefined
+        ? state.tasks.find(t => ["revision", "draft", "new"].includes(t.state))
+        : state.nextTask
+      : null;
   const remaining = state.tasks.filter(t => t.id !== next?.id);
   const hasNext = state.page * (state.pageSize ?? 8) < state.total;
   return (

@@ -22,6 +22,7 @@ interface GoogleState {
   verifier: string;
   expires: number;
   classroom?: string;
+  page?: number;
 }
 function config() {
   const id = process.env.GOOGLE_DRIVE_CLIENT_ID,
@@ -79,7 +80,7 @@ export async function googleConnectionState() {
     return { configured: true, connected: false };
   }
 }
-export async function googleStart(uid: string, classroom?: string) {
+export async function googleStart(uid: string, classroom?: string, page?: number) {
   const c = config();
   if (!c) throw new Error("GOOGLE_NOT_CONFIGURED");
   const nonce = randomBytes(24).toString("base64url");
@@ -87,7 +88,7 @@ export async function googleStart(uid: string, classroom?: string) {
   (await cookies()).set(
     STATE,
     seal(
-      { uid, nonce, verifier, expires: Date.now() + 10 * 60000, classroom },
+      { uid, nonce, verifier, expires: Date.now() + 10 * 60000, classroom, page },
       c.key,
       "google-state",
     ),
@@ -125,38 +126,44 @@ async function consumeState(uid: string, state: string) {
   return { c, jar, saved };
 }
 export async function googleCancel(uid: string, state: string) {
-  return (await consumeState(uid, state)).saved.classroom;
+  const { saved } = await consumeState(uid, state);
+  return { classroom: saved.classroom, page: saved.page };
 }
 export async function googleCallback(uid: string, code: string, state: string) {
   const { c, jar, saved } = await consumeState(uid, state);
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: c.id,
-      client_secret: c.secret,
-      code,
-      code_verifier: saved.verifier,
-      redirect_uri: c.callback,
-      grant_type: "authorization_code",
-    }),
-    signal: AbortSignal.timeout(15000),
-    cache: "no-store",
-  });
-  const token = await response.json();
-  if (!response.ok || typeof token.access_token !== "string")
-    throw new Error("GOOGLE_AUTH_FAILED");
-  const data: GoogleToken = {
-    uid,
-    access_token: token.access_token,
-    ...(token.refresh_token ? { refresh_token: token.refresh_token } : {}),
-    expires: Date.now() + Number(token.expires_in ?? 3600) * 1000,
-  };
-  jar.set(TOKEN, seal(data, c.key, `google-token:${uid}`), {
-    ...cookieOptions,
-    maxAge: 30 * 86400,
-  });
-  return saved.classroom;
+  const scope = { classroom: saved.classroom, page: saved.page };
+  try {
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: c.id,
+        client_secret: c.secret,
+        code,
+        code_verifier: saved.verifier,
+        redirect_uri: c.callback,
+        grant_type: "authorization_code",
+      }),
+      signal: AbortSignal.timeout(15000),
+      cache: "no-store",
+    });
+    const token = await response.json();
+    if (!response.ok || typeof token.access_token !== "string")
+      throw new Error("GOOGLE_AUTH_FAILED");
+    const data: GoogleToken = {
+      uid,
+      access_token: token.access_token,
+      ...(token.refresh_token ? { refresh_token: token.refresh_token } : {}),
+      expires: Date.now() + Number(token.expires_in ?? 3600) * 1000,
+    };
+    jar.set(TOKEN, seal(data, c.key, `google-token:${uid}`), {
+      ...cookieOptions,
+      maxAge: 30 * 86400,
+    });
+    return scope;
+  } catch {
+    throw new Error("GOOGLE_AUTH_FAILED", { cause: scope });
+  }
 }
 async function access(uid: string) {
   const c = config();

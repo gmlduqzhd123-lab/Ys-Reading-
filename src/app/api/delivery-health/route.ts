@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { deliveryHealth } from "@/lib/delivery-health";
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    return NextResponse.json(await deliveryHealth(), {
+    const pending = Number(request.nextUrl.searchParams.get("pending") ?? "0");
+    return NextResponse.json(await deliveryHealth(Number.isSafeInteger(pending) && pending > 0 ? pending : undefined), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch {

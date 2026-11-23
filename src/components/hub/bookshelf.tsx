@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { bookSchema, koreanDay, readingScrollBehavior, type Book } from "@/lib/hub";
+import { koreanDay, readingScrollBehavior, type Book } from "@/lib/hub";
 import type { HubData, ReadingLog } from "@/lib/hub-data";
 import { ClassField, Empty, Field, HubForm, Panel, string } from "./shared";
 import { PaperBook } from "@/components/paper-book";
@@ -9,19 +9,12 @@ import { Plus, ArrowDownRight, ArrowRight, PenLine } from "lucide-react";
 import { ReadingEditor } from "./reading-editor";
 import { SaveStatus } from "@/components/save-status";
 import { withClassroom } from "@/lib/hub-navigation";
-type HeldBook = Book & { location: string };
+import { RecordBookSearch } from "./record-book-search";
 export function Bookshelf({ data }: { data: HubData }) {
-  const [query, setQuery] = useState(""),
-    [books, setBooks] = useState<Book[]>([]),
-    [library, setLibrary] = useState<HeldBook[]>([]),
-    [message, setMessage] = useState(""),
-    [searching, setSearching] = useState(false);
   const [book, setBook] = useState<Book | null>(null),
     [edit, setEdit] = useState<ReadingLog | null>(null);
   const activeClasses = data.classes.filter(c => c.term_state !== "archived");
-  const [searchClass, setSearchClass] = useState(activeClasses[0]?.id ?? "");
   const [bookClassroom, setBookClassroom] = useState<string>();
-  const controller = useRef<AbortController | null>(null);
   const [formVersion, setFormVersion] = useState(0);
   const [recordSaved, setRecordSaved] = useState(false);
   const teacher = data.profile.role === "teacher";
@@ -33,64 +26,19 @@ export function Bookshelf({ data }: { data: HubData }) {
   const recentWork = currentDraft ?? ownSubmissions.toSorted((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
   const editor = useRef<HTMLDetailsElement>(null);
   useEffect(()=>{if(location.hash==="#reading-editor"&&editor.current)editor.current.open=true;},[]);
-  useEffect(() => () => controller.current?.abort(), []);
   const compose = () => {
     if (editor.current) { editor.current.open = true; editor.current.scrollIntoView({ behavior: readingScrollBehavior(), block: "start" }); }
   };
-  function chooseBook(value: Book | null) {
+  function chooseBook(value: Book | null, classroom: string) {
     if (document.querySelector('form[data-reading-editor="true"][data-hub-dirty="true"]')
-      && !window.confirm("아직 임시 저장하지 못한 독서 기록이 있어요. 책 선택을 바꿀까요?")) return;
+      && !window.confirm("아직 임시 저장하지 못한 독서 기록이 있어요. 책 선택을 바꿀까요?")) return false;
     setBook(value);
-    setBookClassroom(searchClass || undefined);
+    setBookClassroom(classroom || undefined);
     setEdit(null);
     setRecordSaved(false);
-    setBooks([]);
-    setLibrary([]);
-    setMessage("");
     setFormVersion(v => v + 1);
     requestAnimationFrame(() => editor.current?.querySelector<HTMLInputElement>('form[data-reading-editor="true"] input[name="title"]')?.focus());
-  }
-  async function search() {
-    controller.current?.abort();
-    const request = new AbortController();
-    controller.current = request;
-    setSearching(true);
-    setMessage("");
-    setBooks([]);
-    setLibrary([]);
-    try {
-      const params = new URLSearchParams({ q: query, classroom: searchClass });
-      const r = await fetch("/api/books?" + params, {
-        signal: request.signal,
-      });
-      const json = await r.json();
-      if (!r.ok) throw new Error(json.error ?? "검색하지 못했어요.");
-      if (request.signal.aborted) return;
-      const valid = (json.books ?? []).flatMap((b: unknown) => {
-        const p = bookSchema.safeParse(b);
-        return p.success ? [p.data] : [];
-      });
-      setBooks(valid);
-      const held = (json.library ?? []).flatMap((b: unknown) => {
-        if (!b || typeof b !== "object") return [];
-        const raw = b as { title: string; author: string; isbn: string; location?: string };
-        const parsed = bookSchema.safeParse({ ...raw, publisher: "", thumbnail: "" });
-        return parsed.success ? [{ ...parsed.data, location: raw.location ?? "" }] : [];
-      }) as HeldBook[];
-      setLibrary(held);
-      setMessage(
-        [
-          searchClass ? `교실 보유 도서 ${held.length}권${json.libraryTotal > held.length ? ` 표시 · 전체 ${json.libraryTotal}권` : ""}` : "",
-          json.externalMessage || (valid.length ? `외부 검색 ${valid.length}권` : "외부 검색 결과가 없어요."),
-          !held.length && !valid.length ? "아래에서 직접 입력할 수 있어요." : "",
-        ].filter(Boolean).join(" · "),
-      );
-    } catch (e) {
-      if (!request.signal.aborted)
-        setMessage(e instanceof Error ? e.message : "도서 검색에 실패했어요.");
-    } finally {
-      if (!request.signal.aborted) setSearching(false);
-    }
+    return true;
   }
   return (
     <>
@@ -118,81 +66,7 @@ export function Bookshelf({ data }: { data: HubData }) {
             책을 검색해 선택하거나 직접 입력하세요. 한 권에 여러 날의 생각을
             기록할 수 있어요.
           </p>
-          <form
-            className="hub-search"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void search();
-            }}
-          >
-            {activeClasses.length > 1 && (
-              <label className="field">
-                보유 도서를 찾을 학급
-                <select value={searchClass} disabled={searching} onChange={e => {
-                  setSearchClass(e.target.value);
-                  setLibrary([]);
-                  setBooks([]);
-                  setMessage("");
-                }}>
-                  {activeClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </label>
-            )}
-            <label className="field">
-              제목·저자·ISBN
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                minLength={2}
-                maxLength={100}
-                required
-              />
-            </label>
-            <button className="button button-outline" disabled={searching}>
-              {searching ? "검색 중…" : "도서 검색"}
-            </button>
-          </form>
-          {message && <p role="status">{message}</p>}
-          {!!library.length && (
-            <section aria-label="교실 보유 도서">
-              <h3>교실 보유 도서</h3>
-              <div className="book-results">
-                {library.map(b => (
-                  <button type="button" className="book-result" key={b.isbn} onClick={() => chooseBook(b)}>
-                    <span><strong>{b.title}</strong><small>{[b.author, b.location, b.isbn].filter(Boolean).join(" · ")}</small></span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-          {!!books.length && <h3>외부 검색 결과</h3>}
-          <div className="book-results">
-            {books.map((b, i) => (
-              <button
-                type="button"
-                className="book-result"
-                key={`${b.isbn}-${i}`}
-                onClick={() => chooseBook(b)}
-              >
-                {b.thumbnail && (
-                  <img
-                    src={b.thumbnail}
-                    alt=""
-                    width={45}
-                    height={65}
-                    referrerPolicy="no-referrer"
-                  />
-                )}
-                <span>
-                  <strong>{b.title}</strong>
-                  <small>
-                    {b.author} · {b.publisher}{b.isbn&&` · ISBN ${b.isbn}`}
-                  </small>
-                </span>
-              </button>
-            ))}
-          </div>
-          <button type="button" className="button button-outline" onClick={() => chooseBook(null)}>책 정보를 직접 입력</button>
+          <RecordBookSearch classes={activeClasses} choose={chooseBook} />
           {recordSaved && <div className="save-status-region" role="status">
             <SaveStatus kind="reading" />
             <p>독서 기록을 저장했어요. 아래 내 기록에서 확인할 수 있습니다.</p>

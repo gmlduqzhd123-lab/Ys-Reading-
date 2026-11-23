@@ -48,6 +48,9 @@ export default defineConfig({
       NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3096",
       SUPABASE_SECRET_KEY: "",
       SUPABASE_SERVICE_ROLE_KEY: "",
+      GOOGLE_DRIVE_CLIENT_ID: "bookforest-ci-local.apps.googleusercontent.com",
+      GOOGLE_DRIVE_CLIENT_SECRET: "synthetic-browser-test",
+      GOOGLE_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32).toString("base64"),
     },
   },
 });

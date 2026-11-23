@@ -143,6 +143,15 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
     .locator("summary")
     .filter({ hasText: "CI 생각을 나눈 글" })
     .click();
+  const reviewUrl = teacher.url();
+  const writingCard = teacher.locator(".review-card").filter({ hasText: "CI 생각을 나눈 글" });
+  await writingCard.getByRole("button", { name: "제출 이력·이전 피드백 보기" }).click();
+  const history = writingCard.getByRole("region", { name: "이 글의 제출 이력" });
+  await expect(history.getByRole("heading", { name: "1번째 글 · CI 생각을 나눈 글" })).toBeVisible();
+  await writingCard.getByRole("button", { name: "제출 이력 닫기" }).click();
+  await expect(history).toBeHidden();
+  await expect(teacher).toHaveURL(reviewUrl);
+  await expect(teacher.getByRole("combobox", { name: "기록 종류", exact: true })).toHaveValue("writing");
   await teacher
     .getByRole("checkbox", { name: "이 기록을 읽고 확인했어요" })
     .check();
