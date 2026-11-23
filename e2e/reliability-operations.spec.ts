@@ -116,6 +116,7 @@ test("private-device encrypted recovery survives reload, prevents tab overwrite 
         .count(),
     )
     .toBeGreaterThan(0);
+  await expect(page.getByText("이 기기에 암호화 초안 저장됨", { exact: true }).first()).toBeVisible();
   const raw = await page.evaluate(() =>
     Object.keys(localStorage)
       .filter((k) => k.startsWith("bookforest.personal.v1:"))

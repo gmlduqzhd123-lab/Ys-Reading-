@@ -24,6 +24,7 @@ const tell: Record<string, string> = {
   LOCAL_VAULT_UNAVAILABLE:
     "이 브라우저에서는 안전한 기기 보관을 사용할 수 없어요. 파일 보관을 이용해 주세요.",
 };
+const encryptedSavedNotice = "이 기기의 암호화 초안도 보관했어요. 정식 저장·제출은 별도입니다.";
 export function PersonalDraftAccess({ owner }: { owner: string }) {
   const [configured, setConfigured] = useState(false),
     [unlocked, setUnlocked] = useState(false),
@@ -221,12 +222,12 @@ export function PersonalDraftTools({
   ref.current = { context, payload, apply };
   const [candidate, setCandidate] = useState<PersonalDraft | null>(null),
     [message, setMessage] = useState(""),
+    [savedKey, setSavedKey] = useState(""),
     [tick, setTick] = useState(0),
     [ready, setReady] = useState(false),
     [paused, setPaused] = useState(false),
     [blocked, setBlocked] = useState(false);
   const expected = useRef<string | null>(null),
-    saved = useRef(""),
     generation = useRef(0),
     queue = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
@@ -253,6 +254,7 @@ export function PersonalDraftTools({
     setReady(false);
     setCandidate(null);
     setPaused(false);
+    setSavedKey("");
     if (!enabled || blocked) return;
     let vault;
     try {
@@ -266,7 +268,7 @@ export function PersonalDraftTools({
       .then((p) => {
         if (!live || generation.current !== g) return;
         expected.current = p?.id ?? null;
-        saved.current = p ? draftKey(p.payload) : "";
+        setSavedKey(p ? draftKey(p.payload) : "");
         setCandidate(
           p && draftKey(p.payload) !== draftKey(ref.current.payload) ? p : null,
         );
@@ -292,7 +294,7 @@ export function PersonalDraftTools({
       blocked ||
       paused ||
       candidate ||
-      value === saved.current
+      value === savedKey
     )
       return;
     const g = generation.current,
@@ -317,12 +319,11 @@ export function PersonalDraftTools({
           .then((p) => {
             if (!p || g !== generation.current) return;
             expected.current = p.id;
-            saved.current = draftKey(p.payload);
-            setMessage(
-              "이 기기의 암호화 초안도 보관했어요. 정식 저장·제출은 별도입니다.",
-            );
+            setSavedKey(draftKey(p.payload));
+            setMessage(encryptedSavedNotice);
           })
           .catch((e) => {
+            if (g !== generation.current) return;
             setPaused(true);
             setMessage(
               tell[e.message] ??
@@ -339,10 +340,12 @@ export function PersonalDraftTools({
     blocked,
     paused,
     candidate,
+    savedKey,
     owner,
     scope,
   ]);
-  const locallySaved = !blocked && !paused && !candidate && !!saved.current && value === saved.current;
+  const locallySaved = enabled && ready && !blocked && !paused && !candidate && !!savedKey && value === savedKey;
+  const visibleMessage = message === encryptedSavedNotice && !locallySaved ? "" : message;
   return (
     <aside className="notice">
       {!blocked && <PersonalDraftAccess owner={owner} />}
@@ -375,7 +378,7 @@ export function PersonalDraftTools({
                 try {
                   ref.current.apply(candidate.payload);
                   setCandidate(null);
-                  saved.current = "";
+                  setSavedKey("");
                 } catch {
                   setMessage(
                     "현재 계정·학급·활동과 일치하는 초안인지 확인해 주세요.",
@@ -395,7 +398,7 @@ export function PersonalDraftTools({
                 .then(() => {
                   expected.current = null;
                   setCandidate(null);
-                  saved.current = "";
+                  setSavedKey("");
                 })
                 .catch((e) =>
                   setMessage(
@@ -409,9 +412,9 @@ export function PersonalDraftTools({
           </button>
         </>
       )}
-      {(message || locallySaved) && <div className="save-status-region" role="status">
+      {(visibleMessage || locallySaved) && <div className="save-status-region" role="status">
         {locallySaved && <SaveStatus kind="encrypted" />}
-        {message && <p>{message}</p>}
+        {visibleMessage && <p>{visibleMessage}</p>}
       </div>}
       {paused && !blocked && (
         <button
