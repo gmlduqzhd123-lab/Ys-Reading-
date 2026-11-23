@@ -29,14 +29,17 @@ test("class context, 28-record split export, resume and learning notification", 
   await expect(page).toHaveURL(
     new RegExp("tab=exports.*classroom=" + f.classroom),
   );
-  // Exercise the real application redirect and encrypted state. Stub only
-  // the external consent page so real Google accounts are never contacted.
-  await page.route("https://accounts.google.com/o/oauth2/v2/auth?**", async route => {
-    const oauth = new URL(route.request().url());
+  // Preserve the real connection response and its state cookie. Redirect
+  // straight back with the consent denial Google would send.
+  await page.route(url => url.pathname === "/api/google/connect", async route => {
+    const start = await route.fetch({ maxRedirects: 0 });
+    expect(start.status()).toBe(307);
+    const oauth = new URL(start.headers().location);
+    expect(oauth.origin).toBe("https://accounts.google.com");
     const callback = new URL(oauth.searchParams.get("redirect_uri")!);
     callback.searchParams.set("state", oauth.searchParams.get("state")!);
     callback.searchParams.set("error", "access_denied");
-    await route.fulfill({ status: 302, headers: { location: callback.href } });
+    await route.fulfill({ response: start, headers: { ...start.headers(), location: callback.href } });
   });
   const choice = page.locator("#file-export-choice");
   const oneRecord = choice.getByRole("checkbox", { name: /CI 묶음 기록 28/ });
