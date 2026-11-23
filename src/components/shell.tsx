@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, type RefObject } from "react";
 import {
   ArrowUpRight,
   ChevronDown,
@@ -15,6 +15,7 @@ import { ConnectionBanner } from "@/components/recovery/connection-banner";
 import { ServiceAlert } from "@/components/recovery/service-alert";
 import { createClient } from "@/lib/supabase/client";
 import { newClassHref } from "@/lib/classroom-entry";
+import { withClassroom } from "@/lib/hub-navigation";
 
 const publicLinks = [
   ["/hub?tab=today", "내 교실"],
@@ -47,56 +48,77 @@ const moreLinks = [
   ["/guide", "책숲 사용 안내"],
 ] as const;
 
-type Role = "student" | "teacher" | null;
+type NavigationScope = {
+  role: "student" | "teacher";
+  classroom: string;
+  owner: boolean;
+  read: boolean;
+  review: boolean;
+  students: boolean;
+};
 
-function useNavigationRole() {
-  const path = usePathname();
-  const cached = useRef<{ id: string; role: Role; at: number } | null>(null);
-  const [role, setRole] = useState<Role>(null);
+function useNavigationScope(path: string, classroom: string | null) {
+  const actor = useRef<string | null>(null);
+  const [scope, setScope] = useState<NavigationScope | null>(null);
   useEffect(() => {
     let client;
     try { client = createClient(); } catch { return; }
-    let request = 0;
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let request: AbortController | undefined;
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-      const id = session?.user.id;
-      const current = ++request;
+      const id = session?.user.id ?? null;
       clearTimeout(timer);
-      if (!id || cached.current?.id !== id) {
-        cached.current = null;
-        setRole(null);
+      request?.abort();
+      if (!id || actor.current !== id) {
+        actor.current = id;
+        setScope(null);
       }
       if (!id) return;
-      if (cached.current && Date.now() - cached.current.at < 60_000) return;
-      // Read the account's own profile outside the Auth callback lock. This only
-      // selects menu labels. Pages and actions still enforce their own access.
+      // The endpoint returns menu flags only. Authenticated data access is
+      // checked again by each destination, even if a permission changes.
+      const controller = new AbortController();
+      request = controller;
       timer = setTimeout(async () => {
         try {
-          const { data } = await client.from("profiles")
-            .select("role,account_active,must_change_password").eq("id", id).maybeSingle();
-          if (current !== request) return;
-          const next = data?.account_active && !data.must_change_password &&
-            (data.role === "teacher" || data.role === "student") ? data.role : null;
-          if (data) cached.current = { id, role: next, at: Date.now() };
-          setRole(next);
+          const query = classroom === null ? "" : "?" + new URLSearchParams({ classroom });
+          const response = await fetch("/api/classroom-navigation" + query, { signal: controller.signal, cache: "no-store" });
+          const next = response.ok ? await response.json() as NavigationScope | null : null;
+          if (!controller.signal.aborted) setScope(next);
         } catch {
-          if (current === request) setRole(null);
+          if (!controller.signal.aborted) setScope(null);
         }
       }, 0);
     });
     return () => {
-      request++;
       clearTimeout(timer);
+      request?.abort();
       subscription.unsubscribe();
     };
-  }, [path]);
-  return role;
+  }, [path, classroom]);
+  return scope;
 }
 
-type MenuLinks = readonly (readonly [string, string])[];
-function Navigation({ close, links }: { close: () => void; links: MenuLinks }) {
+function Navigation({ close, more }: { close: () => void; more: RefObject<HTMLDetailsElement | null> }) {
   const path = usePathname();
   const query = useSearchParams();
+  const scope = useNavigationScope(path, query.get("classroom"));
+  const role = scope?.role;
+  const links = role === "teacher"
+    ? teacherLinks.filter(([href]) => href.endsWith("today")
+      || (href.endsWith("review") && scope?.review)
+      || (href.endsWith("manage") && scope?.owner))
+    : role === "student" ? studentLinks : publicLinks;
+  const extras = [
+    ...(role === "teacher" && scope?.read ? [["/hub?tab=reading", "나의 책장"]] as const : []),
+    ...(role === "teacher" && scope?.students ? [["/operations", "학생 계정·기록 관리"]] as const : []),
+    ...moreLinks.filter(([href]) => {
+      if (links.some(([primary]) => primary === href) || (role === "student" && href === newClassHref)) return false;
+      if (role !== "teacher") return true;
+      if (/tab=(economy|plaza|exhibitions|growth)$/.test(href)) return scope?.owner;
+      if (/tab=(search|exports)$/.test(href) || href === "/reports") return scope?.read;
+      return true;
+    }),
+  ];
   return (
     <>
       {links.map(([href, label]) => {
@@ -105,24 +127,27 @@ function Navigation({ close, links }: { close: () => void; links: MenuLinks }) {
           ([key, value]) => (query.get(key) ?? (key === "tab" ? "today" : "")) === value,
         );
         return (
-          <Link key={href} href={href} prefetch={false} onClick={close}
+          <Link key={href} href={withClassroom(href, scope?.classroom)} prefetch={false} onClick={close}
             className={active ? "selected" : ""}
             aria-current={active ? "page" : undefined}>
             {label}
           </Link>
         );
       })}
+      <details className="paper-more" ref={more}>
+        <summary>더보기 <ChevronDown size={13} /></summary>
+        <div>
+          {extras.map(([href, label]) => (
+            <Link key={href} href={withClassroom(href, scope?.classroom)} prefetch={false} onClick={close}>
+              {label}
+            </Link>
+          ))}
+        </div>
+      </details>
     </>
   );
 }
 export function Shell({ children }: { children: React.ReactNode }) {
-  const role = useNavigationRole();
-  const links = role === "teacher" ? teacherLinks : role === "student" ? studentLinks : publicLinks;
-  const extraLinks = [
-    ...(role === "teacher" ? [["/hub?tab=reading", "나의 책장"]] as const : []),
-    ...moreLinks.filter(([href]) => (role !== "student" || href !== newClassHref) &&
-      !links.some(([primary]) => primary === href)),
-  ];
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const more = useRef<HTMLDetailsElement>(null);
@@ -167,26 +192,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
           aria-label="주 메뉴"
         >
           <Suspense
-            fallback={links.map(([href, label]) => (
+            fallback={publicLinks.map(([href, label]) => (
               <Link key={href} href={href} prefetch={false} onClick={close}>
                 {label}
               </Link>
             ))}
           >
-            <Navigation close={close} links={links} />
+            <Navigation close={close} more={more} />
           </Suspense>
-          <details className="paper-more" ref={more}>
-            <summary>
-              더보기 <ChevronDown size={13} />
-            </summary>
-            <div>
-              {extraLinks.map(([href, label]) => (
-                <Link key={href} href={href} prefetch={false} onClick={close}>
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </details>
           <Link
             className="paper-mobile-account"
             href="/account"

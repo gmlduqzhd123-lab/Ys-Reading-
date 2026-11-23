@@ -9,6 +9,7 @@ export interface DeliveryHealth {
   observedAt: string | null;
   notifiedAt: string | null;
   runId: number | null;
+  lastSuccessAt?: string | null;
   source: "operator-pc" | "server-github";
 }
 export async function deliveryHealth(): Promise<DeliveryHealth> {
@@ -32,17 +33,20 @@ export async function deliveryHealth(): Promise<DeliveryHealth> {
     local?.configured &&
     Number.isFinite(observed) &&
     observed <= now + 60000 &&
-    now - observed < 45 * 60000
+    now - observed < 45 * 60000 &&
+    !["DELIVERY_MONITOR_STALE", "GITHUB_STATUS_UNAVAILABLE", "GITHUB_RATE_LIMITED"].includes(local.code)
   )
     return { ...local, source: "operator-pc" };
   // The PC may intentionally be off. Public GitHub metadata supplies a second
   // observer; a missing PC heartbeat alone must not invent a delivery failure.
   // Cache only fixed-repository public metadata, never authenticated user data.
+  const readToken = process.env.BOOKFOREST_GITHUB_ACTIONS_READ_TOKEN;
   const result = await probeGithubDelivery({
     now,
     fetcher: (url, options) =>
       fetch(url, {
         ...options,
+        headers: { ...options?.headers, ...(readToken ? { Authorization: `Bearer ${readToken}` } : {}) },
         cache: "force-cache",
         next: { revalidate: 300 },
       }),
@@ -54,6 +58,7 @@ export async function deliveryHealth(): Promise<DeliveryHealth> {
     checkedAt: new Date().toISOString(),
     observedAt: new Date(now).toISOString(),
     notifiedAt: result.notifiedAt,
+    lastSuccessAt: result.notifiedAt ?? local?.lastSuccessAt ?? local?.notifiedAt ?? null,
     runId: result.runId,
     source: "server-github",
   };

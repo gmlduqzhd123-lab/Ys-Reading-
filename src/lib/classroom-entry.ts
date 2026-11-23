@@ -6,3 +6,5 @@ export const classroomLoginCookie = "bf_classroom_login";
 export function classroomLoginDestination(intent: unknown, role?: string) {
   return intent === "classroom" && role === "teacher" ? newClassHref : null;
 }
+export const classroomAccountHref = "/account?intent=classroom";
+export const teacherRequestCookie = (owner: string) => "bf_teacher_requested_" + owner;

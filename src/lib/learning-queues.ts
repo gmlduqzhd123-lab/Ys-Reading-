@@ -2,6 +2,7 @@ export interface TodayState {
   asOf: string;
   page: number;
   total: number;
+  pageSize?: number;
   pendingClasses: number;
   tasks: {
     id: string;

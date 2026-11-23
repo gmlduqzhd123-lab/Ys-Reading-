@@ -35,9 +35,11 @@ export async function DeliveryStatus() {
           : {formatOperationsDate(d.observedAt)}
         </p>
       )}
-      {d?.notifiedAt && (
-        <p>마지막 알림 단계 완료: {formatOperationsDate(d.notifiedAt)}</p>
-      )}
+      <p>
+        마지막으로 확인한 알림 완료 · {d?.lastSuccessAt || d?.notifiedAt
+          ? formatOperationsDate(d.lastSuccessAt ?? d.notifiedAt!)
+          : "아직 확인하지 못했어요"}
+      </p>
       <Link href="https://github.com/gmlduqzhd123-lab/Ys-Reading-/actions/workflows/availability.yml">
         GitHub 점검·알림 실행 보기 →
       </Link>

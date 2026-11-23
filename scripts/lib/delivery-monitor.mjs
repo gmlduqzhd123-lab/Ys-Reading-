@@ -4,6 +4,7 @@ export const deliveryCodes = [
   "GITHUB_CHECK_DELAYED",
   "GITHUB_NOTIFY_FAILED",
   "GITHUB_STATUS_UNAVAILABLE",
+  "GITHUB_RATE_LIMITED",
   "GITHUB_CHECK_RUNNING",
 ];
 export const deliveryLabels = {
@@ -14,6 +15,8 @@ export const deliveryLabels = {
     "점검 실행의 GitHub 알림 단계가 실패했습니다. 다음 실행에서 미전송 알림을 다시 처리합니다.",
   GITHUB_STATUS_UNAVAILABLE:
     "GitHub의 실행·알림 결과를 확인하지 못했습니다. 정상으로 간주하지 않고 다시 점검합니다.",
+  GITHUB_RATE_LIMITED:
+    "GitHub 조회 요청이 제한됐어요. 마지막으로 확인한 알림 결과를 표시하고 다시 점검합니다.",
   GITHUB_CHECK_RUNNING:
     "GitHub 점검이 진행 중입니다. 알림 단계 완료를 기다립니다.",
 };
@@ -29,6 +32,9 @@ export async function probeGithubDelivery({
       cache: "no-store",
       redirect: "error",
     });
+    if (r.status === 429 || (r.status === 403 && (
+      r.headers.get("x-ratelimit-remaining") === "0" || r.headers.has("retry-after")
+    ))) throw Error("GITHUB_RATE_LIMITED");
     if (!r.ok) throw Error("GITHUB_STATUS_UNAVAILABLE");
     return r.json();
   };
@@ -113,7 +119,11 @@ export async function probeGithubDelivery({
       runId: completed.id,
       notifiedAt: new Date(at).toISOString(),
     };
-  } catch {
-    return { code: "GITHUB_STATUS_UNAVAILABLE", runId: null, notifiedAt: null };
+  } catch (error) {
+    return {
+      code: error?.message === "GITHUB_RATE_LIMITED" ? "GITHUB_RATE_LIMITED" : "GITHUB_STATUS_UNAVAILABLE",
+      runId: null,
+      notifiedAt: null,
+    };
   }
 }

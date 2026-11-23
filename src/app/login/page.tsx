@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/login-form";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentProfile } from "@/lib/auth";
 import { TeacherEmailLogin } from "@/components/teacher-email-login";
-import { classroomLoginDestination, classroomLoginHref } from "@/lib/classroom-entry";
+import { classroomAccountHref, classroomLoginDestination, classroomLoginHref } from "@/lib/classroom-entry";
 export const metadata = { title: "내 교실 입장" };
 export default async function LoginPage({
   searchParams,
@@ -17,7 +17,7 @@ export default async function LoginPage({
   const teacher = mode === "teacher" || !!intent;
   const configured = isSupabaseConfigured();
   const profile = configured ? await getCurrentProfile() : null;
-  if (profile) redirect(classroomLoginDestination(intent, profile.role) ?? "/app");
+  if (profile) redirect(classroomLoginDestination(intent, profile.role) ?? (intent ? classroomAccountHref : "/app"));
   return (
     <>
       <div className="login-layout">

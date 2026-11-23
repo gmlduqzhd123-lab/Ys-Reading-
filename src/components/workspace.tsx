@@ -1,4 +1,5 @@
 "use client";
+import { withClassroom } from "@/lib/hub-navigation";
 import { notifyDraftLogout } from "@/lib/draft-recovery";
 import { WorkspacePaging } from "./workspace-paging";
 
@@ -208,7 +209,7 @@ export function Workspace({
         </button>
       </div>
       <p>
-        <Link className="button button-outline" href="/hub">
+        <Link className="button button-outline" href={withClassroom("/hub", data.pagination?.classroom ?? "")}>
           나의 책장 · 기록 내보내기 · 캐릭터 · 광장 · 경제 교실
         </Link>
       </p>
@@ -226,7 +227,7 @@ export function Workspace({
             key={key}
             className={view === key ? "selected" : ""}
             aria-current={view === key ? "page" : undefined}
-            onClick={() => router.push(`/app?view=${key}`)}
+            onClick={() => router.push(withClassroom(`/app?view=${key}`, data.pagination?.classroom ?? ""))}
           >
             <Icon
               size={14}
@@ -334,14 +335,14 @@ export function Workspace({
                       {teacher ? (
                         <button
                           className="text-link"
-                          onClick={() => router.push("/app?view=feedback")}
+                          onClick={() => router.push(withClassroom("/app?view=feedback", data.pagination?.classroom ?? ""))}
                         >
                           제출물 확인 <ArrowRight size={14} />
                         </button>
                       ) : (
                         <Link
                           className="button button-small button-soft"
-                          href={`/app/work/${a.id}`}
+                          href={withClassroom(`/app/work/${a.id}`, data.pagination?.classroom ?? "")}
                         >
                           {sub?.status === "revision_requested"
                             ? "고쳐 쓰기"
@@ -425,7 +426,7 @@ export function Workspace({
                   {!teacher && (
                     <Link
                       className="text-link"
-                      href={`/app/work/${s.assignment_id}`}
+                      href={withClassroom(`/app/work/${s.assignment_id}?from=feedback`, data.pagination?.classroom ?? "")}
                     >
                       작품과 피드백 보기 <ArrowRight size={14} />
                     </Link>
@@ -713,7 +714,7 @@ function StudentFeedback({ data }: { data: DashboardData }) {
               {s?.version}번째 제출본 · {formatKoreanDate(f.created_at)}
             </p>
             {s && (
-              <Link className="text-link" href={`/app/work/${s.assignment_id}`}>
+              <Link className="text-link" href={withClassroom(`/app/work/${s.assignment_id}?from=feedback`, data.pagination?.classroom ?? "")}>
                 글 다시 만나기 <ArrowRight size={14} />
               </Link>
             )}

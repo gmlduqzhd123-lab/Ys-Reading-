@@ -107,6 +107,17 @@ it("does not turn an unavailable GitHub response into success", async () => {
     notifiedAt: null,
   });
 });
+it("reports rate limiting separately from delivery failure and permission errors", async () => {
+  for (const [status, headers, code] of [
+    [429, {}, "GITHUB_RATE_LIMITED"],
+    [403, { "x-ratelimit-remaining": "0" }, "GITHUB_RATE_LIMITED"],
+    [403, {}, "GITHUB_STATUS_UNAVAILABLE"],
+  ] as const) {
+    const fetcher = vi.fn(async () => new Response(null, { status, headers }));
+    expect(await probeGithubDelivery({ fetcher, now })).toMatchObject({ code, runId: null });
+    expect(fetcher).toHaveBeenCalledOnce();
+  }
+});
 it("reconciles a lost POST response without duplicating a GitHub message", async () => {
   let stored: any;
   const fetcher = vi.fn(async (_url: any, o: any) => {

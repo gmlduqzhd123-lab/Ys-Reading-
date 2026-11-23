@@ -519,6 +519,7 @@ export function StartWizard({
       {step === 4 && (
         <section className="panel setup-guide">
           <h2>4. {classes.find((c) => c.id === classId)?.name} 접속 안내</h2>
+          <p><Link href="/device-check">첫 수업 전에 학교 PC·태블릿 점검하기</Link></p>
           {qr && (
             <img
               src={qr}

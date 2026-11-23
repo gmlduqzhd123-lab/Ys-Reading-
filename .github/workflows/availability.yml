@@ -14,6 +14,7 @@ jobs:
   public-service:
     permissions:
       contents: read
+      actions: read
       issues: write
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -25,6 +26,7 @@ jobs:
       - run: node scripts/check-availability.mjs
         id: probe
       - name: Notify one incident and its recovery
+        id: notify-service
         if: always() && steps.probe.outcome != 'skipped' && !cancelled()
         run: node scripts/notify-incident.mjs
         env:
@@ -35,6 +37,7 @@ jobs:
         continue-on-error: true
         run: node scripts/check-backup.mjs
       - name: Notify backup incident and recovery
+        id: notify-backup
         if: always() && steps.backup.outcome != 'skipped' && !cancelled()
         run: node scripts/notify-incident.mjs --backup
         env:
@@ -47,6 +50,8 @@ jobs:
         run: node scripts/notify-monitor-delivery.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          SERVICE_NOTIFY_OUTCOME: ${{ steps.notify-service.outcome }}
+          BACKUP_NOTIFY_OUTCOME: ${{ steps.notify-backup.outcome }}
       - name: Generate bounded operational readiness report
         if: always() && !cancelled()
         run: node scripts/operations-report.mjs

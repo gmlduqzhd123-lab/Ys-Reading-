@@ -854,12 +854,11 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
                           "현재 입력을 먼저 저장했는지 확인해 주세요. 이전 판 목록으로 이동할까요?",
                         )
                       )
-                        router.push(
-                          "/app/work/" +
-                            assignment.id +
-                            "?historyPage=" +
-                            (data.pagination!.page - 1),
-                        );
+                      {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set("historyPage", String(data.pagination!.page - 1));
+                        router.push(url.pathname + url.search);
+                      }
                     }}
                   >
                     이전 제출 이력
@@ -876,12 +875,11 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
                           "현재 입력을 먼저 저장했는지 확인해 주세요. 다음 판 목록으로 이동할까요?",
                         )
                       )
-                        router.push(
-                          "/app/work/" +
-                            assignment.id +
-                            "?historyPage=" +
-                            (data.pagination!.page + 1),
-                        );
+                      {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set("historyPage", String(data.pagination!.page + 1));
+                        router.push(url.pathname + url.search);
+                      }
                     }}
                   >
                     다음 제출 이력

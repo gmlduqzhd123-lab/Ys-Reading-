@@ -4,6 +4,8 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 import { operationsError } from "@/lib/operations";
 import { parseAccountInput } from "../../../supabase/functions/_shared/account-worker";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { teacherRequestCookie } from "@/lib/classroom-entry";
 
 export async function operationsCommand(
   command: string,
@@ -22,11 +24,17 @@ export async function operationsCommand(
       p_request_id: requestId,
     });
     if (error) throw error;
+    if (command === "teacher_request") {
+      (await cookies()).set(teacherRequestCookie(user.id), "1", {
+        httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production",
+        path: "/account", maxAge: 30 * 86400,
+      });
+    }
     revalidatePath("/operations");
     revalidatePath("/account");
     revalidatePath("/hub");
     revalidatePath("/app");
-    return { ok: true, message: "처리했습니다.", data };
+    return { ok: true, message: command === "teacher_request" ? "교사 권한 확인을 요청했어요." : "처리했습니다.", data };
   } catch (error) {
     return { ok: false, message: operationsError(error), data: null };
   }

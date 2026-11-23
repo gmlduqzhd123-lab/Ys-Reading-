@@ -20,11 +20,11 @@ export async function rememberHubClass(owner: string, id: string) {
       r = await c.from("classrooms").select("id").eq("id", id).single();
     if (r.error || !r.data) throw Error("선택한 학급을 확인해 주세요.");
   }
-  (await cookies()).set("bf_class_" + p.id, id, {
+  (await cookies()).set("bf_workspace_class_" + p.id, id, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    path: "/hub",
+    path: "/",
     maxAge: 30 * 86400,
   });
 }

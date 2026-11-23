@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { rememberHubClass } from "@/app/hub/completion-actions";
 import { hubHref } from "@/lib/hub-navigation";
 export function ClassContext({
@@ -14,6 +14,7 @@ export function ClassContext({
   selected: string;
   classes: { id: string; name: string }[];
 }) {
+  const query = useSearchParams();
   const router = useRouter(),
     [busy, start] = useTransition(),
     [message, setMessage] = useState("");
@@ -37,7 +38,8 @@ export function ClassContext({
             start(async () => {
               try {
                 await rememberHubClass(owner, id);
-                router.push(hubHref(tab, id));
+                const reviewKind = query.get("reviewKind");
+                router.push(hubHref(tab, id, tab === "review" && reviewKind === "reading" ? { reviewKind } : {}));
               } catch (e) {
                 setMessage(
                   e instanceof Error ? e.message : "학급을 확인해 주세요.",

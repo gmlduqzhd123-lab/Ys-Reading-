@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BookOpen, Feather, Sprout } from "lucide-react";
 import type { TodayState } from "@/lib/learning-queues";
 import type { Classroom } from "@/lib/data";
+import { hubHref, withClassroom } from "@/lib/hub-navigation";
 const labels: Record<string, string> = {
   revision: "피드백 읽고 고쳐 쓰기",
   draft: "쓰던 글 이어쓰기",
@@ -13,15 +14,18 @@ const labels: Record<string, string> = {
 export function Today({
   state,
   classes,
+  classroom,
 }: {
   state: TodayState;
   classes: Classroom[];
+  classroom: string;
 }) {
   const active = classes.some((c) => c.term_state !== "archived"),
     next = state.page === 1 ? state.tasks.find((t) =>
       ["revision", "draft", "new"].includes(t.state),
     ) : undefined;
   const remaining = state.tasks.filter(t => t.id !== next?.id);
+  const hasNext = state.page * (state.pageSize ?? 8) < state.total;
   return (
     <div className="today-board">
       <div className="today-intro">
@@ -43,14 +47,14 @@ export function Today({
               ].filter(Boolean).join(" · ")}
             </p>
           </div>
-          <Link className="button button-primary" href={`/app/work/${next.id}`}>
+          <Link className="button button-primary" href={withClassroom(`/app/work/${next.id}`, classroom)}>
             {labels[next.state]}
           </Link>
         </section>
       )}
       <div className="today-actions">
         <Link
-          href={active ? "/hub?tab=reading#reading-editor" : "/hub?tab=terms"}
+          href={withClassroom(active ? "/hub?tab=reading#reading-editor" : "/hub?tab=terms", classroom)}
         >
           <BookOpen size={28} />
           <strong>
@@ -65,8 +69,8 @@ export function Today({
         {!next && <Link
           href={
             active
-                ? "/app?view=missions"
-                : "/hub?tab=terms"
+                ? withClassroom("/app?view=missions", classroom)
+                : hubHref("terms", classroom)
           }
         >
           <Feather size={28} />
@@ -77,7 +81,7 @@ export function Today({
                 : "학급 참여 확인 후 시작해요"}
           </span>
         </Link>}
-        <Link href="/hub?tab=growth">
+        <Link href={hubHref("growth", classroom)}>
           <Sprout size={28} />
           <strong>내 캐릭터와 우리 숲</strong>
           <span>나의 성장과 함께 이룬 목표</span>
@@ -99,7 +103,7 @@ export function Today({
           </Link>
         </p>
       )}
-      {(remaining.length > 0 || !next || state.total > 8) && <section className="panel">
+      {(remaining.length > 0 || !next || hasNext) && <section className="panel">
         <h2>나의 미션 이어가기</h2>
         {!state.tasks.length && (
           <p>
@@ -120,7 +124,7 @@ export function Today({
                 {t.state === "draft" ? " · 서버에 저장한 초안이 있어요" : ""}
               </p>
             </div>
-            <Link className="button button-outline" href={`/app/work/${t.id}`}>
+            <Link className="button button-outline" href={withClassroom(`/app/work/${t.id}`, classroom)}>
               {labels[t.state]}
             </Link>
           </article>
@@ -129,7 +133,7 @@ export function Today({
           {state.page > 1 && (
             <Link
               className="button button-outline"
-              href={`/hub?tab=today&todayPage=${state.page - 1}`}
+              href={hubHref("today", classroom, { todayPage: state.page - 1 })}
             >
               이전 활동
             </Link>
@@ -137,10 +141,10 @@ export function Today({
           <span>
             전체 {state.total}개 · {state.page}페이지
           </span>
-          {state.page * 8 < state.total && (
+          {hasNext && (
             <Link
               className="button button-outline"
-              href={`/hub?tab=today&todayPage=${state.page + 1}`}
+              href={hubHref("today", classroom, { todayPage: state.page + 1 })}
             >
               다음 활동
             </Link>
@@ -149,7 +153,7 @@ export function Today({
       </section>}
       {classes.some((c) => c.term_state === "archived") && (
         <p>
-          <Link href="/hub?tab=search">
+          <Link href={hubHref("search", classroom)}>
             지난 학기의 글과 독서 기록 찾아보기 →
           </Link>
         </p>

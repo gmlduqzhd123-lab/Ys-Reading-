@@ -7,14 +7,19 @@ import { accountOperation, operationsCommand } from "@/app/operations/actions";
 import { logout } from "@/app/actions";
 import { notifyDraftLogout } from "@/lib/draft-recovery";
 import { statusLabels, type OperationsState } from "@/lib/operations";
+import { newClassHref } from "@/lib/classroom-entry";
 export function AccountPanel({
   profile,
   operator,
   deletions,
+  classroomSetup = false,
+  teacherRequested = false,
 }: {
   profile: Profile;
   operator: boolean;
   deletions: OperationsState["deletions"];
+  classroomSetup?: boolean;
+  teacherRequested?: boolean;
 }) {
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
@@ -71,6 +76,13 @@ export function AccountPanel({
           )}
         </div>
       </section>
+      {ready && classroomSetup && profile.role === "teacher" && (
+        <section className="ops-card">
+          <h2>학급 개설을 계속할 수 있어요</h2>
+          <p>교사 권한이 확인됐어요. 학급을 만들고 학생 계정을 준비할 수 있습니다.</p>
+          <Link className="button button-primary" href={newClassHref}>학급 개설 계속하기</Link>
+        </section>
+      )}
       {fresh && (
         <section className="ops-card">
           <h2>비밀번호 바꾸기</h2>
@@ -194,12 +206,17 @@ export function AccountPanel({
         </section>
       )}
       {ready && profile.role === "student" && (
-        <details className="ops-card">
+        <details className="ops-card" open={classroomSetup || undefined}>
           <summary>선생님 계정으로 준비 중인가요?</summary>
           <p>
             학생으로 발급받거나 학급에 등록된 계정은 교사 권한을 신청할 수
             없어요. 운영자가 신원을 확인한 뒤 권한을 승인해요.
           </p>
+          {teacherRequested && (
+            <p role="status">
+              이 브라우저에서 교사 권한 확인을 요청했어요. 운영자 확인 후 아래 버튼으로 권한을 다시 확인하세요.
+            </p>
+          )}
           <button
             className="button button-outline"
             disabled={busy}
@@ -207,6 +224,9 @@ export function AccountPanel({
           >
             교사 권한 확인 신청
           </button>
+          {classroomSetup && <button className="button button-outline" disabled={busy} onClick={() => router.refresh()}>
+            교사 권한 상태 다시 확인
+          </button>}
         </details>
       )}
       {message && (

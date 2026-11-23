@@ -9,10 +9,11 @@ export async function GET() {
     if (!result.error) monitor = refreshMonitor(result.data);
   } catch {}
   try {
+    const token = process.env.BOOKFOREST_GITHUB_ACTIONS_READ_TOKEN;
     const r = await fetch(
       "https://api.github.com/repos/gmlduqzhd123-lab/Ys-Reading-/actions/workflows/availability.yml/runs?per_page=5",
       {
-        headers: { Accept: "application/vnd.github+json" },
+        headers: { Accept: "application/vnd.github+json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         signal: AbortSignal.timeout(5000),
         cache: "force-cache",
         next: { revalidate: 300 },

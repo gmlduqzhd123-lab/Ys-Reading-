@@ -2,8 +2,7 @@ import { loadHub } from "@/lib/hub-data";
 import { Suspense } from "react";
 import { TeacherWeeklySummary } from "@/components/participation/weekly-summary";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { z } from "zod";
+import { activeClassroom } from "@/lib/classroom-context-server";
 import { createClient } from "@/lib/supabase/server";
 import {
   PlazaReports,
@@ -33,18 +32,7 @@ export default async function HubPage({
 }) {
   const params = await searchParams;
   const profile = await requireProfile();
-  if (params.classroom === undefined) {
-    const remembered = (await cookies()).get("bf_class_" + profile.id)?.value;
-    if (remembered && z.uuid().safeParse(remembered).success) {
-      const c = await createClient(),
-        r = await c
-          .from("classrooms")
-          .select("id")
-          .eq("id", remembered)
-          .maybeSingle();
-      if (r.data) params.classroom = remembered;
-    }
-  }
+  params.classroom = await activeClassroom(profile.id, params.classroom);
   const allowed = [
     "today",
     "reading",
@@ -80,7 +68,7 @@ export default async function HubPage({
     filters.classroom,
   );
   if (profile.role === "teacher") {
-    const staff = data.staffClasses ?? [],
+    const staff = (data.staffClasses ?? []).filter(c => !filters.classroom || c.id === filters.classroom),
       owns = staff.some((c) => c.owner),
       canRead = staff.some((c) => c.read),
       canReview = staff.some((c) => c.review);
@@ -99,7 +87,7 @@ export default async function HubPage({
         ["reading", "search", "exports", "overview"].includes(tab)) ||
       (!canReview && tab === "review")
     )
-      redirect("/collaboration");
+      redirect(filters.classroom ? "/collaboration?classroom=" + filters.classroom : "/collaboration");
   }
   const [
     google,
@@ -117,7 +105,7 @@ export default async function HubPage({
       ? loadParticipation()
       : Promise.resolve(null),
     tab === "today" && profile.role === "student"
-      ? loadStudentToday(Number(params.todayPage ?? 1))
+      ? loadStudentToday(Number(params.todayPage ?? 1), data.selectedClassroom ? data.classes[0] : undefined)
       : Promise.resolve(null),
     profile.role === "teacher" && ["today", "overview"].includes(tab)
       ? loadOverview(filters.classroom, filters.page)

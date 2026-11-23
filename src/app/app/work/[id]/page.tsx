@@ -4,13 +4,14 @@ import { ArrowLeft } from "lucide-react";
 import { loadDashboard } from "@/lib/data";
 import { WorkEditor } from "@/components/work-editor";
 import { createClient } from "@/lib/supabase/server";
+import { hubHref, withClassroom } from "@/lib/hub-navigation";
 export const metadata = { title: "생각 쓰기" };
 export default async function WorkPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ historyPage?: string }>;
+  searchParams: Promise<{ historyPage?: string; classroom?: string; from?: string }>;
 }) {
   const { id } = await params;
   if (
@@ -26,6 +27,8 @@ export default async function WorkPage({
   if (data.profile.role !== "student") redirect("/app?view=feedback");
   const assignment = data.assignments.find((a) => a.id === id);
   if (!assignment) notFound();
+  const classroom = sp.classroom === "" ? "" : assignment.classroom_id;
+  const feedback = sp.from === "feedback";
   let choiceKey: string | undefined;
   if (
     assignment.choices?.length &&
@@ -44,9 +47,9 @@ export default async function WorkPage({
   }
   return (
     <>
-      <Link href="/hub?tab=today" className="back-link">
+      <Link href={feedback ? withClassroom("/app?view=feedback", classroom) : hubHref("today", classroom)} className="back-link">
         <ArrowLeft size={16} />
-        오늘 할 일로 돌아가기
+        {feedback ? "받은 피드백으로 돌아가기" : "오늘 할 일로 돌아가기"}
       </Link>
       <WorkEditor data={data} assignment={assignment} choiceKey={choiceKey} />
     </>

@@ -79,7 +79,7 @@ export async function reportDelivery(directory, key, agent, result) {
     checkedAt: new Date().toISOString(),
     runId: result.runId,
     notifiedAt: result.notifiedAt,
-    code: result.code,
+    code: result.code === "GITHUB_RATE_LIMITED" ? "GITHUB_STATUS_UNAVAILABLE" : result.code,
   });
   const signature = createHmac("sha256", Buffer.from(agent.secret, "hex"))
     .update(payload)

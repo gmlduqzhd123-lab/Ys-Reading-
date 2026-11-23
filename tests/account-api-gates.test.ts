@@ -9,7 +9,11 @@ const state = vi.hoisted(() => ({
   disconnect: vi.fn(),
   search: vi.fn(),
   load: vi.fn(),
+  rpc: vi.fn(),
+  classroom: vi.fn(),
+  budget: vi.fn(),
 }));
+const classId = "b88aab36-83e7-4083-8aee-b27f84704c43";
 vi.mock("@/lib/auth", () => ({ getCurrentProfile: async () => state.profile }));
 vi.mock("@/lib/google-drive", () => ({
   googleStart: state.start,
@@ -18,7 +22,10 @@ vi.mock("@/lib/google-drive", () => ({
   googleDisconnect: state.disconnect,
   googleExport: vi.fn(),
 }));
-vi.mock("@/lib/book-search", () => ({ searchBooks: state.search }));
+vi.mock("@/lib/book-search", () => ({ searchBooks: state.search, domesticBookSearchConfigured: () => false }));
+vi.mock("@/lib/classroom-context-server", () => ({ activeClassroom: state.classroom }));
+vi.mock("@/lib/api-budget", () => ({ consumeApiBudget: state.budget }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: state.rpc }) }));
 vi.mock("@/lib/export-receipts", () => ({ recordExport: vi.fn() }));
 vi.mock("@/lib/export-documents", () => ({
   exportSchema: { parse: vi.fn() },
@@ -32,6 +39,8 @@ import { GET as callback } from "@/app/api/google/callback/route";
 import { POST as disconnect } from "@/app/api/google/disconnect/route";
 import { GET as books } from "@/app/api/books/route";
 import { POST as exports } from "@/app/api/export/route";
+import { GET as menus } from "@/app/api/classroom-navigation/route";
+const connectRequest = () => new NextRequest("http://127.0.0.1:3086/api/google/connect?classroom=" + classId);
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.NEXT_PUBLIC_APP_URL = "http://127.0.0.1:3086";
@@ -47,6 +56,7 @@ beforeEach(() => {
   state.start.mockResolvedValue("https://accounts.google.com/o/oauth2/v2/auth");
   state.callback.mockReset();
   state.cancel.mockReset();
+  state.classroom.mockResolvedValue(classId);
 });
 describe("external API gates after account/session changes", () => {
   it.each([
@@ -58,7 +68,7 @@ describe("external API gates after account/session changes", () => {
     async (flags) => {
       Object.assign(state.profile!, flags);
       const responses = await Promise.all([
-        connect(),
+        connect(connectRequest()),
         callback(
           new NextRequest(
             "http://127.0.0.1:3086/api/google/callback?code=x&state=y",
@@ -90,8 +100,8 @@ describe("external API gates after account/session changes", () => {
     },
   );
   it("allows a ready teacher to start their own OAuth flow", async () => {
-    expect((await connect()).status).toBe(307);
-    expect(state.start).toHaveBeenCalledWith("teacher");
+    expect((await connect(connectRequest())).status).toBe(307);
+    expect(state.start).toHaveBeenCalledWith("teacher", classId);
   });
   it("returns a canceled OAuth flow to exports without exposing its state", async () => {
     const r = await callback(
@@ -116,6 +126,37 @@ describe("external API gates after account/session changes", () => {
       "http://127.0.0.1:3086/hub?tab=exports&google=expired",
     );
     expect(r.headers.get("location")).not.toContain("private-code");
+  });
+  it("returns a ready teacher to the authorized class saved in Google state", async () => {
+    state.callback.mockResolvedValue(classId);
+    const r = await callback(new NextRequest(
+      "http://127.0.0.1:3086/api/google/callback?code=private-code&state=opaque-state",
+    ));
+    expect(r.headers.get("location")).toBe("http://127.0.0.1:3086/hub?tab=exports&google=connected&classroom=" + classId);
+  });
+  it("publishes menu flags for the selected classroom only", async () => {
+    state.rpc.mockResolvedValue({ data: { classes: [
+      { id: classId, read: true, review: false, students: false, owner: false },
+      { id: "other", read: true, review: true, students: true, owner: true },
+    ] } });
+    const r = await menus(new NextRequest("http://127.0.0.1:3086/api/classroom-navigation?classroom=" + classId));
+    expect(await r.json()).toEqual({ role: "teacher", classroom: classId, read: true, review: false, students: false, owner: false });
+    expect(r.headers.get("cache-control")).toBe("private, no-store");
+  });
+  it("still returns authorized classroom books when external search is unavailable", async () => {
+    state.rpc.mockResolvedValue({ data: { items: [{ isbn: "9788936434120", title: "우리 반 책", author: "가람", location: "2번" }], total: 1 } });
+    state.budget.mockResolvedValue({ allowed: false, unavailable: true });
+    const r = await books(new NextRequest("http://127.0.0.1:3086/api/books?q=book&classroom=" + classId));
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ books: [], library: [{ title: "우리 반 책" }], libraryTotal: 1, externalMessage: expect.any(String) });
+    expect(state.search).not.toHaveBeenCalled();
+    expect(r.headers.get("cache-control")).toBe("private, no-store");
+  });
+  it("does not return books from a classroom without access", async () => {
+    state.rpc.mockResolvedValue({ error: { message: "BF_FORBIDDEN" } });
+    const r = await books(new NextRequest("http://127.0.0.1:3086/api/books?q=book&classroom=" + classId));
+    expect(r.status).toBe(403);
+    expect(state.search).not.toHaveBeenCalled();
   });
 });
 vi.mock("server-only",()=>({}));

@@ -54,6 +54,7 @@ export function Exports({
             student: s.student_id,
           }));
   const teacher = data.profile.role === "teacher";
+  const connectHref = "/api/google/connect?" + new URLSearchParams({ classroom: data.selectedClassroom ?? "" });
   async function download(format: string) {
     if (busy) return;
     if (!selected.length) {
@@ -126,9 +127,11 @@ export function Exports({
       </p>
       {connectionNotice && (
         <p className="notice" role="status">
-          {connectionNotice}
+          {connectionNotice}{" "}
+          {googleNotice !== "connected" && <a href="#file-export-choice">Word·CSV로 저장하기</a>}
         </p>
       )}
+      <div id="file-export-choice" tabIndex={-1}>
       <Panel title="내 기록을 파일로 간직하기">
         <p>
           선택한 순서로 독서 기록장이나 작품집을 만듭니다. 내보낸 파일은 지금
@@ -242,6 +245,7 @@ export function Exports({
           </a>
         )}
       </Panel>
+      </div>
       <Panel title="Google 도구로 내보내기">
         {teacher ? (
           <>
@@ -249,13 +253,16 @@ export function Exports({
               연결한 교사의 Google Drive에 ‘책숲 기록’ 폴더를 만들고 선택한
               기록을 저장합니다. 공유 범위는 생성한 파일에서 확인해 주세요.
             </p>
+            {(requiresReconnect || googleNotice === "school-policy") && (
+              <p><a href="#file-export-choice">선택한 기록을 Word·CSV로 저장하기</a></p>
+            )}
             {!google.configured ? (
               <div className="notice">
                 학교의 Google 연결을 준비하고 있어요. Word·인쇄·PDF·CSV 저장은
                 계속 이용할 수 있습니다.
               </div>
             ) : !google.connected || requiresReconnect ? (
-              <a className="button button-primary" href="/api/google/connect">
+              <a className="button button-primary" href={connectHref}>
                 {requiresReconnect
                   ? "Google 계정 다시 연결"
                   : "교사 Google 계정 연결"}
@@ -284,7 +291,7 @@ export function Exports({
                   {!busy && (
                     <a
                       className="button button-outline"
-                      href="/api/google/connect"
+                      href={connectHref}
                     >
                       Google 계정 다시 연결
                     </a>

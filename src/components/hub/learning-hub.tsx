@@ -31,7 +31,7 @@ import { TermPanel } from "./term-panel";
 import { HandoverPanel, type HandoverState } from "./operations-batch";
 import {ClassContext} from "./class-context";
 import {LearningUpdates} from "./learning-updates";
-import {hubHref} from "@/lib/hub-navigation";
+import {hubHref, withClassroom} from "@/lib/hub-navigation";
 import type {ClassroomToolState} from '@/lib/classroom-tools';
 import {QuickReading} from '@/components/classroom/quick-reading';
 export function LearningHub({
@@ -70,15 +70,16 @@ export function LearningHub({
   terms?: TermState | null;
 }) {
   const teacher = data.profile.role === "teacher";
-  const owns = teacher && (data.staffClasses?.some((c) => c.owner) ?? true);
-  const canRead = !teacher || (data.staffClasses?.some((c) => c.read) ?? true);
+  const activeStaff = data.staffClasses?.filter(c => !data.selectedClassroom || c.id === data.selectedClassroom);
+  const owns = teacher && (activeStaff?.some((c) => c.owner) ?? true);
+  const canRead = !teacher || (activeStaff?.some((c) => c.read) ?? true);
   const canReview =
-    teacher && (data.staffClasses?.some((c) => c.review) ?? true);
+    teacher && (activeStaff?.some((c) => c.review) ?? true);
   const tabs = [
     ["today", teacher ? "오늘의 교실" : "오늘 할 일"],
     ...(teacher
       ? [
-          ["overview", "현황·알림"],
+          ...(canRead ? [["overview", "현황·알림"]] : []),
           ...(canReview ? [["review", "학생 기록 확인"]] : []),
           ...(owns ? [["packs", "수업 꾸러미"]] : []),
         ]
@@ -215,7 +216,7 @@ export function LearningHub({
                 독서 기록 쓰기
               </button>
             )}
-          {teacher && (
+          {teacher && (activeStaff?.some(c => c.students || c.owner) || data.profile.operator) && (
             <Link className="button button-outline" href={data.selectedClassroom ? "/operations?classroom=" + data.selectedClassroom : "/operations"}>
               학생 계정·기록 관리 <ArrowRight size={15} />
             </Link>
@@ -230,7 +231,7 @@ export function LearningHub({
               {label}
             </Link>
           ))}
-          {!teacher && <Link className="hub-tab" href="/app?view=feedback">받은 피드백</Link>}
+          {!teacher && <Link className="hub-tab" href={withClassroom("/app?view=feedback", data.selectedClassroom)}>받은 피드백</Link>}
         </nav>
         <details className="workspace-more" key={tab + ":" + data.selectedClassroom}
           open={otherTabs.some(([id]) => id === tab) || undefined}>
@@ -285,7 +286,7 @@ export function LearningHub({
           ) : (
             <>
               {tab === "today" && studentToday && (
-                <Today state={studentToday} classes={data.classes} />
+                <Today state={studentToday} classes={data.classes} classroom={data.selectedClassroom ?? ""} />
               )}
               {tab==='today'&&classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}
               {teacher && ["today", "overview"].includes(tab) && overview && (
@@ -326,7 +327,7 @@ export function LearningHub({
                 <div className="paper-dashboard">
                   <div className="paper-main">
                     {classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}
-                    <Bookshelf data={data} />
+                    <Bookshelf key={data.selectedClassroom ?? ""} data={data} />
                   </div>
                   <PaperGrowth data={data} growth={growth} />
                 </div>

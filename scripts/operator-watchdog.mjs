@@ -37,16 +37,24 @@ try {
       reportAgent(directory, key, agent, status, code, phase),
   });
   if (fs.existsSync(path.join(directory, "delivery-monitor-enabled.json"))) {
-    const delivery = await probeGithubDelivery();
+    const deliveryFile = path.join(directory, "delivery-status.json");
+    let previous;
+    try { previous = JSON.parse(fs.readFileSync(deliveryFile, "utf8")); } catch {}
+    const token = process.env.BOOKFOREST_GITHUB_ACTIONS_READ_TOKEN;
+    const delivery = await probeGithubDelivery(token ? {
+      fetcher: (url, options) => fetch(url, { ...options, headers: { ...options.headers, Authorization: "Bearer " + token } }),
+    } : {});
+    const lastSuccessAt = delivery.notifiedAt ?? previous?.lastSuccessAt ?? previous?.notifiedAt ?? null;
     let delivered = false;
     try {
-      await reportDelivery(directory, key, agent, delivery);
+      await reportDelivery(directory, key, agent, { ...delivery, notifiedAt: lastSuccessAt });
       delivered = true;
     } catch {}
     fs.writeFileSync(
-      path.join(directory, "delivery-status.json"),
+      deliveryFile,
       JSON.stringify({
         ...delivery,
+        lastSuccessAt,
         delivered,
         checkedAt: new Date().toISOString(),
       }),

@@ -90,6 +90,15 @@ test("ten classroom improvements with real teacher, student and anonymous family
     demo.getByRole("button", { name: "활동 제출", exact: true }),
   ).toHaveCount(0);
   await login(student, f.workshop.student.loginId, f.workshop.student.password);
+  await student.goto("/hub?tab=today&classroom=" + f.workshop.classroom);
+  await expect(student.getByRole("region", { name: "지금 할 일" }).getByRole("link"))
+    .toHaveAttribute("href", "/app/work/" + f.workshop.assignment + "?classroom=" + f.workshop.classroom);
+  await student.getByRole("combobox", { name: "지금 보고 있는 학급" }).selectOption(f.workshopTouch["webkit-mobile"]);
+  await expect(student).toHaveURL(new RegExp("classroom=" + f.workshopTouch["webkit-mobile"]));
+  await expect(student.getByRole("region", { name: "지금 할 일" })).toHaveCount(0);
+  const studentMenu = student.getByRole("navigation", { name: "주 메뉴", exact: true });
+  await expect(studentMenu.getByRole("link", { name: "받은 피드백", exact: true }))
+    .toHaveAttribute("href", "/app?view=feedback&classroom=" + f.workshopTouch["webkit-mobile"]);
   const quick = student.getByLabel("오늘의 간편 독서 기록", { exact: true });
   await quick
     .getByLabel("오늘 읽은 책 제목", { exact: true })
@@ -217,6 +226,14 @@ test("ten classroom improvements with real teacher, student and anonymous family
       .locator("#library")
       .getByRole("heading", { name: "CI 교실 도서", exact: true }),
   ).toBeVisible();
+  await student.goto("/hub?tab=reading&classroom=" + f.workshop.classroom + "#reading-editor");
+  const reader = student.locator("#reading-editor");
+  await reader.getByLabel("제목·저자·ISBN", { exact: true }).fill("CI 교실");
+  await reader.getByRole("button", { name: "도서 검색", exact: true }).click();
+  await reader.getByRole("region", { name: "교실 보유 도서", exact: true })
+    .getByRole("button", { name: /CI 교실 도서/ }).click();
+  await expect(reader.getByLabel("책 제목", { exact: true })).toHaveValue("CI 교실 도서");
+  await student.goto(path);
   await teacher.reload();
   await teacher.getByLabel("활동 종류", { exact: true }).selectOption("quiz");
   await teacher

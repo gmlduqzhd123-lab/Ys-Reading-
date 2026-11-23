@@ -52,7 +52,8 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   await expect(next.getByText(/마감/)).toBeVisible();
   await page.getByRole("button", { name: "메뉴 열기", exact: true }).click();
   const menu = page.getByRole("navigation", { name: "주 메뉴", exact: true });
-  await expect(menu.getByRole("link", { name: "받은 피드백", exact: true })).toBeVisible();
+  await expect(menu.getByRole("link", { name: "받은 피드백", exact: true }))
+    .toHaveAttribute("href", "/app?view=feedback&classroom=" + f.classroom);
   await page.getByRole("button", { name: "메뉴 닫기", exact: true }).click();
   const viewSettings = page.locator(".view-settings");
   await viewSettings.locator("summary").click();
@@ -66,6 +67,8 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   await viewSettings.locator("summary").click();
   await next.getByRole("link").click();
   await expect(page).toHaveURL(new RegExp("/app/work/" + f.assignment));
+  await expect(page.getByRole("link", { name: "오늘 할 일로 돌아가기", exact: true }))
+    .toHaveAttribute("href", "/hub?tab=today&classroom=" + f.classroom);
   await page
     .getByLabel("글 제목", { exact: true })
     .fill("모바일에서 함께 쓰는 한글");

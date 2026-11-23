@@ -183,9 +183,9 @@ describe("teacher email entry and callback", () => {
   });
   it.each([
     [true, "teacher", false, "/start?mode=new"],
-    [true, "student", false, "/account"],
-    [false, "teacher", false, "/account"],
-    [true, "teacher", true, "/account"],
+    [true, "student", false, "/account?intent=classroom"],
+    [false, "teacher", false, "/account?intent=classroom"],
+    [true, "teacher", true, "/account?intent=classroom"],
   ])("resumes classroom setup only with a ready teacher account", async (active, role, reset, target) => {
     state.profile.mockResolvedValue({ error: null, data: {
       role, account_active: active, must_change_password: reset,

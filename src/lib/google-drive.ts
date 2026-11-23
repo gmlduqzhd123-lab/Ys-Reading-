@@ -21,6 +21,7 @@ interface GoogleState {
   nonce: string;
   verifier: string;
   expires: number;
+  classroom?: string;
 }
 function config() {
   const id = process.env.GOOGLE_DRIVE_CLIENT_ID,
@@ -78,7 +79,7 @@ export async function googleConnectionState() {
     return { configured: true, connected: false };
   }
 }
-export async function googleStart(uid: string) {
+export async function googleStart(uid: string, classroom?: string) {
   const c = config();
   if (!c) throw new Error("GOOGLE_NOT_CONFIGURED");
   const nonce = randomBytes(24).toString("base64url");
@@ -86,7 +87,7 @@ export async function googleStart(uid: string) {
   (await cookies()).set(
     STATE,
     seal(
-      { uid, nonce, verifier, expires: Date.now() + 10 * 60000 },
+      { uid, nonce, verifier, expires: Date.now() + 10 * 60000, classroom },
       c.key,
       "google-state",
     ),
@@ -124,7 +125,7 @@ async function consumeState(uid: string, state: string) {
   return { c, jar, saved };
 }
 export async function googleCancel(uid: string, state: string) {
-  await consumeState(uid, state);
+  return (await consumeState(uid, state)).saved.classroom;
 }
 export async function googleCallback(uid: string, code: string, state: string) {
   const { c, jar, saved } = await consumeState(uid, state);
@@ -155,6 +156,7 @@ export async function googleCallback(uid: string, code: string, state: string) {
     ...cookieOptions,
     maxAge: 30 * 86400,
   });
+  return saved.classroom;
 }
 async function access(uid: string) {
   const c = config();

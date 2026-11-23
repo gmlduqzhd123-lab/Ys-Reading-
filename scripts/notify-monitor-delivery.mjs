@@ -11,19 +11,16 @@ if (
   throw Error("NOTIFICATION_CONTEXT_REQUIRED");
 const marker = "<!-- bookforest-delivery-incident-v1 -->",
   api = notificationClient({ token: process.env.GITHUB_TOKEN });
-const response = await fetch(
-  "https://reading-blush-zeta.vercel.app/api/delivery-health",
-  { signal: AbortSignal.timeout(12000), cache: "no-store" },
-);
-// The first staged build precedes alias promotion. An unconfigured monitor is
-// pending, never healthy and never allowed to close an existing incident.
-if (response.status === 404) {
-  console.log(JSON.stringify({ delivery: "setup-pending" }));
-} else {
-  if (!response.ok) throw Error("DELIVERY_CHECK_UNAVAILABLE");
-  let r = await response.json();
-  // Do not judge this run solely by the PC observation of the previous run.
-  // Both preceding notification steps can already have completed successfully.
+const outcomes = [process.env.SERVICE_NOTIFY_OUTCOME, process.env.BACKUP_NOTIFY_OUTCOME];
+const verifiedSteps = outcomes.every(x => x === "success");
+const failedStep = outcomes.includes("failure");
+async function currentDelivery() {
+  if (verifiedSteps || failedStep) return {
+    configured: true,
+    healthy: verifiedSteps,
+    code: failedStep ? "GITHUB_NOTIFY_FAILED" : "OK",
+    checkedAt: new Date().toISOString(),
+  };
   const live = await probeGithubDelivery({
     fetcher: (url, options) =>
       fetch(url, {
@@ -35,12 +32,21 @@ if (response.status === 404) {
       }),
   });
   if (live.runId === Number(process.env.GITHUB_RUN_ID) && live.code === "OK")
-    r = {
+    return {
       configured: true,
       healthy: true,
       code: "OK",
       checkedAt: new Date().toISOString(),
     };
+  const response = await fetch("https://reading-blush-zeta.vercel.app/api/delivery-health", {
+    signal: AbortSignal.timeout(12000), cache: "no-store",
+  });
+  if (response.status === 404) return { configured: false };
+  if (!response.ok) throw Error("DELIVERY_CHECK_UNAVAILABLE");
+  return response.json();
+}
+{
+  const r = await currentDelivery();
   if (!r.configured) {
     console.log(JSON.stringify({ delivery: "setup-pending" }));
   } else {

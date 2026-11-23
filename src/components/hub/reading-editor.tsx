@@ -18,19 +18,21 @@ export function ReadingEditor({
   data,
   book,
   edit,
+  bookClassroom,
   onSaved,
   onEdit,
 }: {
   data: HubData;
   book: Book | null;
   edit: ReadingLog | null;
+  bookClassroom?: string;
   onSaved: () => void;
   onEdit: () => void;
 }) {
   const classes = data.classes.filter((c) => c.term_state !== "archived"),
     router = useRouter();
   const initial = (
-    classId = edit?.classroom_id ?? classes[0]?.id,
+    classId = edit?.classroom_id ?? bookClassroom ?? classes[0]?.id,
   ): ReadingDraftPayload => ({
     title: book?.title ?? edit?.book.title ?? "",
     author: book?.author ?? edit?.book.author ?? "",
@@ -51,7 +53,7 @@ export function ReadingEditor({
     }),
   });
   const [classroom, setClassroom] = useState(
-      edit?.classroom_id ?? classes[0]?.id ?? "",
+      edit?.classroom_id ?? bookClassroom ?? classes[0]?.id ?? "",
     ),
     [value, setValue] = useState(initial),
     [dirty, setDirty] = useState(false),

@@ -49,7 +49,7 @@ export function RecoveryReadinessPanel({
     [name, setName] = useState(""),
     [revoke, setRevoke] = useState(false);
   return (
-    <section className="panel">
+    <section className="panel" id="recovery-rehearsal">
       <h2>복구 훈련·대체 운영자 준비</h2>
       <p>
         이 화면은 본인이 확인한 훈련 이력을 보관합니다. 체크만으로 별도
@@ -59,6 +59,14 @@ export function RecoveryReadinessPanel({
         <p>준비 상태를 읽지 못했어요.</p>
       ) : (
         <>
+          <details className="ops-card">
+            <summary>다른 PC에서 복구하기 전 준비할 일</summary>
+            <ol>
+              <li><a href="#backup-copies">백업 사본 점검</a>에서 최신 암호화 사본과 외부 저장처 상태를 확인하세요.</li>
+              <li>대체 운영자가 본인 계정으로 초대를 수락하고 인증앱 등록을 마치는지 확인하세요.</li>
+              <li>다른 PC의 별도 복구 환경에서 파일을 열어 로그인·권한·기록을 확인한 뒤, 아래 훈련 기록을 남겨 주세요.</li>
+            </ol>
+          </details>
           <p>
             활성 운영자 {state.operatorCount}명 ·{" "}
             {state.operatorCount < 2
