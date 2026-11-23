@@ -99,6 +99,8 @@ test("ten classroom improvements with real teacher, student and anonymous family
   const studentMenu = student.getByRole("navigation", { name: "주 메뉴", exact: true });
   await expect(studentMenu.getByRole("link", { name: "받은 피드백", exact: true }))
     .toHaveAttribute("href", "/app?view=feedback&classroom=" + f.workshopTouch["webkit-mobile"]);
+  await student.getByRole("combobox", { name: "지금 보고 있는 학급" }).selectOption(f.workshop.classroom);
+  await expect(student).toHaveURL(new RegExp("classroom=" + f.workshop.classroom));
   const quick = student.getByLabel("오늘의 간편 독서 기록", { exact: true });
   await quick
     .getByLabel("오늘 읽은 책 제목", { exact: true })
