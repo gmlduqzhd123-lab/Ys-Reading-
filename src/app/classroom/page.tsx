@@ -28,7 +28,13 @@ export default async function ClassroomPage({
       <div className="page-shell">
         <h1>우리 반 수업 공방</h1>
         <p>학급을 준비하면 독서 기록·활동지·도감이 연결됩니다.</p>
-        <Link href="/start">우리 반 시작하기</Link>
+        {p.role === "student" ? (
+          <Link href="/hub?tab=today">오늘 할 일로 돌아가기</Link>
+        ) : (
+          <Link href="/start?mode=new" className="button button-primary">
+            학급 개설
+          </Link>
+        )}
       </div>
     );
   if (

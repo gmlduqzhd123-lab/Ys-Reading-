@@ -200,8 +200,11 @@ export function Management({ data }: { data: HubData }) {
   return (
     <>
       <Panel title="학급 초대·참여 관리">
+        <Link href="/start?mode=new" className="button button-primary">
+          학급 개설
+        </Link>
         <Link href="/app?view=classes" className="button button-outline">
-          학급 만들기·미션 배정
+          학급 관리·미션 배정
         </Link>
         <p>
           학생 계정 발급과 동의 증빙 확인은 운영자 절차를 따릅니다. 아래 승인은

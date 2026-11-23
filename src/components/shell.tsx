@@ -22,6 +22,7 @@ const links = [
   { href: "/hub?tab=economy", label: "경제 교실", active: "economy" },
 ];
 const moreLinks = [
+  ["/start?mode=new", "학급 개설 (교사)"],
   ["/hub?tab=reading", "나의 책장"],
   ["/hub?tab=search", "기록 검색"],
   ["/status", "연결 점검·기록 보관"],

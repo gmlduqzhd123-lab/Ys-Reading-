@@ -65,8 +65,8 @@ export function ClassOverviewPanel({
         성취도나 학교 출결을 뜻하지 않아요.
       </p>
       <div className="button-row">
-        <Link href="/start" className="button button-primary">
-          우리 반 시작하기
+        <Link href="/start" className="button button-outline">
+          기존 학급 준비 이어가기
         </Link>
         {canReview && (
           <Link href="/hub?tab=review" className="button button-outline">

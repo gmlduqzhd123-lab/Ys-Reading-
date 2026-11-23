@@ -32,9 +32,9 @@ export default function GuidePage() {
           <GraduationCap className="accent-icon" size={30} />
           <h2>선생님이라면</h2>
           <ol className="guide-list">
-            <li>교사 계정으로 로그인하고 학급을 만들어요.</li>
+            <li>교사 계정으로 로그인하고 오늘의 교실에서 ‘학급 개설’을 눌러요.</li>
             <li>
-              ‘우리 반 시작하기’에서 학생 계정을 준비하고 필요한 참여 동의
+              학급을 개설한 뒤 학생 계정을 준비하고 필요한 참여 동의
               확인을 진행해요.
             </li>
             <li>검토한 미션을 선택해 학급에 배정해요.</li>
@@ -45,6 +45,9 @@ export default function GuidePage() {
             </li>
             <li>완료된 작품으로 우리 반·학년 글쓰기 활동을 열어요.</li>
           </ol>
+          <Link href="/start?mode=new" className="text-link">
+            학급 개설 <ArrowRight size={16} />
+          </Link>
           <p className="form-help">
             담당 교사는 학생 계정을 발급하고, 운영자는 필요한 동의 근거와 교사
             권한을 확인합니다.

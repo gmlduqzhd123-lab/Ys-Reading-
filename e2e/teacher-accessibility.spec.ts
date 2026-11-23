@@ -51,5 +51,33 @@ test("teacher roster, invitations, term progression, batch export and simple stu
   await expect(student.getByRole("navigation",{name:"추가 책숲 활동"})).toBeVisible();
   await student.goto("/hub?tab=reading&classroom="+f.classroom+"#reading-editor");
   await expect(student.getByLabel("작성 방법 선택",{exact:true})).toHaveValue("guided");
+  await expect(student.getByRole("link", { name: "학급 개설", exact: true })).toHaveCount(0);
+  await student.goto("/start?mode=new");
+  await expect(student).toHaveURL(/\/hub\?tab=today/);
+
+  await page.goto("/hub?tab=today");
+  await page.evaluate(({ user, classroom }) => {
+    sessionStorage.setItem("bookforest-start:" + user, JSON.stringify({
+      version: 1, user, classroom, step: 2, savedAt: Date.now(),
+    }));
+  }, { user: f.accounts[1].id, classroom: f.classroom });
+  await page.getByRole("link", { name: "학급 개설", exact: true }).click();
+  await expect(page.getByLabel("새 학급 이름", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "기존 학급 준비 이어가기", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /학생 별칭으로 계정/ })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "메뉴 열기", exact: true }).click();
+  const nav = page.getByRole("navigation", { name: "주 메뉴", exact: true });
+  await nav.getByText("더보기", { exact: true }).click();
+  await nav.getByRole("link", { name: "학급 개설 (교사)", exact: true }).click();
+  const name = "CI 학급 개설 바로가기";
+  await page.getByLabel("새 학급 이름", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "학급 개설", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /학생 별칭으로 계정/ })).toBeVisible();
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+  await page.goto("/start");
+  await expect(page.getByRole("heading", { name: /학생 별칭으로 계정/ })).toBeVisible();
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
   check();studentCheck();await c.close();
 });

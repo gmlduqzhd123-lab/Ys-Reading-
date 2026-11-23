@@ -37,15 +37,19 @@ export function StartWizard({
   userId,
   data,
   origin,
+  createNew,
 }: {
   userId: string;
   data: Pick<DashboardData, "classes">;
   origin: string;
+  createNew: boolean;
 }) {
   const router = useRouter(),
     [step, setStep] = useState(1),
     [classId, setClassId] = useState(
-      data.classes.find((c) => c.term_state !== "archived")?.id ?? "",
+      createNew
+        ? ""
+        : (data.classes.find((c) => c.term_state !== "archived")?.id ?? ""),
     );
   const [created, setCreated] = useState<{ id: string; name: string }[]>([]),
     [className, setClassName] = useState("");
@@ -65,6 +69,10 @@ export function StartWizard({
   const [resumeReady, setResumeReady] = useState(false);
   const progressKey = "bookforest-start:" + userId;
   useEffect(() => {
+    if (createNew) {
+      setResumeReady(true);
+      return;
+    }
     try {
       const saved = readStartProgress(
         sessionStorage.getItem(progressKey),
@@ -84,7 +92,7 @@ export function StartWizard({
     setResumeReady(true);
     // Initial server classes validate the restored classroom, never stored credentials.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, createNew]);
   useEffect(() => {
     if (!resumeReady || !classId) return;
     try {
@@ -188,13 +196,13 @@ export function StartWizard({
   return (
     <div className="participation-page">
       <span className="eyebrow">FIRST DAY IN BOOKFOREST</span>
-      <h1>우리 반 시작하기</h1>
+      <h1>{createNew ? "학급 개설" : "우리 반 시작하기"}</h1>
       <p>
         학급 준비부터 첫 활동까지, 한 단계씩 함께해요. 도중에 멈춰도 만든 학급과
         발급한 계정은 보존됩니다.
       </p>
       <nav className="setup-steps" aria-label="학급 준비 단계">
-        {["학급 만들기", "학생 계정", "첫 미션", "접속 안내"].map((name, i) => (
+        {["학급 개설", "학생 계정", "첫 미션", "접속 안내"].map((name, i) => (
           <button
             key={name}
             aria-current={step === i + 1 ? "step" : undefined}
@@ -208,8 +216,12 @@ export function StartWizard({
       </nav>
       {step === 1 && (
         <section className="panel">
-          <h2>1. 학급을 선택하거나 새로 만들어요</h2>
-          {classes.length > 0 && (
+          <h2>
+            {createNew
+              ? "새 학급 이름을 입력하세요"
+              : "학급을 선택하거나 새로 만들어요"}
+          </h2>
+          {!createNew && classes.length > 0 && (
             <label className="field">
               준비할 학급
               <select
@@ -229,11 +241,12 @@ export function StartWizard({
             <ParticipationForm
               command="class_start"
               payload={() => ({ name: className })}
-              label="학급 생성"
+              label="학급 개설"
               onSuccess={(r) => {
                 const id = String(r.id);
-                setCreated((old) => [{ id, name: className }, ...old]);
+                setCreated((old) => [{ id, name: className.trim() }, ...old]);
                 setClassId(id);
+                setClassName("");
                 setStep(2);
               }}
             >
@@ -251,7 +264,14 @@ export function StartWizard({
               </label>
             </ParticipationForm>
           )}
-          {classId && (
+          {createNew && classes.length > 0 && !batch && (
+            <p>
+              <Link className="text-link" href="/start">
+                기존 학급 준비 이어가기
+              </Link>
+            </p>
+          )}
+          {!createNew && classId && (
             <button
               className="button button-outline"
               onClick={() => setStep(2)}
@@ -264,6 +284,7 @@ export function StartWizard({
       {step === 2 && (
         <section className="panel">
           <h2>2. 학생 별칭으로 계정을 준비해요</h2>
+          <p>준비할 학급 · <strong>{classes.find((c) => c.id === classId)?.name}</strong></p>
           <p>
             {roster
               ? `이 학급에 이미 발급된 학생 ${roster.total}명입니다.`

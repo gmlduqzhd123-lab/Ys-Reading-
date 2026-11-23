@@ -183,6 +183,11 @@ export function LearningHub({
           )}
         </div>
         <div className="button-row">
+          {teacher && (
+            <Link className="button button-primary" href="/start?mode=new">
+              학급 개설
+            </Link>
+          )}
           <RefreshButton />
           {teacher && (
             <Link className="button button-outline" href="/collaboration">
@@ -210,7 +215,7 @@ export function LearningHub({
               </button>
             )}
           <Link
-            className={teacher ? "button button-primary" : "paper-text-link"}
+            className={teacher ? "button button-outline" : "paper-text-link"}
             href={teacher ? "/operations" : "/app?view=missions"}
           >
             {teacher ? "학생 계정·기록 관리" : "미션 이어하기"}
