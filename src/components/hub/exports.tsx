@@ -58,8 +58,11 @@ export function Exports({
             student: s.student_id,
           }));
   const teacher = data.profile.role === "teacher";
-  const method: ExportMethod = requestedMethod === "batch" ? "batch"
-    : teacher && (requestedMethod === "google" || (!requestedMethod && googleNotice === "connected")) ? "google" : "file";
+  const [method, setMethod] = useState<ExportMethod>(() => {
+    if (requestedMethod === "batch") return "batch";
+    if (teacher && (requestedMethod === "google" || (!requestedMethod && googleNotice === "connected"))) return "google";
+    return "file";
+  });
   const [batchOpened, setBatchOpened] = useState(method === "batch");
   const classroom = data.selectedClassroom ?? "";
   const selectionKey = exportSelectionKey(data.profile.id, classroom, data.page);
@@ -154,6 +157,7 @@ export function Exports({
     }
   }
   function chooseMethod(value: ExportMethod) {
+    setMethod(value);
     if (value === "batch") setBatchOpened(true);
     const next = new URL(window.location.href);
     next.searchParams.set("exportMode", value);
