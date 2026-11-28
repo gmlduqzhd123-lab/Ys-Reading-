@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   configured: true,
   user: { id: "11111111-1111-4111-8111-111111111111" } as { id: string } | null,
-  profile: { id: "11111111-1111-4111-8111-111111111111", role: "student", consent_status: "verified", display_name: "테스트 학생" } as Record<string, string> | null,
+  profile: { id: "11111111-1111-4111-8111-111111111111", role: "student", consent_status: "verified", display_name: "테스트 학생" } as Record<string, string | boolean> | null,
   rpc: vi.fn(),
   getUser: vi.fn(),
   signOut: vi.fn(),
@@ -147,5 +147,18 @@ describe("server action boundaries", () => {
     expect(state.signIn).toHaveBeenCalledWith({ email: "student-01@students.bookforest.invalid", password: "test-password-only" });
     expect(state.signOut).toHaveBeenCalledOnce();
     expect(state.redirect).not.toHaveBeenCalled();
+  });
+
+  it("sends initial passwords to account setup before opening the allowed classroom page", async () => {
+    state.profile = { ...state.profile, must_change_password: true };
+    const form = new FormData();
+    form.set("identifier", "student-01");
+    form.set("password", "test-password-only");
+    const mission = "/app/work/" + assignmentId + "?classroom=" + requestId;
+    form.set("next", mission);
+    expect((await login(form)).data?.destination).toBe("/account?next=" + encodeURIComponent(mission));
+    form.set("next", "//untrusted.example");
+    expect((await login(form)).data?.destination).toBe("/account");
+    expect(state.signOut).not.toHaveBeenCalled();
   });
 });

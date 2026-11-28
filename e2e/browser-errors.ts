@@ -3,7 +3,15 @@ import { expect, type Page } from "@playwright/test";
 // Log routes and error categories only, never DOM text, credentials or writing.
 export function watchBrowserErrors(page: Page) {
   const errors: string[] = [];
+  const failedNavigation: string[] = [];
   let phase = "page";
+  page.on("requestfailed", request => {
+    const url = new URL(request.url());
+    if (!url.searchParams.has("_rsc")) return;
+    const reason = request.failure()?.errorText ?? "";
+    const kind = /abort|cancel|\b999\b/i.test(reason) ? "CANCELLED" : "FAILED";
+    failedNavigation.push(`${phase} ${url.pathname.replace(/\/[a-f0-9-]{36}$/i, "/:id")} ${kind}`);
+  });
   const record = (message: string, error?: Error) => {
     const category = /hydration|hydrating|#418|didn't match/i.test(message)
       ? "HYDRATION_MISMATCH"
@@ -22,6 +30,12 @@ export function watchBrowserErrors(page: Page) {
         "The Internet connection appears to be offline",
         "NetworkError",
         "Connection closed.",
+        "The network connection was lost",
+        "The operation couldn’t be completed",
+        "The operation could not be completed",
+        "Request was cancelled",
+        "WebKit",
+        "NSURLErrorDomain",
         "ResizeObserver loop",
         "AbortError",
         "cancelled",
@@ -29,7 +43,7 @@ export function watchBrowserErrors(page: Page) {
         "null",
         "undefined",
         "not a function",
-      ].find((value) => message.includes(value)) ?? "OTHER";
+      ].find((value) => message.toLowerCase().includes(value.toLowerCase())) ?? "OTHER";
     const frames = (
       error?.stack?.match(
         /\/_next\/static\/chunks\/[a-zA-Z0-9_.-]+\.js:\d+:\d+/g,
@@ -50,7 +64,7 @@ export function watchBrowserErrors(page: Page) {
       record(message.text());
   });
   return Object.assign(
-    () => expect(errors, "Browser runtime errors").toEqual([]),
+    () => expect(errors, "Browser runtime errors. Failed route requests: " + failedNavigation.slice(-8).join(", ")).toEqual([]),
     {
       errors,
       phase: (value: string) => {

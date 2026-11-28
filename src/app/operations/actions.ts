@@ -69,8 +69,10 @@ export async function accountOperation(value: unknown, resume = false) {
       },
     );
     const result = await response.json();
-    revalidatePath("/operations");
-    revalidatePath("/account");
+    if (input.kind !== "change_password") {
+      revalidatePath("/operations");
+      revalidatePath("/account");
+    }
     if (result.ok) {
       if (input.kind === "change_password") await client.auth.signOut();
       return {

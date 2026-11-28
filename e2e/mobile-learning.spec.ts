@@ -25,8 +25,10 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   page,
   context,
   browser,
+  runtimeCheck,
 }) => {
   const destination = "/hub?tab=today&classroom=" + f.classroom;
+  runtimeCheck.phase("login-and-today");
   await page.goto(destination);
   await expect(page).toHaveURL(/\/login\?.*next=/);
   expect(new URL(page.url()).searchParams.get("next")).toBe(destination);
@@ -68,6 +70,7 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   await viewSettings.getByLabel("큰 글씨", { exact: true }).uncheck();
   await viewSettings.locator("summary").click();
   await next.getByRole("link").click();
+  runtimeCheck.phase("write-and-reload");
   await expect(page).toHaveURL(new RegExp("/app/work/" + f.assignment));
   await expect(page.getByRole("link", { name: "오늘 할 일로 돌아가기", exact: true }))
     .toHaveAttribute("href", "/hub?tab=today&classroom=" + f.classroom);
@@ -90,6 +93,7 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
     .getByRole("checkbox", { name: "이 탭에 미저장 글 임시보관", exact: true })
     .check();
   await context.setOffline(true);
+  runtimeCheck.phase("offline-and-reconnect");
   await body.fill(
     (await body.inputValue()) + " 연결이 끊긴 동안 보탠 문장입니다.",
   );
@@ -116,6 +120,7 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(391);
+  runtimeCheck.phase("student-export");
   await page.goto("/hub?tab=exports");
   await page.getByLabel("기록 종류").selectOption("drafts");
   await expect(page.getByLabel("기록 종류")).toHaveValue("drafts");
@@ -133,6 +138,7 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   expect(await zip.file("word/document.xml")!.async("text")).toContain(
     "보탠 문장",
   );
+  runtimeCheck.phase("submit-writing");
   await page.goto("/app/work/" + f.assignment + "?classroom=" + f.classroom);
   await page.getByRole("button", { name: "선생님께 제출하기", exact: true }).click();
   await expect(page.getByText("선생님께 제출됨", { exact: true })).toBeVisible();
@@ -160,6 +166,7 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   } finally {
     await teacherContext.close();
   }
+  runtimeCheck.phase("open-feedback");
   await page.goto(destination);
   await page.getByRole("region", { name: "지금 할 일" })
     .getByRole("link", { name: "피드백 읽고 고쳐 쓰기", exact: true }).click();
@@ -168,6 +175,7 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   expect((await feedback.boundingBox())!.y).toBeLessThan((await question.boundingBox())!.y);
   await expect(body).toBeEditable();
 
+  runtimeCheck.phase("device-check");
   await page.goto("/device-check");
   await page.getByLabel("지금 점검하는 기기").selectOption("개인 PC·휴대전화");
   await page

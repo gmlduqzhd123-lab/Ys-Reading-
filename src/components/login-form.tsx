@@ -17,7 +17,8 @@ export function LoginForm({ configured, intent, next, teacher = false }: {
         setMessage("");
         startTransition(async () => {
           const result = await login(formData);
-          if (!result.ok) setMessage(result.message);
+          if (result.ok && result.data) window.location.replace(result.data.destination);
+          else setMessage(result.message);
         });
       }}
     >

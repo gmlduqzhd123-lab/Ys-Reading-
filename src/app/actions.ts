@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { classroomLoginDestination } from "@/lib/classroom-entry";
-import { loginDestination } from "@/lib/login-entry";
+import { classroomAccountHref, classroomLoginDestination } from "@/lib/classroom-entry";
+import { accountEntry, loginDestination } from "@/lib/login-entry";
 import type { Profile } from "@/lib/auth";
 import type { Classroom, Assignment, Draft, Submission, Contest, Entry, Review } from "@/lib/data";
 
@@ -84,9 +84,8 @@ function formDate(value: FormDataEntryValue | null, required: boolean): string |
   return new Date(timestamp).toISOString();
 }
 
-export async function login(formData: FormData): Promise<ActionResult> {
+export async function login(formData: FormData): Promise<ActionResult<{ destination: string }>> {
   if (!isSupabaseConfigured()) return { ok: false, message: "아직 학급 서비스 연결을 준비하고 있어요." };
-  let destination = "/app";
   try {
     const identifier = z.string().trim().min(3).max(254).parse(formData.get("identifier") ?? formData.get("email"));
     const password = z.string().min(1).max(256).parse(formData.get("password"));
@@ -97,16 +96,19 @@ export async function login(formData: FormData): Promise<ActionResult> {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) return { ok: false, message: "아이디 또는 비밀번호를 확인해 주세요." };
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("id,role").eq("id", data.user.id).maybeSingle();
+    const { data: profile, error: profileError } = await supabase.from("profiles")
+      .select("id,role,account_active,must_change_password").eq("id", data.user.id).maybeSingle();
     if (profileError || !profile) {
       await supabase.auth.signOut();
       return { ok: false, message: "계정 준비 상태를 확인해 주세요. 선생님 또는 운영자에게 문의해 주세요." };
     }
-    destination = classroomLoginDestination(formData.get("intent"), profile.role)
-      ?? loginDestination(formData.get("next")) ?? destination;
+    const classroom = classroomLoginDestination(formData.get("intent"), profile.role);
+    const next = loginDestination(formData.get("next"));
+    const destination = profile.account_active === false || profile.must_change_password
+      ? classroom ? classroomAccountHref : accountEntry(next)
+      : classroom ?? next ?? "/app";
+    return { ok: true, message: "로그인했어요.", data: { destination } };
   } catch (error) { return { ok: false, message: friendlyError(error) }; }
-  revalidatePath("/app", "layout");
-  redirect(destination);
 }
 
 export async function logout(): Promise<void> {

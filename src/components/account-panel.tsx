@@ -111,7 +111,7 @@ export function AccountPanel({
                   password,
                 });
                 setMessage(r.message);
-                if (r.ok) router.replace(passwordRelogin);
+                if (r.ok) window.location.replace(passwordRelogin);
               });
             }}
           >
