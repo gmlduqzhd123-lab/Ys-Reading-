@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ClassroomActivities } from "@/components/classroom/activities";
 import type { ClassroomToolState } from "@/lib/classroom-tools";
 import { positivePage } from "@/lib/workshop-operations";
+import { pageDestination } from "@/lib/login-entry";
 export const metadata = { title: "배부 활동과 제출 원기록" };
 export default async function ActivityPage({
   params,
@@ -13,14 +14,15 @@ export default async function ActivityPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const profile = await requireProfile(),
-    { id } = await params;
+  const { id } = await params;
   if (!z.uuid().safeParse(id).success)
     return (
       <div>
         <h1>활동을 확인해 주세요</h1>
       </div>
     );
+  const search = await searchParams;
+  const profile = await requireProfile({ next: pageDestination("/classroom/activity/" + id, search) });
   const c = await createClient(),
     r = await c.rpc("classroom_tool_activity", { p_activity: id });
   if (r.error || !r.data)
@@ -31,8 +33,7 @@ export default async function ActivityPage({
       </div>
     );
   const state = r.data as ClassroomToolState;
-  const search = await searchParams,
-    page = positivePage(search.answerPage);
+  const page = positivePage(search.answerPage);
   const [activities, answers] = await Promise.all([
     c.rpc("classroom_workshop_query", {
       p_classroom: state.classroom.id,

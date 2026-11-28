@@ -5,11 +5,9 @@ import { formatOperationsDate } from "@/lib/operations";
 export async function TeacherWeeklySummary({
   classroom,
   week,
-  classes,
 }: {
   classroom: string;
   week?: string;
-  classes: { id: string; name: string }[];
 }) {
   let from;
   try {
@@ -62,17 +60,7 @@ export async function TeacherWeeklySummary({
       <h2>교사 주간 학습 요약</h2>
       <form action="/hub" className="hub-inline">
         <input type="hidden" name="tab" value="overview" />
-        <label className="field">
-          주간 요약 학급
-          <select name="classroom" defaultValue={classroom}>
-            <option value="">접근 가능한 담당 학급 전체</option>
-            {classes.map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <input type="hidden" name="classroom" value={classroom} />
         <label className="field">
           살펴볼 주의 날짜
           <input

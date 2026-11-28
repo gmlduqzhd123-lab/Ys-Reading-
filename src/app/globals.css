@@ -1449,16 +1449,6 @@ button {
   background: var(--theme-accent);
   opacity: 0.65;
 }
-.art-label {
-  position: absolute;
-  right: 15px;
-  top: 46px;
-  writing-mode: vertical-rl;
-  font-size: 9px;
-  color: var(--theme-ink);
-  opacity: 0.6;
-  letter-spacing: 0.2em;
-}
 .mission-arrow {
   position: absolute;
   bottom: 14px;
@@ -2059,33 +2049,56 @@ button {
   grid-template-columns: 1.6fr 1fr;
   gap: 20px;
 }
+.editor-layout > * {
+  min-width: 0;
+}
+.writing-context-panel {
+  padding: 16px;
+  margin-block: 16px;
+  border-inline-start: 3px solid var(--green);
+  background: var(--soft);
+  border-radius: 8px;
+}
+.writing-context-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+.writing-context-panel :is(.submission-body, .feedback-item p) {
+  color: var(--ink);
+  font-size: 15px;
+}
+.writing-context-panel .feedback-item small {
+  color: var(--muted);
+  font-size: 13px;
+}
 .editor-panel .field {
   margin: 12px 0 20px;
 }
 .editor-panel textarea {
   min-height: 340px;
   line-height: 2;
-  font-size: 14px;
+  font-size: 16px;
   padding: 17px;
 }
 .editor-count {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
-  font-size: 10px;
-  color: #8a997c;
+  font-size: 12px;
+  color: var(--muted);
   margin-top: -12px;
   margin-bottom: 22px;
 }
 .save-indicator {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
-  color: #7d9566;
-}
-.save-indicator.error {
-  color: #ac6546;
+  font-size: 13px;
+  color: var(--muted);
 }
 .feedback-item {
   border-top: 1px solid var(--line);

@@ -16,6 +16,9 @@ import {
   loadReviewQueue,
 } from "@/lib/learning-queues-server";
 import { requireProfile } from "@/lib/auth";
+import { pageDestination } from "@/lib/login-entry";
+import { hubTabPermission } from "@/lib/hub-navigation";
+import { z } from "zod";
 import type { ClassroomToolState } from "@/lib/classroom-tools";
 import { searchSchema } from "@/lib/classroom-insights";
 import { loadOverview, loadRecordSearch } from "@/lib/insights-server";
@@ -31,7 +34,7 @@ export default async function HubPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const params = await searchParams;
-  const profile = await requireProfile();
+  const profile = await requireProfile({ next: pageDestination("/hub", params) });
   params.classroom = await activeClassroom(profile.id, params.classroom);
   const allowed = [
     "today",
@@ -49,6 +52,9 @@ export default async function HubPage({
   const tab = params.tab && allowed.includes(params.tab) ? params.tab : "today";
   const parsed = searchSchema.safeParse(params);
   const filters = parsed.success ? parsed.data : searchSchema.parse({});
+  const linkedRecord = tab === "reading" && profile.role === "student"
+    ? z.uuid().safeParse(params.record).data
+    : undefined;
   // Capture the visible version before loading page data. The first browser
   // probe can then detect updates that arrive during rendering/hydration.
   let learningToken = "";
@@ -63,30 +69,14 @@ export default async function HubPage({
       if (typeof r.data === "string") learningToken = r.data;
     } catch {}
   const data = await loadHub(
-    ["search", "overview"].includes(tab) ? 1 : Number(params.page ?? 1),
+    linkedRecord || ["search", "overview"].includes(tab) ? 1 : Number(params.page ?? 1),
     tab,
     filters.classroom,
+    linkedRecord,
   );
   if (profile.role === "teacher") {
-    const staff = (data.staffClasses ?? []).filter(c => !filters.classroom || c.id === filters.classroom),
-      owns = staff.some((c) => c.owner),
-      canRead = staff.some((c) => c.read),
-      canReview = staff.some((c) => c.review);
-    if (
-      (!owns &&
-        [
-          "growth",
-          "plaza",
-          "exhibitions",
-          "economy",
-          "manage",
-          "terms",
-          "packs",
-        ].includes(tab)) ||
-      (!canRead &&
-        ["reading", "search", "exports", "overview"].includes(tab)) ||
-      (!canReview && tab === "review")
-    )
+    const permission = hubTabPermission(tab);
+    if (permission && !data.staffClasses?.some(c => (!filters.classroom || c.id === filters.classroom) && c[permission]))
       redirect(filters.classroom ? "/collaboration?classroom=" + filters.classroom : "/collaboration");
   }
   const [
@@ -151,7 +141,7 @@ export default async function HubPage({
     profile.consent_status === "verified" &&
     data.schemaReady &&
     toolsClass &&
-    ["today", "reading"].includes(tab)
+    (tab === "today" || (tab === "reading" && !linkedRecord))
   ) {
     const c = await createClient(),
       r = await c.rpc("classroom_tool_state", {
@@ -172,6 +162,8 @@ export default async function HubPage({
         initialTab={tab}
         google={google}
         googleNotice={params.google}
+        linkedRecord={linkedRecord}
+        editLinkedRecord={params.edit === "1"}
         participation={participation}
         studentToday={studentToday}
         reviewQueue={reviewQueue}
@@ -193,7 +185,6 @@ export default async function HubPage({
           <TeacherWeeklySummary
             classroom={filters.classroom}
             week={params.week}
-            classes={data.availableClasses ?? data.classes}
           />
         </Suspense>
       )}

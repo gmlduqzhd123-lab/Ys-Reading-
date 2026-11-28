@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { StartWizard } from "@/components/participation/start-wizard";
 import type { Classroom } from "@/lib/data";
+import { pageDestination } from "@/lib/login-entry";
 export const metadata = { title: "학급 개설·준비" };
 export default async function StartPage({
   searchParams,
@@ -11,7 +12,7 @@ export default async function StartPage({
 }) {
   const params = await searchParams;
   const createNew = params.mode === "new";
-  const profile = await requireProfile(createNew ? "classroom" : undefined);
+  const profile = await requireProfile({ classroomSetup: createNew, next: pageDestination("/start", params), teacher: true });
   if (profile.role !== "teacher") redirect("/hub?tab=today");
   const client = await createClient();
   const result = await client

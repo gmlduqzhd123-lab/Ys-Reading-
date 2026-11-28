@@ -5,18 +5,20 @@ import { teacherEmail, teacherCallbackUrl } from "@/lib/account-access";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { classroomLoginCookie } from "@/lib/classroom-entry";
+import { loginDestination } from "@/lib/login-entry";
 
-async function rememberClassroomLogin(intent: unknown, callback: string) {
-  (await cookies()).set(classroomLoginCookie, intent === "classroom" ? "classroom" : "", {
+async function rememberLoginDestination(intent: unknown, next: unknown, callback: string) {
+  const destination = intent === "classroom" ? "classroom" : loginDestination(next);
+  (await cookies()).set(classroomLoginCookie, destination ?? "", {
     path: "/auth/callback",
     httpOnly: true,
     sameSite: "lax",
     secure: new URL(callback).protocol === "https:",
-    maxAge: intent === "classroom" ? 15 * 60 : 0,
+    maxAge: destination ? 15 * 60 : 0,
   });
 }
 
-export async function startTeacherGoogleLogin(intent?: "classroom") {
+export async function startTeacherGoogleLogin(intent?: "classroom", next?: string) {
   if (!isSupabaseConfigured() || process.env.GOOGLE_AUTH_ENABLED !== "true")
     return { ok: false, message: "Google 로그인 설정을 준비하고 있어요." };
   const callback = teacherCallbackUrl(process.env.NEXT_PUBLIC_APP_URL);
@@ -42,7 +44,7 @@ export async function startTeacherGoogleLogin(intent?: "classroom") {
     url.pathname !== "/auth/v1/authorize"
   )
     return { ok: false, message: "Google 로그인 주소 설정을 확인해 주세요." };
-  await rememberClassroomLogin(intent, callback);
+  await rememberLoginDestination(intent, next, callback);
   redirect(url.toString());
 }
 
@@ -65,7 +67,7 @@ export async function sendTeacherLoginLink(form: FormData) {
             ? "잠시 후 다시 요청해 주세요. 인증 메일은 연속해서 발송할 수 없어요."
             : "인증 메일을 보내지 못했어요. 운영자에게 이메일 발송 설정 확인을 요청해 주세요.",
       };
-    await rememberClassroomLogin(form.get("intent"), callback);
+    await rememberLoginDestination(form.get("intent"), form.get("next"), callback);
     return {
       ok: true,
       message:

@@ -5,6 +5,8 @@ import { loadDashboard } from "@/lib/data";
 import { WorkEditor } from "@/components/work-editor";
 import { createClient } from "@/lib/supabase/server";
 import { hubHref, withClassroom } from "@/lib/hub-navigation";
+import { requireProfile } from "@/lib/auth";
+import { pageDestination } from "@/lib/login-entry";
 export const metadata = { title: "생각 쓰기" };
 export default async function WorkPage({
   params,
@@ -19,6 +21,7 @@ export default async function WorkPage({
   )
     notFound();
   const sp = await searchParams;
+  await requireProfile({ next: pageDestination("/app/work/" + id, sp) });
   const n = Number(sp.historyPage ?? 1);
   const data = await loadDashboard({
     assignment: id,

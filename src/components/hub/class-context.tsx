@@ -8,18 +8,20 @@ export function ClassContext({
   tab,
   selected,
   classes,
+  unavailable,
 }: {
   owner: string;
   tab: string;
   selected: string;
   classes: { id: string; name: string }[];
+  unavailable: string[];
 }) {
   const query = useSearchParams();
   const router = useRouter(),
     [busy, start] = useTransition(),
     [message, setMessage] = useState("");
   return (
-    <div className="panel">
+    <div className="workspace-class-context" aria-busy={busy}>
       <label className="field">
         지금 보고 있는 학급
         <select
@@ -36,10 +38,14 @@ export function ClassContext({
             )
               return;
             start(async () => {
+              setMessage("");
               try {
                 await rememberHubClass(owner, id);
-                const reviewKind = query.get("reviewKind");
-                router.push(hubHref(tab, id, tab === "review" && reviewKind === "reading" ? { reviewKind } : {}));
+                const nextTab = unavailable.includes(id) ? "today" : tab;
+                const keys = nextTab === "search" ? ["kind", "q", "from", "to", "status"]
+                  : nextTab === "overview" ? ["week"] : nextTab === "review" ? ["reviewKind"] : [];
+                const filters = Object.fromEntries(keys.map(key => [key, query.get(key) ?? ""]));
+                router.push(hubHref(nextTab, id, filters));
               } catch (e) {
                 setMessage(
                   e instanceof Error ? e.message : "학급을 확인해 주세요.",
@@ -56,11 +62,7 @@ export function ClassContext({
           ))}
         </select>
       </label>
-      <p className="form-help">
-        선택한 학급을 메뉴를 옮겨도 유지합니다. 학급 선택은 접근 권한을 변경하지
-        않습니다.
-      </p>
-      {message && <p role="status">{message}</p>}
+      {(busy || message) && <p role="status">{busy ? "학급을 바꾸고 있어요." : message}</p>}
     </div>
   );
 }

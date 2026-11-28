@@ -16,13 +16,11 @@ const labels: Record<string, string> = {
 export function ClassOverviewPanel({
   data,
   classroom,
-  classes,
   canReview = true,
   owns = true,
 }: {
   data: ClassOverview;
   classroom: string;
-  classes: { id: string; name: string }[];
   canReview?: boolean;
   owns?: boolean;
 }) {
@@ -70,29 +68,11 @@ export function ClassOverviewPanel({
           기존 학급 준비 이어가기
         </Link>
         {owns && (
-          <Link href="/hub?tab=packs" className="button button-outline">
+          <Link href={hubHref("packs", classroom)} className="button button-outline">
             수업 꾸러미
           </Link>
         )}
       </div>
-      <form action="/hub" className="hub-inline">
-        <input type="hidden" name="tab" value="overview" />
-        <label className="field">
-          담당 학급
-          <select name="classroom" defaultValue={classroom}>
-            <option value="">모든 담당 학급</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className="button button-primary">현황 보기</button>
-        <Link href="/hub?tab=overview" className="text-link">
-          전체 학급
-        </Link>
-      </form>
       <div className="insight-metrics">
         {[
           ["참여 준비", `${totals.ready} / ${totals.students}명`],

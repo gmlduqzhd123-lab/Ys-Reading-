@@ -15,10 +15,10 @@ import { ConnectionBanner } from "@/components/recovery/connection-banner";
 import { ServiceAlert } from "@/components/recovery/service-alert";
 import { createClient } from "@/lib/supabase/client";
 import { newClassHref } from "@/lib/classroom-entry";
-import { withClassroom } from "@/lib/hub-navigation";
+import { hubTabPermission, withClassroom } from "@/lib/hub-navigation";
 
 const publicLinks = [
-  ["/hub?tab=today", "내 교실"],
+  ["/hub?tab=today", "학생 입장"],
   ["/missions", "독서미션"],
   ["/login?mode=teacher", "교사 로그인"],
 ] as const;
@@ -32,20 +32,25 @@ const studentLinks = [
   ["/hub?tab=reading", "나의 책장"],
   ["/app?view=feedback", "받은 피드백"],
 ] as const;
-const moreLinks = [
-  [newClassHref, "학급 개설 (교사)"],
+const helpLinks = [
+  ["/studio", "책숲 놀이터"],
+  ["/status", "연결 점검·기록 보관"],
+  ["/guide", "책숲 사용 안내"],
+] as const;
+const classroomLinks = [
   ["/missions", "독서미션"],
-  ["/app?view=contests", "글쓰기 활동"],
+  ["/classroom", "수업 공방"],
+  ["/hub?tab=reading", "나의 책장"],
   ["/hub?tab=search", "기록 검색"],
+  ["/hub?tab=exports", "기록·글 내보내기"],
+] as const;
+const creationLinks = [
+  ["/app?view=contests", "글쓰기 활동"],
   ["/hub?tab=plaza", "학급 광장"],
   ["/hub?tab=exhibitions", "작은 작품 전시회"],
   ["/hub?tab=growth", "캐릭터·배지"],
   ["/hub?tab=economy", "경제 교실"],
-  ["/hub?tab=exports", "기록·글 내보내기"],
   ["/reports", "학기 성장 보고서"],
-  ["/studio", "책숲 놀이터"],
-  ["/status", "연결 점검·기록 보관"],
-  ["/guide", "책숲 사용 안내"],
 ] as const;
 
 type NavigationScope = {
@@ -61,6 +66,7 @@ function useNavigationScope(path: string, classroom: string | null) {
   const actor = useRef<string | null>(null);
   const [scope, setScope] = useState<NavigationScope | null>(null);
   useEffect(() => {
+    if (path === "/hub") return;
     let client;
     try { client = createClient(); } catch { return; }
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -103,21 +109,32 @@ function Navigation({ close, more }: { close: () => void; more: RefObject<HTMLDe
   const query = useSearchParams();
   const scope = useNavigationScope(path, query.get("classroom"));
   const role = scope?.role;
-  const links = role === "teacher"
+  const inHub = path === "/hub";
+  const links = inHub ? [] : role === "teacher"
     ? teacherLinks.filter(([href]) => href.endsWith("today")
       || (href.endsWith("review") && scope?.review)
       || (href.endsWith("manage") && scope?.owner))
     : role === "student" ? studentLinks : publicLinks;
-  const extras = [
-    ...(role === "teacher" && scope?.read ? [["/hub?tab=reading", "나의 책장"]] as const : []),
-    ...(role === "teacher" && scope?.students ? [["/operations", "학생 계정·기록 관리"]] as const : []),
-    ...moreLinks.filter(([href]) => {
-      if (links.some(([primary]) => primary === href) || (role === "student" && href === newClassHref)) return false;
-      if (role !== "teacher") return true;
-      if (/tab=(economy|plaza|exhibitions|growth)$/.test(href)) return scope?.owner;
-      if (/tab=(search|exports)$/.test(href) || href === "/reports") return scope?.read;
-      return true;
-    }),
+  const visible = ([href]: readonly [string, string]) => {
+    if (links.some(([primary]) => primary === href)) return false;
+    if (role !== "teacher") return true;
+    const tab = new URLSearchParams(href.split("?")[1]).get("tab") ?? "";
+    const permission = href === "/reports" ? "read" : hubTabPermission(tab);
+    return !permission || scope?.[permission] === true;
+  };
+  const groups = [
+    ...(!inHub && role ? [
+      { title: "수업·기록", links: classroomLinks.filter(visible) },
+      { title: "작품·성장", links: creationLinks.filter(visible) },
+    ] : []),
+    ...(!inHub && role !== "student" ? [{
+      title: "교사용",
+      links: [
+        [newClassHref, "학급 개설 (교사)"] as const,
+        ...(scope?.students ? [["/operations", "학생 계정·기록 관리"]] as const : []),
+      ],
+    }] : []),
+    { title: "도움말", links: helpLinks },
   ];
   return (
     <>
@@ -137,10 +154,15 @@ function Navigation({ close, more }: { close: () => void; more: RefObject<HTMLDe
       <details className="paper-more" ref={more}>
         <summary>더보기 <ChevronDown size={13} /></summary>
         <div>
-          {extras.map(([href, label]) => (
-            <Link key={href} href={withClassroom(href, scope?.classroom)} prefetch={false} onClick={close}>
-              {label}
-            </Link>
+          {groups.filter(group => group.links.length > 0).map(group => (
+            <div className="paper-menu-group" key={group.title}>
+              <strong>{group.title}</strong>
+              {group.links.map(([href, label]) => (
+                <Link key={href} href={withClassroom(href, href === "/classroom" ? scope?.classroom || undefined : scope?.classroom)} prefetch={false} onClick={close}>
+                  {label}
+                </Link>
+              ))}
+            </div>
           ))}
         </div>
       </details>
@@ -164,6 +186,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     const escape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setOpen(false);
+        if (more.current) more.current.open = false;
         toggle.current?.focus();
       }
     };

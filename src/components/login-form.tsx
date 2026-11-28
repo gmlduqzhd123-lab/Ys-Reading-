@@ -3,9 +3,10 @@ import { useState, useTransition } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { login } from "@/app/actions";
 
-export function LoginForm({ configured, intent, teacher = false }: {
+export function LoginForm({ configured, intent, next, teacher = false }: {
   configured: boolean;
   intent?: "classroom";
+  next?: string;
   teacher?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
@@ -21,6 +22,7 @@ export function LoginForm({ configured, intent, teacher = false }: {
       }}
     >
       {intent && <input type="hidden" name="intent" value={intent} />}
+      {next && <input type="hidden" name="next" value={next} />}
       <div className="field">
         <label htmlFor="identifier">{teacher ? "선생님 이메일" : "학생 아이디 또는 선생님 이메일"}</label>
         <input

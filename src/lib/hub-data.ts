@@ -62,6 +62,7 @@ export async function loadHub(
   requestedPage = 1,
   activeTab = "reading",
   classroom = "",
+  readingRecord?: string,
 ): Promise<HubData> {
   const page = Number.isSafeInteger(requestedPage)
     ? Math.min(10000, Math.max(1, requestedPage))
@@ -204,6 +205,8 @@ export async function loadHub(
       }
       if (table === "reading_logs" && activeTab === "review")
         query = query.eq("status", "completed").is("verified_at", null);
+      if (table === "reading_logs" && activeTab === "reading" && readingRecord && profile.role === "student")
+        query = query.eq("id", readingRecord).eq("student_id", profile.id);
       const response = pagedTables.has(table)
         ? await query
         : await metadataPages((from, to) => query.range(from, to));

@@ -40,6 +40,8 @@ select:focus-visible, summary:focus-visible, .learning-hub :focus-visible {
 .paper-more > div { position: absolute; right: -20px; top: 65px; width: 230px; padding: 10px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 12px 30px #34252c0a; border-radius: 8px; }
 .paper-more > div a { display: block; padding: 12px 14px; font-size: 13px; border-radius: 4px; }
 .paper-more > div a:hover { background: var(--soft); }
+.paper-menu-group + .paper-menu-group { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.paper-menu-group strong { display: block; padding: 7px 14px 2px; color: var(--muted); font-size: 13px; }
 .paper-header-actions { display: flex; align-items: center; gap: 16px; }
 .paper-account { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; white-space: nowrap; }
 .paper-account > svg { box-sizing: content-box; padding: 9px; border: 1px solid var(--line); border-radius: 50%; color: var(--green); }
@@ -84,14 +86,13 @@ select:focus-visible, summary:focus-visible, .learning-hub :focus-visible {
 .paper-book-link:hover .paper-book { transform: translateY(-5px); }
 .paper-book.tone-1 { background: #dce0d3; border-color: #c9cebd; color: #4d5947; }
 .paper-book.tone-2 { background: #5d646c; border-color: #4b545e; color: #f4ede0; }
-.paper-book-edition { font: 7px Georgia, serif; letter-spacing: .1em; opacity: .8; }
 .paper-book > strong { font-family: var(--serif); font-weight: 500; font-size: clamp(17px, 1.5vw, 23px); line-height: 1.65; margin: 24px 0 10px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; word-break: keep-all; overflow-wrap: anywhere; }
 .paper-book-botanical { margin: auto 0; display: flex; align-items: center; gap: 2px; transform: rotate(-15deg); opacity: .75; }
-.paper-book-author { font-size: 9px; margin-top: 12px; }
+.paper-book-author { font-size: 12px; margin-top: 12px; overflow-wrap: anywhere; }
 .paper-book > img { position: absolute; width: 100%; height: 100%; inset: 0; object-fit: cover; }
 .paper-book-link h3 { font-size: 14px; line-height: 1.6; font-weight: 650; margin: 15px 0 5px; overflow-wrap: anywhere; }
 .paper-book-link > p { font-size: 11px; line-height: 1.75; margin-bottom: 7px; }
-.paper-cover-link { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--green); }
+.paper-cover-link { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--green-dark); }
 .paper-writing-callout { margin-top: 36px; padding: 30px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 24px; }
 .paper-writing-callout h2 { font-size: 23px; margin: 8px 0; }
 .paper-writing-callout p { font-size: 12px; margin: 0; line-height: 1.8; }
@@ -111,7 +112,6 @@ select:focus-visible, summary:focus-visible, .learning-hub :focus-visible {
 .paper-aside-links a { display: flex; align-items: center; gap: 9px; padding: 18px 0; border-bottom: 1px solid #dcd5cb; font-size: 11px; }
 .paper-aside-links a > svg:last-child { margin-left: auto; }
 .paper-small-note { padding-top: 28px; }
-.paper-small-note > span { font: 9px Georgia, serif; color: #8b7e72; letter-spacing: .12em; }
 .paper-small-note > p { font-size: 11px; line-height: 1.8; margin: 12px 0; }
 .paper-small-note > a, .paper-aside-link { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 5px; }
 .paper-home .catalog-section { margin-top: 66px; }
@@ -197,6 +197,10 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
 .mission-kind { color: #62575f; background: #ffffffbd; }
 .mission-card h3 { color: var(--ink); }
 .mission-card p, .mission-meta, .mission-card-bottom { color: var(--muted); }
+.paper-shell .filter-controls select { min-height: 44px; font-size: 16px; color: var(--ink); }
+.paper-shell .mission-card :is(p, .mission-meta, .topic-tag) { font-size: 13px; }
+.mission-card-bottom { flex-wrap: wrap; }
+.paper-shell .mission-card-bottom > span:last-child { font-size: 13px; color: var(--green-dark); }
 .topic-tag { background: #f1edf0; color: #705c69; }
 .studio-home-callout, .studio-welcome, .studio-banner { border-color: #ddd4db; background: #f0ebef; border-radius: 8px; }
 .studio-nav button { border-color: var(--line); color: #72646e; border-radius: 5px; }
@@ -237,6 +241,29 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
 .login-password-option form { margin-top: 8px; }
 .login-form-wrap form button { white-space: normal; }
 .workspace-menu { margin-block: 16px; }
+.workspace-class-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+.workspace-class-context .field { flex: 1 1 230px; margin: 0; max-width: 26rem; }
+.workspace-class-context select { min-height: 44px; }
+.workspace-nav-groups { display: grid; gap: 8px; }
+.workspace-nav-group { min-width: 0; padding: 8px 0 2px; }
+.workspace-nav-group + .workspace-nav-group { border-top: 1px solid var(--line); }
+.workspace-nav-group > strong { display: block; padding-inline: 4px; color: var(--muted); font-size: 13px; }
+.export-methods { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0 0 12px; }
+.export-methods legend { font-weight: 700; margin-bottom: 8px; }
+.export-methods label { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.export-methods label:has(:checked) { border-color: var(--green); background: var(--soft); }
+.export-methods input { accent-color: var(--green); }
+.export-workspace { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); gap: 16px; margin-top: 16px; align-items: start; }
+.export-record-list { max-height: 23rem; overflow: auto; padding: 4px 6px; }
+.export-record-list .hub-record { margin-block: 4px 8px; }
+.export-confirm { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+.export-confirm h3 { margin-top: 0; }
+.export-confirm .hub-check { min-height: 44px; }
+.export-confirm .button-row, .export-connection { margin-block: 12px; }
+@media (max-width: 760px) {
+  .export-workspace { grid-template-columns: minmax(0, 1fr); }
+  .export-record-list { max-height: 17rem; }
+}
 .workspace-menu .workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 0; padding: 4px; overflow: visible; }
 .workspace-menu .hub-tab { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
 .workspace-more { margin-block: 5px; border-bottom: 1px solid var(--line); }
@@ -292,7 +319,6 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
   .paper-book-grid { gap: 18px; }
   .paper-book { padding: 20px 12px 16px 18px; }
   .paper-book > strong { font-size: 18px; }
-  .paper-book-edition { font-size: 6px; }
   .paper-writing-callout { align-items: flex-start; flex-direction: column; gap: 17px; }
 }
 @media (max-width: 900px) {
@@ -328,7 +354,7 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
   .paper-breadcrumb { font-size: 10px; margin-bottom: 18px; }
   .paper-home-intro { padding: 14px 0 34px; }
   .paper-home-intro h1 { font-size: 37px; line-height: 1.65; margin: 13px 0; }
-  .paper-home-intro > p { font-size: 12px; line-height: 2; }
+  .paper-home-intro > p { font-size: 14px; line-height: 1.85; }
   .paper-mobile-break { display: block; }
   .paper-section-heading { align-items: flex-start; margin-bottom: 20px; gap: 10px; }
   .paper-section-heading h2 { font-size: 22px; }
@@ -337,10 +363,8 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
   .paper-book { padding: 20px 12px 15px 16px; }
   .paper-book > strong { font-size: 19px; margin-top: 22px; }
   .paper-book-botanical > svg:first-child { width: 48px; }
-  .paper-book-link h3 { font-size: 13px; margin-top: 12px; }
-  .paper-book-link > p { font-size: 11px; }
-  .paper-book-edition { font-size: 5px; }
-  .paper-book-author { font-size: 8px; }
+  .paper-book-link h3 { font-size: 15px; margin-top: 12px; }
+  .paper-book-link > p { font-size: 13px; }
   .paper-home-aside { display: block; }
   .paper-home-aside h2 { font-size: 23px; }
   .paper-growth { padding: 26px 24px; }

@@ -3,6 +3,7 @@ import { Workspace } from "@/components/workspace";
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { activeClassroom } from "@/lib/classroom-context-server";
+import { pageDestination } from "@/lib/login-entry";
 export const metadata = { title: "우리 교실" };
 export default async function AppPage({
   searchParams,
@@ -11,7 +12,7 @@ export default async function AppPage({
 }) {
   const params = await searchParams;
   if (!params.view) redirect("/hub?tab=today");
-  const profile = await requireProfile();
+  const profile = await requireProfile({ next: pageDestination("/app", params) });
   const classroom = await activeClassroom(profile.id, params.classroom);
   const page = (v: string | undefined) => {
     const n = Number(v ?? 1);

@@ -8,10 +8,12 @@ export function TeacherEmailLogin({
   configured,
   googleEnabled = false,
   intent,
+  next,
 }: {
   configured: boolean;
   googleEnabled?: boolean;
   intent?: "classroom";
+  next?: string;
 }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState("");
@@ -25,7 +27,7 @@ export function TeacherEmailLogin({
         <form
           action={() =>
             start(async () => {
-              const r = await startTeacherGoogleLogin(intent);
+              const r = await startTeacherGoogleLogin(intent, next);
               if (r) setMessage(r.message);
             })
           }
@@ -50,6 +52,7 @@ export function TeacherEmailLogin({
         }
       >
         {intent && <input type="hidden" name="intent" value={intent} />}
+        {next && <input type="hidden" name="next" value={next} />}
         <label htmlFor="teacher-email">선생님 이메일</label>
         <input
           id="teacher-email"

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { teacherCallbackUrl } from "@/lib/account-access";
+import { accountReady, teacherCallbackUrl } from "@/lib/account-access";
 import { classroomAccountHref, classroomLoginCookie, classroomLoginDestination, classroomLoginHref } from "@/lib/classroom-entry";
+import { loginDestination, loginEntry } from "@/lib/login-entry";
 
 export async function GET(request: NextRequest) {
   const noStore = { "Cache-Control": "private, no-store", Pragma: "no-cache" };
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
     );
   }
   const intent = request.cookies.get(classroomLoginCookie)?.value;
+  const next = loginDestination(intent);
   const reply = (path: string) => {
     const response = NextResponse.redirect(new URL(path, origin), {
       status: 303,
@@ -24,7 +26,8 @@ export async function GET(request: NextRequest) {
     response.cookies.set(classroomLoginCookie, "", { path: "/auth/callback", maxAge: 0, httpOnly: true, sameSite: "lax", secure: origin.startsWith("https:") });
     return response;
   };
-  const failed = () => reply(intent === "classroom" ? classroomLoginHref + "&notice=email-link" : "/login?notice=email-link");
+  const failed = () => reply(intent === "classroom" ? classroomLoginHref + "&notice=email-link"
+    : loginEntry({ teacher: !!next, notice: "email-link", next }));
   const code = request.nextUrl.searchParams.get("code");
   if (!code || code.length > 2048) return failed();
   const client = await createClient();
@@ -40,11 +43,11 @@ export async function GET(request: NextRequest) {
   );
   if (setupError) return reply("/account?notice=setup");
   if (setup?.requiresMfa) return reply("/account/security?notice=operator-invitation");
-  if (intent === "classroom") {
+  if (intent === "classroom" || next) {
     const { data: profile } = await client.from("profiles")
       .select("role,account_active,must_change_password").eq("id", user.id).maybeSingle();
-    if (profile?.account_active && !profile.must_change_password) {
-      const destination = classroomLoginDestination(intent, profile.role);
+    if (accountReady(profile) && profile.account_active) {
+      const destination = classroomLoginDestination(intent, profile.role) ?? next;
       if (destination) return reply(destination);
     }
   }

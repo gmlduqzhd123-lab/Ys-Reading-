@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { classroomLoginDestination } from "@/lib/classroom-entry";
+import { loginDestination } from "@/lib/login-entry";
 import type { Profile } from "@/lib/auth";
 import type { Classroom, Assignment, Draft, Submission, Contest, Entry, Review } from "@/lib/data";
 
@@ -101,7 +102,8 @@ export async function login(formData: FormData): Promise<ActionResult> {
       await supabase.auth.signOut();
       return { ok: false, message: "계정 준비 상태를 확인해 주세요. 선생님 또는 운영자에게 문의해 주세요." };
     }
-    destination = classroomLoginDestination(formData.get("intent"), profile.role) ?? destination;
+    destination = classroomLoginDestination(formData.get("intent"), profile.role)
+      ?? loginDestination(formData.get("next")) ?? destination;
   } catch (error) { return { ok: false, message: friendlyError(error) }; }
   revalidatePath("/app", "layout");
   redirect(destination);

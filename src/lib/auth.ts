@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { classroomLoginHref } from "./classroom-entry";
+import { loginEntry } from "./login-entry";
 
 export interface Profile {
   id: string;
@@ -50,10 +51,10 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   } as Profile;
 });
 
-export async function requireProfile(intent?: "classroom"): Promise<Profile> {
+export async function requireProfile(entry?: { classroomSetup?: boolean; next?: string; teacher?: boolean }): Promise<Profile> {
   if (!isSupabaseConfigured()) redirect("/login?notice=setup");
   const profile = await getCurrentProfile();
-  if (!profile) redirect(intent === "classroom" ? classroomLoginHref : "/login?notice=account");
+  if (!profile) redirect(entry?.classroomSetup ? classroomLoginHref : loginEntry({ ...entry, notice: "account" }));
   if (
     profile.account_active === false ||
     profile.must_change_password ||

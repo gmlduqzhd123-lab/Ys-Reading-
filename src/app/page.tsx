@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowRight, ArrowUpRight, Leaf, PenLine } from "lucide-react";
 import { PaperBook } from "@/components/paper-book";
 import { MissionCatalog } from "@/components/mission-catalog";
+import { newClassHref } from "@/lib/classroom-entry";
 
 const journeys = [
   { title: "용기의 문장", description: "작은 용기에서 시작하는 이야기", author: "나의 생각을 글로", href: "/missions/courage-34-writing" },
@@ -19,8 +20,9 @@ export default function Home() {
           <h1>읽은 만큼,<br className="paper-mobile-break" /> 자라는 나.</h1>
           <p>오늘의 한 문장을 책숲에 남겨 보세요.<br />작은 기록이 모여, 나만의 이야기가 됩니다.</p>
           <div className="button-row">
-            <Link href="/hub" className="button button-primary"><PenLine size={16} />나의 책장 열기</Link>
-            <Link href="/app" className="paper-text-link">우리 교실로 <ArrowRight size={16} /></Link>
+            <Link href="/hub?tab=today" className="button button-primary"><PenLine size={16} aria-hidden="true" />학생 입장</Link>
+            <Link href={newClassHref} className="button button-outline">교사 시작 <ArrowRight size={16} aria-hidden="true" /></Link>
+            <Link href="/missions" className="paper-text-link">독서미션 둘러보기 <ArrowRight size={16} aria-hidden="true" /></Link>
           </div>
         </div>
         <section className="paper-story-shelf" aria-labelledby="story-shelf-title">
@@ -45,7 +47,7 @@ export default function Home() {
           <Link href="/missions"><Leaf size={17} />나에게 맞는 독서미션 <ArrowUpRight size={14} /></Link>
           <Link href="/hub?tab=growth"><Leaf size={17} />나의 캐릭터·배지 <ArrowUpRight size={14} /></Link>
         </div>
-        <div className="paper-small-note"><span>FOR OUR CLASSROOM</span><p>함께 읽고 나누는 교실을 준비하시나요?</p><Link href="/guide">선생님을 위한 사용 안내 <ArrowUpRight size={13} /></Link></div>
+        <div className="paper-small-note"><p>함께 읽고 나누는 교실을 준비하시나요?</p><Link href="/guide">선생님을 위한 사용 안내 <ArrowUpRight size={13} /></Link></div>
       </aside>
     </section>
     <MissionCatalog preview />

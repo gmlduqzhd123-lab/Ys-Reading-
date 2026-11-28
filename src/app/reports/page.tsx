@@ -10,14 +10,15 @@ import {
 } from "@/components/growth-reports";
 import type { GrowthReport, ReportState } from "@/lib/growth-report";
 import type { CollaborationState } from "@/lib/collaboration";
+import { pageDestination } from "@/lib/login-entry";
 export const metadata = { title: "학기 성장 보고서" };
 export default async function ReportsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const p = await requireProfile(),
-    params = await searchParams,
+  const params = await searchParams,
+    p = await requireProfile({ next: pageDestination("/reports", params) }),
     c = await createClient(),
     teacher = p.role === "teacher";
   const staff = teacher

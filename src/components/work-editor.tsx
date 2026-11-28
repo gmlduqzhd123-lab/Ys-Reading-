@@ -1,5 +1,5 @@
 "use client";
-import { SaveStatus } from "@/components/save-status";
+import { SaveStatus, type SaveStatusKind } from "@/components/save-status";
 
 import {
   startTransition,
@@ -47,6 +47,13 @@ const statusLabels: Record<Submission["status"], string> = {
   submitted: "선생님이 읽어볼 차례예요",
   revision_requested: "피드백을 읽고 고쳐 보세요",
   completed: "미션을 완료했어요",
+};
+const saveLabels: Record<SaveState, SaveStatusKind | undefined> = {
+  empty: undefined,
+  saving: "saving",
+  unsaved: "unsaved",
+  saved: "draft",
+  error: "unconfirmed",
 };
 
 // Server Functions invoked by event handlers and timers run in an Action context.
@@ -547,18 +554,23 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
     }
   }
 
-  const saveMessage =
-    saveState === "saving"
-      ? "저장하고 있어요…"
-      : saveState === "unsaved"
-        ? "아직 저장하지 않은 내용이 있어요. 잠시 멈추면 저장돼요."
-        : saveState === "error"
-          ? "저장을 확인하지 못했어요"
-          : saveState === "saved"
-            ? savedAt
-              ? `${formatKoreanDate(savedAt)} 저장했어요`
-              : "작성한 내용이 저장돼 있어요"
-            : "글을 쓰면 잠시 뒤 초안이 저장돼요";
+  const saveKind = saveState === "saved" && unchangedFromSubmission
+    ? "submitted"
+    : saveLabels[saveState];
+  const revising = latestSubmission?.status === "revision_requested";
+  const feedback = latestSubmission && (
+    <section className="writing-context-panel" aria-labelledby="feedback-heading">
+      <h3 id="feedback-heading">
+        <MessageCircle size={18} aria-hidden="true" /> 선생님의 피드백
+      </h3>
+      {latestFeedback.length ? latestFeedback.map(item => (
+        <div className="feedback-item" key={item.id}>
+          <small>{latestSubmission.version}번째 글 · {formatKoreanDate(item.created_at)}</small>
+          <p>{item.body}</p>
+        </div>
+      )) : <p className="form-help">선생님의 피드백이 도착하면 여기에 보여요.</p>}
+    </section>
+  );
 
   return (
     <div className="editor-layout">
@@ -571,10 +583,6 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
             </span>
           )}
         </div>
-        <details className="studio-history">
-          <summary>초고와 고친 글 나란히 비교하기</summary>
-          <VersionComparison versions={submissions} />
-        </details>
         {!canWrite && (
           <div className="notice">
             <strong>
@@ -592,14 +600,28 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
             이 미션은 초고 제출 → 선생님 피드백 → 글 고치기 순서로 함께해요.
           </p>
         )}
-        {assignment.choices?.find((c) => c.key === choiceKey) && (
-          <div className="notice">
-            <strong>
-              {assignment.choices.find((c) => c.key === choiceKey)!.label}
-            </strong>
-            <p>{assignment.choices.find((c) => c.key === choiceKey)!.prompt}</p>
-          </div>
-        )}
+        {revising && feedback}
+        <section className="writing-context-panel" aria-labelledby="activity-heading">
+          <h3 id="activity-heading">
+            <BookOpen size={18} aria-hidden="true" /> 오늘의 생각 질문
+          </h3>
+          {chosen && <p className="form-help">내가 고른 방법 · {chosen.label}</p>}
+          <p className="submission-body">{chosen?.prompt ?? assignment.mission_snapshot.prompt}</p>
+          {assignment.due_at && (
+            <p className="form-help">
+              학습 마감 {formatKoreanDate(assignment.due_at)} · 늦어도 학습 글은 제출할 수 있어요.
+            </p>
+          )}
+          {guideSteps.length > 0 && (
+            <details>
+              <summary className="text-link">활동 순서 펼쳐 보기</summary>
+              <ol className="guide-list">
+                {guideSteps.map((step, index) => <li key={index}>{step}</li>)}
+              </ol>
+            </details>
+          )}
+        </section>
+        {!revising && feedback}
         {assignment.success_criteria && (
           <details className="panel">
             <summary>이번 활동의 확인 기준</summary>
@@ -650,6 +672,15 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
           </div>
           <div className="field">
             <label htmlFor="writing-body">생각을 펼쳐 보세요</label>
+            {canWrite && (
+              <div className="save-indicator" role="status" aria-atomic="true">
+                {saveKind === "draft" || saveKind === "submitted"
+                  ? <CheckCircle2 size={16} aria-hidden="true" />
+                  : <Save size={16} aria-hidden="true" />}
+                {saveKind ? <SaveStatus kind={saveKind} /> : <span>글을 쓰면 잠시 뒤 초안이 저장돼요</span>}
+                {saveKind === "draft" && savedAt && <span>{formatKoreanDate(savedAt)} 저장했어요</span>}
+              </div>
+            )}
             <textarea
               id="writing-body"
               name="body"
@@ -669,22 +700,6 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
             </span>
           </div>
           <div className="editor-count">
-            <span
-              className={`save-indicator${saveState === "error" ? " error" : ""}`}
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              {saveState === "saved" ? (
-                <CheckCircle2 size={14} aria-hidden="true" />
-              ) : (
-                <Save size={14} aria-hidden="true" />
-              )}
-              {saveState === "saved" ? <SaveStatus kind="draft" /> :
-                saveState === "error" ? <SaveStatus kind="unconfirmed" /> :
-                saveState === "saving" ? <SaveStatus kind="saving" /> : null}
-              {saveState !== "error" && saveState !== "saving" && saveMessage}
-            </span>
             <span id="writing-count">
               {content.body.length.toLocaleString("ko-KR")} / 10,000자
             </span>
@@ -703,7 +718,6 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
           )}
           {submissionNotice && (
             <p className="form-status" role="status">
-              <SaveStatus kind="submitted" />{" "}
               {submissionNotice}
             </p>
           )}
@@ -778,56 +792,7 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
         </form>
       </section>
 
-      <aside aria-label="활동 안내와 제출 기록">
-        <section className="panel" aria-labelledby="activity-heading">
-          <BookOpen className="accent-icon" size={23} aria-hidden="true" />
-          <h2 id="activity-heading">오늘의 생각 질문</h2>
-          <p className="submission-body">
-            {chosen?.prompt ?? assignment.mission_snapshot.prompt}
-          </p>
-          {assignment.due_at && (
-            <p className="form-help">
-              학습 마감: {formatKoreanDate(assignment.due_at)} · 늦어도 학습
-              글은 제출할 수 있어요.
-            </p>
-          )}
-          {guideSteps.length > 0 && (
-            <details>
-              <summary className="text-link">활동 순서 펼쳐 보기</summary>
-              <ol className="guide-list">
-                {guideSteps.map((step, index) => (
-                  <li key={index}>{step}</li>
-                ))}
-              </ol>
-            </details>
-          )}
-        </section>
-
-        <section
-          className="panel section-status"
-          aria-labelledby="feedback-heading"
-        >
-          <MessageCircle className="accent-icon" size={23} aria-hidden="true" />
-          <h2 id="feedback-heading">선생님의 피드백</h2>
-          {latestFeedback.length ? (
-            latestFeedback.map((feedback) => (
-              <div className="feedback-item" key={feedback.id}>
-                <small>
-                  {latestSubmission.version}번째 글에 대한 이야기 ·{" "}
-                  {formatKoreanDate(feedback.created_at)}
-                </small>
-                <p>{feedback.body}</p>
-              </div>
-            ))
-          ) : (
-            <p className="form-help">
-              {latestSubmission
-                ? "선생님의 피드백이 도착하면 여기에 보여요."
-                : "초고를 제출하면 선생님이 함께 읽고 이야기를 남겨 주세요."}
-            </p>
-          )}
-        </section>
-
+      <aside aria-label="제출 기록">
         <section
           className="panel section-status"
           aria-labelledby="history-heading"
@@ -836,6 +801,10 @@ function AssignmentEditor({ data, assignment, choiceKey }: WorkEditorProps) {
           <p className="form-help">
             제출한 내용은 그대로 남아요. 고친 글은 새로운 버전으로 쌓여요.
           </p>
+          <details className="studio-history">
+            <summary>초고와 고친 글 나란히 비교하기</summary>
+            <VersionComparison versions={submissions} />
+          </details>
           {data.pagination && (
             <>
               <p>

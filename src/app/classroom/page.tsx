@@ -7,14 +7,15 @@ import { z } from "zod";
 import { quizAiReady } from "@/lib/quiz-config";
 import { loadWorkshopLists } from "@/lib/load-workshop";
 import { workshopSection } from "@/lib/workshop-operations";
+import { pageDestination } from "@/lib/login-entry";
 export const metadata = { title: "수업 공방 · 매일 읽는 책숲" };
 export default async function ClassroomPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const p = await requireProfile(),
-    params = await searchParams,
+  const params = await searchParams,
+    p = await requireProfile({ next: pageDestination("/classroom", params) }),
     c = await createClient();
   const classes = await c
     .from("classrooms")

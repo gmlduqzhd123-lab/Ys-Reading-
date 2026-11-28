@@ -34,7 +34,6 @@ export function MissionCard({ mission }: { mission: Mission }) {
         <div className="mission-emblem">
           <Icon strokeWidth={1.3} size={47} />
         </div>
-        <span className="art-label">{themes[mission.theme].label}</span>
         <span className="mission-arrow">
           <ArrowUpRight size={20} />
         </span>

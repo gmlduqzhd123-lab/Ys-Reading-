@@ -15,6 +15,7 @@ export function ParticipationForm({
   children,
   label = "저장하기",
   onSuccess,
+  onBusyChange,
   disabled=false,
 }: {
   command: (typeof participationCommands)[number];
@@ -22,6 +23,7 @@ export function ParticipationForm({
   children?: ReactNode;
   label?: string;
   onSuccess?: (data: Record<string, unknown>) => void;
+  onBusyChange?: (busy: boolean) => void;
   disabled?:boolean;
 }) {
   const router = useRouter(),
@@ -49,7 +51,9 @@ export function ParticipationForm({
       }}
       onSubmit={(e) => {
         e.preventDefault();
+        if (busy || disabled) return;
         const fd = new FormData(e.currentTarget);
+        onBusyChange?.(true);
         start(async () => {
           try {
             key.current ??= crypto.randomUUID();
@@ -69,6 +73,8 @@ export function ParticipationForm({
           } catch {
             setOk(false);
             setMessage("연결이 끊겼어요. 입력을 유지한 채 다시 시도해 주세요.");
+          } finally {
+            onBusyChange?.(false);
           }
         });
       }}

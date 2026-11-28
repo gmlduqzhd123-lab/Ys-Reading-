@@ -7,6 +7,8 @@ import { useToolAction } from "./use-tool-action";
 
 import { useWorkshopDraft, WorkshopDraftNotice } from "./work-draft";
 import { workshopDraftPayloads } from "@/lib/workshop-operations";
+import { hubHref } from "@/lib/hub-navigation";
+import { z } from "zod";
 export function QuickReading({
   owner,
   state,
@@ -49,8 +51,13 @@ export function QuickReading({
       setSaved(false);
     },
   });
+  const [recordId, setRecordId] = useState<string>();
+  const recordHref = (edit = false) => hubHref("reading", state.classroom.id,
+    recordId ? { record: recordId, ...(edit ? { edit: 1 } : {}) } : {});
   useEffect(() => {
     if (action.blocked) {
+      setRecordId(undefined);
+      setSaved(false);
       setThought("");
       setExcerpt("");
       setBook({
@@ -98,6 +105,8 @@ export function QuickReading({
           });
           if (result) {
             await draft.clear().catch(() => {});
+            const id = z.uuid().safeParse(result.id);
+            if (id.success) setRecordId(id.data);
             setSaved(true);
             setThought("");
             setExcerpt("");
@@ -236,12 +245,12 @@ export function QuickReading({
           : action.message}
       </p>
       {saved && (
-        <Link
-          className="button button-outline"
-          href={"/hub?tab=reading&classroom=" + state.classroom.id}
-        >
-          나의 책장에서 기록 확인
-        </Link>
+        <div className="button-row">
+          <Link className="button button-outline" href={recordHref()}>
+            {recordId ? "방금 쓴 기록 보기" : "나의 책장에서 기록 확인"}
+          </Link>
+          {recordId && <Link className="button button-primary" href={recordHref(true)}>이 기록에 더 쓰기</Link>}
+        </div>
       )}
     </section>
   );

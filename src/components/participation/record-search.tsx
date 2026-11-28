@@ -70,6 +70,7 @@ export function RecordSearch({
       )}
       <form action="/hub" className="record-filters">
         <input type="hidden" name="tab" value="search" />
+        <input type="hidden" name="classroom" value={filters.classroom} />
         <label className="field">
           기록 종류
           <select name="kind" defaultValue={filters.kind}>
@@ -77,17 +78,6 @@ export function RecordSearch({
             <option value="reading">독서 기록</option>
             <option value="writing">제출한 글 · 모든 버전</option>
             {!teacher && <option value="draft">작성 중인 초안</option>}
-          </select>
-        </label>
-        <label className="field">
-          학급
-          <select name="classroom" defaultValue={filters.classroom}>
-            <option value="">접근 가능한 모든 학급</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
           </select>
         </label>
         <label className="field">
@@ -130,7 +120,7 @@ export function RecordSearch({
         )}
         <div className="button-row">
           <button className="button button-primary">기록 찾기</button>
-          <Link className="button button-outline" href="/hub?tab=search">
+          <Link className="button button-outline" href={searchHref(filters, { q: "", from: "", to: "", kind: "", status: "", student: "", page: 1 })}>
             조건 초기화
           </Link>
         </div>

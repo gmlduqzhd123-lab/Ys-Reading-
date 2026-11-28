@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import Link from "next/link";
-import { Bookshelf } from "./bookshelf";
+import { Bookshelf, LinkedReadingRecord } from "./bookshelf";
 import {StudentViewSettings} from "./student-view-settings";
 import { Character, Economy } from "./growth-economy";
 import { Management, Plaza } from "./community";
@@ -31,9 +31,15 @@ import { TermPanel } from "./term-panel";
 import { HandoverPanel, type HandoverState } from "./operations-batch";
 import {ClassContext} from "./class-context";
 import {LearningUpdates} from "./learning-updates";
-import {hubHref, withClassroom} from "@/lib/hub-navigation";
+import {hubHref, hubTabPermission, withClassroom} from "@/lib/hub-navigation";
 import type {ClassroomToolState} from '@/lib/classroom-tools';
 import {QuickReading} from '@/components/classroom/quick-reading';
+
+const tabGroups = [
+  { label: "수업·기록", tabs: ["overview", "packs", "search", "reading", "exports"] },
+  { label: "작품·성장", tabs: ["growth", "plaza", "exhibitions", "economy"] },
+  { label: "학급·학기", tabs: ["manage", "terms"] },
+];
 export function LearningHub({
   data,
   classroomTools,
@@ -41,6 +47,8 @@ export function LearningHub({
   initialTab,
   google,
   googleNotice,
+  linkedRecord,
+  editLinkedRecord,
   participation,
   studentToday,
   reviewQueue,
@@ -58,6 +66,8 @@ export function LearningHub({
   initialTab?: string;
   google: { configured: boolean; connected: boolean };
   googleNotice?: string;
+  linkedRecord?: string;
+  editLinkedRecord?: boolean;
   participation?: ParticipationData | null;
   studentToday?: TodayState | null;
   reviewQueue?: ReviewState | null;
@@ -107,23 +117,15 @@ export function LearningHub({
   const primaryIds = teacher ? ["today", "review", "manage"] : ["today", "reading"];
   const primaryTabs = primaryIds.flatMap(id => tabs.filter(([tabId]) => id === tabId));
   const otherTabs = tabs.filter(([id]) => !primaryIds.includes(id));
+  const permission = teacher ? hubTabPermission(tab) : undefined;
+  const unavailable = permission
+    ? (data.availableClasses ?? []).filter(cls => !data.staffClasses?.some(c => c.id === cls.id && c[permission])).map(cls => cls.id)
+    : [];
   if (teacher && data.staffClasses) {
     const permitted = new Set(
       data.staffClasses
         .filter((c) =>
-          [
-            "economy",
-            "manage",
-            "terms",
-            "packs",
-            "growth",
-            "plaza",
-            "exhibitions",
-          ].includes(tab)
-            ? c.owner
-            : tab === "review"
-              ? c.review
-              : c.read,
+          c[permission ?? "read"],
         )
         .map((c) => c.id),
     );
@@ -175,14 +177,6 @@ export function LearningHub({
               ? "작은 생각을 발견하고, 다음 문장을 응원해 주세요."
               : `${data.profile.display_name} 님, 오늘의 한 문장을 책숲에 남겨 보세요.`}
           </p>
-          {data.classes.length > 0 && (
-            <span className="paper-class-label">
-              {data.classes[0].name}
-              {data.classes.length > 1
-                ? ` 외 ${data.classes.length - 1}개 학급`
-                : ""}
-            </span>
-          )}
         </div>
         <div className="button-row">
           {teacher && (
@@ -192,12 +186,12 @@ export function LearningHub({
           )}
           <RefreshButton />
           {teacher && (
-            <Link className="button button-outline" href="/collaboration">
+            <Link className="button button-outline" href={withClassroom("/collaboration", data.selectedClassroom)}>
               교사 협업·학교 운영
             </Link>
           )}
           {!teacher &&
-            tab === "reading" &&
+            tab === "reading" && !linkedRecord &&
             data.profile.consent_status === "verified" && (
               <button
                 className="button button-primary"
@@ -224,6 +218,8 @@ export function LearningHub({
         </div>
       </div>
       <div className="workspace-menu">
+        {!!data.availableClasses?.length && <ClassContext owner={data.profile.id} tab={tab}
+          selected={data.selectedClassroom ?? ""} classes={data.availableClasses} unavailable={unavailable} />}
         <nav className="workspace-tabs" aria-label="교실 바로가기">
           {primaryTabs.map(([id, label]) => (
             <Link key={id} className={`hub-tab ${tab === id ? "selected" : ""}`}
@@ -236,20 +232,33 @@ export function LearningHub({
         <details className="workspace-more" key={tab + ":" + data.selectedClassroom}
           open={otherTabs.some(([id]) => id === tab) || undefined}>
           <summary>더 많은 활동 보기</summary>
-          <nav className="workspace-tabs" aria-label="추가 책숲 활동">
-            {otherTabs.map(([id, label]) => (
-              <Link key={id} className={`hub-tab ${tab === id ? "selected" : ""}`}
-                aria-current={tab === id ? "page" : undefined} href={hubHref(id, data.selectedClassroom)}>
-                {label}
-              </Link>
-            ))}
-            <Link className="hub-tab" href={data.selectedClassroom ? "/classroom?classroom=" + data.selectedClassroom : "/classroom"}>
-              {teacher ? "우리 반 수업 공방 · 학생 화면 시연" : "우리 반 활동·책숲 도감"}
-            </Link>
+          <nav className="workspace-nav-groups" aria-label="추가 책숲 활동">
+            {tabGroups.map(({ label, tabs: groupTabs }, index) => {
+              const links = otherTabs.filter(([id]) => groupTabs.includes(id));
+              if (index === 2 && !links.length) return null;
+              return (
+                <div className="workspace-nav-group" key={label}>
+                  <strong>{label}</strong>
+                  <div className="workspace-tabs">
+                    {index === 0 && <Link className="hub-tab" href={data.selectedClassroom ? "/classroom?classroom=" + data.selectedClassroom : "/classroom"}>
+                      {teacher ? "우리 반 수업 공방 · 학생 화면 시연" : "우리 반 활동·책숲 도감"}
+                    </Link>}
+                    {index === 0 && <Link className="hub-tab" href="/missions">독서미션</Link>}
+                    {index === 1 && <Link className="hub-tab" href={withClassroom("/app?view=contests", data.selectedClassroom)}>글쓰기 활동</Link>}
+                    {index === 1 && canRead && <Link className="hub-tab" href={withClassroom("/reports", data.selectedClassroom)}>학기 성장 보고서</Link>}
+                    {links.map(([id, name]) => (
+                      <Link key={id} className={`hub-tab ${tab === id ? "selected" : ""}`}
+                        aria-current={tab === id ? "page" : undefined} href={hubHref(id, data.selectedClassroom)}>
+                        {name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </nav>
         </details>
       </div>
-      {(data.availableClasses?.length??0)>0&&<ClassContext owner={data.profile.id} tab={tab} selected={data.selectedClassroom??""} classes={data.availableClasses??[]}/>}
       <LearningUpdates owner={data.profile.id} classroom={data.selectedClassroom??""} tab={tab} initialToken={learningToken}/>
       {!data.schemaReady ? (
         <div className="notice">
@@ -296,7 +305,6 @@ export function LearningHub({
                   key={filters.classroom + ":" + filters.page}
                   data={overview}
                   classroom={filters.classroom}
-                  classes={data.classes}
                 />
               )}
               {tab === "search" && (
@@ -315,6 +323,7 @@ export function LearningHub({
                   key={`${reviewQueue.kind}:${reviewQueue.classroom}:${reviewQueue.page}`}
                   state={reviewQueue}
                   classes={data.classes}
+                  showClassFilter={false}
                 />
               )}
               {tab === "packs" && teacher && participation && (
@@ -323,7 +332,10 @@ export function LearningHub({
               {tab === "exhibitions" && participation && (
                 <Exhibitions hub={data} extra={participation} google={google} />
               )}
-              {tab === "reading" && (
+              {tab === "reading" && linkedRecord && (
+                <LinkedReadingRecord key={linkedRecord + ":" + editLinkedRecord} data={data} id={linkedRecord} initiallyEditing={editLinkedRecord} />
+              )}
+              {tab === "reading" && !linkedRecord && (
                 <div className="paper-dashboard">
                   <div className="paper-main">
                     {classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}

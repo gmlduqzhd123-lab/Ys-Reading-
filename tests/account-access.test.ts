@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { teacherCallbackUrl, teacherEmail } from "../src/lib/account-access";
+import { loginDestination, loginEntry, pageDestination } from "../src/lib/login-entry";
 const state = vi.hoisted(() => ({
   configured: true,
   otp: vi.fn(),
@@ -181,6 +182,23 @@ describe("teacher email entry and callback", () => {
     );
     expect(state.oauth.mock.calls[0][0].options.redirectTo).toBe("http://127.0.0.1:3086/auth/callback");
   });
+  it("remembers a learning destination and returns to it only after account checks", async () => {
+    const target = "/hub?tab=growth&classroom=school";
+    await expect(startTeacherGoogleLogin(undefined, target)).rejects.toThrow("NEXT_REDIRECT_TEST");
+    expect(state.setCookie).toHaveBeenCalledWith("bf_classroom_login", target,
+      expect.objectContaining({ path: "/auth/callback", httpOnly: true, maxAge: 900 }));
+    const request = new NextRequest("http://127.0.0.1:3086/auth/callback?code=valid", {
+      headers: { Cookie: "bf_classroom_login=" + encodeURIComponent(target) },
+    });
+    expect((await GET(request)).headers.get("location")).toBe("http://127.0.0.1:3086" + target);
+    state.rpc.mockResolvedValueOnce({ error: null, data: { requiresMfa: true } });
+    expect((await GET(request)).headers.get("location")).toContain("/account/security");
+    state.exchange.mockResolvedValueOnce({ error: { message: "expired" } });
+    const retry = new URL((await GET(request)).headers.get("location")!);
+    expect(retry.pathname).toBe("/login");
+    expect(retry.searchParams.get("next")).toBe(target);
+    expect(retry.searchParams.get("mode")).toBe("teacher");
+  });
   it.each([
     [true, "teacher", false, "/start?mode=new"],
     [true, "student", false, "/account?intent=classroom"],
@@ -196,5 +214,21 @@ describe("teacher email entry and callback", () => {
     ));
     expect(r.headers.get("location")).toBe("http://127.0.0.1:3086" + target);
     expect(r.headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+});
+
+describe("login return targets", () => {
+  it("carries a valid classroom page with its filters", () => {
+    const target = pageDestination("/hub", { tab: "search", q: "나의 기록", page: "2" });
+    const href = new URL(loginEntry({ next: target }), "https://school.example.com");
+    expect(href.searchParams.get("next")).toBe("/hub?tab=search&q=%EB%82%98%EC%9D%98+%EA%B8%B0%EB%A1%9D&page=2");
+    expect(loginDestination("/classroom/activity/b88aab36-83e7-4083-8aee-b27f84704c43")).toBeDefined();
+  });
+  it.each([
+    "https://outside.invalid", "//outside.invalid", "/\\outside.invalid",
+    "/auth/callback?code=secret", "/login", "/hub/../login", "/%68ub", "/hub\n",
+  ])("ignores non-learning or invalid return targets %s", value => {
+    expect(loginDestination(value)).toBeUndefined();
+    expect(loginEntry({ next: value })).toBe("/login");
   });
 });

@@ -98,7 +98,7 @@ test("ten classroom improvements with real teacher, student and anonymous family
   await student.getByRole("combobox", { name: "지금 보고 있는 학급" }).selectOption(f.workshopTouch["webkit-mobile"]);
   await expect(student).toHaveURL(new RegExp("classroom=" + f.workshopTouch["webkit-mobile"]));
   await expect(student.getByRole("region", { name: "지금 할 일" })).toHaveCount(0);
-  const studentMenu = student.getByRole("navigation", { name: "주 메뉴", exact: true });
+  const studentMenu = student.getByRole("navigation", { name: "교실 바로가기", exact: true });
   await expect(studentMenu.getByRole("link", { name: "받은 피드백", exact: true }))
     .toHaveAttribute("href", "/app?view=feedback&classroom=" + f.workshopTouch["webkit-mobile"]);
   await student.getByRole("combobox", { name: "지금 보고 있는 학급" }).selectOption(f.workshop.classroom);
@@ -125,6 +125,20 @@ test("ten classroom improvements with real teacher, student and anonymous family
       { exact: true },
     ),
   ).toBeVisible();
+  await quick.getByRole("link", { name: "방금 쓴 기록 보기", exact: true }).click();
+  const record = student.getByRole("region", { name: "CI 새싹의 책", exact: true });
+  await expect(record.getByText("돌봄이 자람으로 이어진다고 생각합니다.", { exact: true })).toBeVisible();
+  const original = new URL(student.url()).searchParams.get("record");
+  expect(original).toMatch(/^[a-f0-9-]{36}$/);
+  await record.getByRole("button", { name: "이 기록에 더 쓰기", exact: true }).click();
+  const entry = record.getByLabel("기억에 남는 장면과 나의 생각", { exact: true });
+  await expect(entry).toHaveValue("돌봄이 자람으로 이어진다고 생각합니다.");
+  await entry.fill((await entry.inputValue()) + " 새로운 구절을 덧붙였어요.");
+  await record.getByRole("button", { name: "독서 기록 수정하기", exact: true }).click();
+  await expect(record.getByText(/새로운 구절을 덧붙였어요/)).toBeVisible();
+  expect(new URL(student.url()).searchParams.get("record")).toBe(original);
+  await student.reload();
+  await expect(record.getByText(/새로운 구절을 덧붙였어요/)).toBeVisible();
   await student.goto(path);
   const activity = student.locator("#activities .tool-card").filter({
     has: student.getByRole("heading", { name: "CI 공방 활동", exact: true }),

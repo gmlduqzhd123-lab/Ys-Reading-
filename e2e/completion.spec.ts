@@ -46,9 +46,13 @@ test("class context, 28-record split export, resume and learning notification", 
   await oneRecord.check();
   await choice.getByLabel("기록장·작품집 제목").fill("CI 연결 후 기록장");
   await choice.getByLabel("파일에 작성자 표시 이름 포함").check();
+  await page.getByRole("radio", { name: "Google Drive", exact: true }).check();
+  await expect(choice.getByText("선택한 기록 1건")).toBeVisible();
   await page.getByRole("link", { name: "교사 Google 계정 연결" }).click();
   await expect(page).toHaveURL(/google=cancelled/);
   await expect(oneRecord).toBeChecked();
+  await expect(choice.getByText("선택한 기록 1건")).toBeVisible();
+  await expect(page.getByRole("radio", { name: "파일 저장", exact: true })).toBeChecked();
   await expect(choice.getByLabel("기록장·작품집 제목")).toHaveValue("CI 연결 후 기록장");
   await expect(choice.getByLabel("파일에 작성자 표시 이름 포함")).not.toBeChecked();
   const csvDownload = page.waitForEvent("download");
@@ -56,6 +60,7 @@ test("class context, 28-record split export, resume and learning notification", 
   const csvFile = await csvDownload;
   expect(csvFile.suggestedFilename()).toMatch(/\.csv$/);
   expect(fs.readFileSync((await csvFile.path())!, "utf8")).toContain("CI 묶음 기록 28");
+  await page.getByRole("radio", { name: "학급 묶음", exact: true }).check();
   await page.getByLabel("묶음 제목", { exact: true }).fill("CI 학기 묶음");
   await page.getByLabel("기록 시작 날짜", { exact: true }).fill("2024-02-01");
   await page.getByLabel("기록 끝 날짜", { exact: true }).fill("2024-02-28");
@@ -67,6 +72,7 @@ test("class context, 28-record split export, resume and learning notification", 
   await expect(page.getByText("ZIP 생성을 서버에 등록했어요. 탭을 닫아도 계속되며 완료 후 아래에서 받을 수 있습니다.",{exact:true})).toBeVisible();
   // The browser no longer drives generation. Reload while the server job runs.
   await page.reload();
+  await expect(page.getByRole("radio", { name: "학급 묶음", exact: true })).toBeChecked();
   await expect(
     page.getByText("28건 · 2/2개 파일 생성", { exact: true }),
   ).toBeVisible({timeout:90000});

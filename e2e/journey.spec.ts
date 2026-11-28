@@ -137,12 +137,11 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await login(teacher, fixture.accounts[1].email, fixture.accounts[1].password);
   await teacher.goto("/hub?tab=overview&classroom=" + fixture.classroom);
   await teacher.getByRole("link", { name: /새 글·재제출.*확인 목록 열기/ }).click();
-  await expect(teacher.getByRole("combobox", { name: "학급 필터", exact: true })).toHaveValue(fixture.classroom);
+  await expect(teacher.getByRole("combobox", { name: "지금 보고 있는 학급", exact: true })).toHaveValue(fixture.classroom);
+  await expect(teacher.getByRole("combobox", { name: "학급 필터", exact: true })).toHaveCount(0);
   await expect(teacher.getByRole("combobox", { name: "기록 종류", exact: true })).toHaveValue("writing");
-  await teacher
-    .locator("summary")
-    .filter({ hasText: "CI 생각을 나눈 글" })
-    .click();
+  await teacher.getByRole("region", { name: "검토할 기록" }).getByRole("button", { name: /CI 생각을 나눈 글/ }).click();
+  await expect(teacher.getByRole("heading", { name: /CI 생각을 나눈 글/ })).toBeFocused();
   const reviewUrl = teacher.url();
   const writingCard = teacher.locator(".review-card").filter({ hasText: "CI 생각을 나눈 글" });
   await writingCard.getByRole("button", { name: "제출 이력·이전 피드백 보기" }).click();
@@ -163,18 +162,19 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   await teacher.getByRole("button",{name:"교사 초안 불러오기",exact:true}).click();
   await expect(teacher.getByRole("textbox",{name:"피드백",exact:true})).toHaveValue("친구의 마음을 근거와 함께 표현했어요.");
   // Restoring text never implies that the current student version was read.
-  await expect(teacher.getByRole("button",{name:"선택한 최신 글 검토 완료",exact:true})).toBeDisabled();
-  await teacher.locator("summary").filter({hasText:"CI 생각을 나눈 글"}).click();
+  await expect(teacher.getByRole("button",{name:"이 글 확인 완료",exact:true})).toBeDisabled();
+  await teacher.getByRole("checkbox", { name: "이 기록을 읽고 확인했어요" }).check();
   await teacher
-    .getByRole("button", { name: "선택한 최신 글 검토 완료", exact: true })
+    .getByRole("button", { name: "이 글 확인 완료", exact: true })
     .click();
   await expect(
     teacher.getByText("1건의 작품을 완료했어요.", { exact: true }),
   ).toBeVisible();
-  await expect(teacher.getByRole("combobox", { name: "학급 필터", exact: true })).toHaveValue(fixture.classroom);
+  await expect(teacher.getByRole("combobox", { name: "지금 보고 있는 학급", exact: true })).toHaveValue(fixture.classroom);
   await teacher.goto("/hub?tab=overview&classroom=" + fixture.classroom);
   await teacher.getByRole("link", { name: /완독 확인.*확인 목록 열기/ }).click();
   await expect(teacher.getByRole("combobox", { name: "기록 종류", exact: true })).toHaveValue("reading");
+  await teacher.getByRole("button", { name: "여러 건 선택", exact: true }).click();
   const readingCard = teacher.locator(".review-card").filter({ hasText: "CI 함께 읽은 책" });
   await readingCard.locator("summary").click();
   await readingCard
@@ -188,7 +188,7 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   ).toBeVisible();
   await teacher.getByRole("button", { name: "다음 기록 보기", exact: true }).click();
   await expect(teacher.locator("summary").filter({ hasText: "CI 다음 확인 도서" })).toBeFocused();
-  await expect(teacher.getByRole("combobox", { name: "학급 필터", exact: true })).toHaveValue(fixture.classroom);
+  await expect(teacher.getByRole("combobox", { name: "지금 보고 있는 학급", exact: true })).toHaveValue(fixture.classroom);
   await student.reload();
   await expect(
     student.getByText("미션을 완료했어요", { exact: true }),

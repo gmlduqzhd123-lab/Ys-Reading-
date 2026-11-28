@@ -4,7 +4,8 @@ import fs from "node:fs";
 import JSZip from "jszip";
 const f = JSON.parse(fs.readFileSync("e2e/.runtime/fixtures.json", "utf8"));
 test("mobile teacher returns to class setup and can open the review queue", async ({ page }) => {
-  await page.goto("/start?mode=new");
+  await page.goto("/");
+  await page.locator(".paper-home-intro").getByRole("link", { name: "교사 시작", exact: true }).click();
   await expect(page).toHaveURL(/\/login\?mode=teacher&intent=classroom/);
   const password = page.locator(".login-password-option");
   await password.locator("summary").click();
@@ -23,8 +24,12 @@ test("mobile teacher returns to class setup and can open the review queue", asyn
 test("mobile authenticated Korean writing, reload, reconnect, export and accessibility", async ({
   page,
   context,
+  browser,
 }) => {
-  await page.goto("/login");
+  const destination = "/hub?tab=today&classroom=" + f.classroom;
+  await page.goto(destination);
+  await expect(page).toHaveURL(/\/login\?.*next=/);
+  expect(new URL(page.url()).searchParams.get("next")).toBe(destination);
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("link", { name: "본문으로 바로가기" }),
@@ -46,15 +51,12 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   await page
     .getByRole("button", { name: "내 교실로 들어가기", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/hub|\/account/);
-  await page.goto("/hub?tab=today&classroom=" + f.classroom);
+  await expect(page).toHaveURL(destination);
   const next = page.getByRole("region", { name: "지금 할 일" });
   await expect(next.getByText(/마감/)).toBeVisible();
-  await page.getByRole("button", { name: "메뉴 열기", exact: true }).click();
-  const menu = page.getByRole("navigation", { name: "주 메뉴", exact: true });
+  const menu = page.getByRole("navigation", { name: "교실 바로가기", exact: true });
   await expect(menu.getByRole("link", { name: "받은 피드백", exact: true }))
     .toHaveAttribute("href", "/app?view=feedback&classroom=" + f.classroom);
-  await page.getByRole("button", { name: "메뉴 닫기", exact: true }).click();
   const viewSettings = page.locator(".view-settings");
   await viewSettings.locator("summary").click();
   await viewSettings.getByLabel("큰 글씨", { exact: true }).check();
@@ -73,6 +75,8 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
     .getByLabel("글 제목", { exact: true })
     .fill("모바일에서 함께 쓰는 한글");
   const body = page.getByLabel("생각을 펼쳐 보세요", { exact: true });
+  const question = page.getByRole("heading", { name: "오늘의 생각 질문", exact: true });
+  expect((await question.boundingBox())!.y).toBeLessThan((await body.boundingBox())!.y);
   await body.fill(
     "작은 화면에서도 친구의 생각을 읽고 내 생각을 차분히 썼습니다. 한글 글자가 새로고침 뒤에도 그대로 남습니다.",
   );
@@ -129,6 +133,41 @@ test("mobile authenticated Korean writing, reload, reconnect, export and accessi
   expect(await zip.file("word/document.xml")!.async("text")).toContain(
     "보탠 문장",
   );
+  await page.goto("/app/work/" + f.assignment + "?classroom=" + f.classroom);
+  await page.getByRole("button", { name: "선생님께 제출하기", exact: true }).click();
+  await expect(page.getByText("선생님께 제출됨", { exact: true })).toBeVisible();
+
+  const teacherContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  try {
+    const teacher = await teacherContext.newPage();
+    const review = "/hub?tab=review&classroom=" + f.classroom;
+    await teacher.goto(new URL("/login?mode=teacher&" + new URLSearchParams({ next: review }), page.url()).href);
+    const password = teacher.locator(".login-password-option");
+    await password.locator("summary").click();
+    await password.getByLabel("선생님 이메일", { exact: true }).fill(f.accounts[1].email);
+    await password.getByLabel("비밀번호", { exact: true }).fill(f.accounts[1].password);
+    await password.getByRole("button", { name: "비밀번호로 로그인", exact: true }).click();
+    await expect(teacher).toHaveURL(new URL(review, page.url()).href);
+    const list = teacher.getByRole("region", { name: "검토할 기록", exact: true });
+    await list.getByRole("button", { name: /모바일에서 함께 쓰는 한글/ }).click();
+    await expect(list).toBeHidden();
+    const detail = teacher.getByRole("region", { name: /모바일에서 함께 쓰는 한글/ });
+    await detail.getByRole("checkbox", { name: "이 기록을 읽고 확인했어요", exact: true }).check();
+    await detail.getByLabel("피드백", { exact: true }).fill("어떤 장면을 읽고 그렇게 생각했는지 적어 보세요.");
+    await detail.getByLabel("검토 결과").selectOption("revision_requested");
+    await detail.getByRole("button", { name: "고쳐쓰기 피드백 보내기", exact: true }).click();
+    await expect(teacher.getByText("1건의 글에 고쳐쓰기 피드백을 전했어요.", { exact: true })).toBeVisible();
+  } finally {
+    await teacherContext.close();
+  }
+  await page.goto(destination);
+  await page.getByRole("region", { name: "지금 할 일" })
+    .getByRole("link", { name: "피드백 읽고 고쳐 쓰기", exact: true }).click();
+  const feedback = page.getByRole("region", { name: "선생님의 피드백" });
+  await expect(feedback.getByText("어떤 장면을 읽고 그렇게 생각했는지 적어 보세요.", { exact: true })).toBeVisible();
+  expect((await feedback.boundingBox())!.y).toBeLessThan((await question.boundingBox())!.y);
+  await expect(body).toBeEditable();
+
   await page.goto("/device-check");
   await page.getByLabel("지금 점검하는 기기").selectOption("개인 PC·휴대전화");
   await page

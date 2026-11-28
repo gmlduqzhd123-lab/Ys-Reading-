@@ -5,15 +5,16 @@ import { OperationsPanel } from "@/components/operations-panel";
 import type { OperationsState } from "@/lib/operations";
 import { loadHandovers } from "@/lib/growth-terms-server";
 import { loadOperationsWorkspace } from "@/lib/operations-workspace";
+import { pageDestination } from "@/lib/login-entry";
 export const metadata = { title: "학생 계정·기록 관리" };
 export default async function OperationsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const profile = await requireProfile();
-  if (profile.role !== "teacher") redirect("/account");
   const params = await searchParams;
+  const profile = await requireProfile({ next: pageDestination("/operations", params), teacher: true });
+  if (profile.role !== "teacher") redirect("/account");
   const data = await loadOperationsWorkspace(params.classroom, params);
   const initialClassId = data.selected ?? undefined;
   const handovers = profile.role === "teacher" ? await loadHandovers() : null;

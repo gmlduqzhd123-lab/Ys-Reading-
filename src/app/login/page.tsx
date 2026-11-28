@@ -6,18 +6,23 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentProfile } from "@/lib/auth";
 import { TeacherEmailLogin } from "@/components/teacher-email-login";
 import { classroomAccountHref, classroomLoginDestination, classroomLoginHref } from "@/lib/classroom-entry";
+import { loginDestination, loginEntry } from "@/lib/login-entry";
+import { accountReady } from "@/lib/account-access";
 export const metadata = { title: "내 교실 입장" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; mode?: string; intent?: string }>;
+  searchParams: Promise<{ notice?: string; mode?: string; intent?: string; next?: string }>;
 }) {
-  const { notice, mode, intent: requestedIntent } = await searchParams;
+  const { notice, mode, intent: requestedIntent, next: requestedPage } = await searchParams;
   const intent = requestedIntent === "classroom" ? "classroom" : undefined;
+  const next = intent ? undefined : loginDestination(requestedPage);
   const teacher = mode === "teacher" || !!intent;
   const configured = isSupabaseConfigured();
   const profile = configured ? await getCurrentProfile() : null;
-  if (profile) redirect(classroomLoginDestination(intent, profile.role) ?? (intent ? classroomAccountHref : "/app"));
+  if (profile) redirect(intent
+    ? classroomLoginDestination(intent, profile.role) ?? classroomAccountHref
+    : accountReady(profile) ? next ?? "/app" : "/account");
   return (
     <>
       <div className="login-layout">
@@ -39,10 +44,11 @@ export default async function LoginPage({
           <span className="eyebrow">WELCOME BACK</span>
           <h2>{teacher ? "교사 로그인" : "학생 입장"}</h2>
           <nav className="login-choices" aria-label="로그인 종류">
-            <Link href="/login" aria-current={!teacher ? "page" : undefined}>학생 입장</Link>
-            <Link href={intent ? classroomLoginHref : "/login?mode=teacher"} aria-current={teacher ? "page" : undefined}>교사 로그인</Link>
+            <Link href={loginEntry({ next })} aria-current={!teacher ? "page" : undefined}>학생 입장</Link>
+            <Link href={intent ? classroomLoginHref : loginEntry({ next, teacher: true })} aria-current={teacher ? "page" : undefined}>교사 로그인</Link>
           </nav>
           {intent && <p>교사 로그인 후 학급 개설 화면으로 이동해요.</p>}
+          {next && <p className="form-help">로그인 후 선택한 화면을 이어서 열어요.</p>}
           {!configured && (
             <div className="notice">
               <strong>교실 연결을 준비하고 있어요.</strong>지금은 독서미션을
@@ -58,13 +64,13 @@ export default async function LoginPage({
           )}
           {teacher ? (
             <>
-              <TeacherEmailLogin configured={configured} googleEnabled={process.env.GOOGLE_AUTH_ENABLED === "true"} intent={intent} />
+              <TeacherEmailLogin configured={configured} googleEnabled={process.env.GOOGLE_AUTH_ENABLED === "true"} intent={intent} next={next} />
               <details className="login-password-option">
                 <summary>이메일과 비밀번호로 로그인</summary>
-                <LoginForm configured={configured} intent={intent} teacher />
+                <LoginForm configured={configured} intent={intent} next={next} teacher />
               </details>
             </>
-          ) : <LoginForm configured={configured} />}
+          ) : <LoginForm configured={configured} next={next} />}
         </div>
       </div>
     </>

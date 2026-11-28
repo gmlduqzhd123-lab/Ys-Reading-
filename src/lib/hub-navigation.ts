@@ -10,9 +10,15 @@ export function hubHref(
 }
 
 export function withClassroom(href: string, classroom?: string) {
-  if (classroom === undefined || !/^\/(hub|app(?:\/work\/[^?]+)?|classroom|operations|reports)(?=[?#]|$)/.test(href))
+  if (classroom === undefined || !/^\/(hub|app(?:\/work\/[^?]+)?|classroom|operations|reports|collaboration)(?=[?#]|$)/.test(href))
     return href;
   const url = new URL(href, "https://bookforest.invalid");
   url.searchParams.set("classroom", classroom);
   return url.pathname + url.search + url.hash;
+}
+
+export function hubTabPermission(tab: string): "owner" | "read" | "review" | undefined {
+  if (["growth", "plaza", "exhibitions", "economy", "manage", "terms", "packs"].includes(tab)) return "owner";
+  if (["reading", "search", "exports", "overview"].includes(tab)) return "read";
+  if (tab === "review") return "review";
 }

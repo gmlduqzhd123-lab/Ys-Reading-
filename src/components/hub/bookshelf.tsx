@@ -8,8 +8,54 @@ import { PaperBook } from "@/components/paper-book";
 import { Plus, ArrowDownRight, ArrowRight, PenLine } from "lucide-react";
 import { ReadingEditor } from "./reading-editor";
 import { SaveStatus } from "@/components/save-status";
-import { withClassroom } from "@/lib/hub-navigation";
+import { hubHref, withClassroom } from "@/lib/hub-navigation";
 import { RecordBookSearch } from "./record-book-search";
+
+export function LinkedReadingRecord({ data, id, initiallyEditing }: {
+  data: HubData;
+  id: string;
+  initiallyEditing?: boolean;
+}) {
+  const record = data.logs.find(item => item.id === id && item.student_id === data.profile.id);
+  const classroom = data.classes.find(item => item.id === record?.classroom_id);
+  const editable = !!record && !!classroom && classroom.term_state !== "archived" && !record.verified_at;
+  const [editing, setEditing] = useState(Boolean(initiallyEditing && editable));
+  const [saved, setSaved] = useState(false);
+  const editorHeading = useRef<HTMLHeadingElement>(null);
+  const showEditor = editable && editing;
+  useEffect(() => {
+    if (showEditor) editorHeading.current?.focus();
+  }, [showEditor]);
+  return (
+    <section className="panel linked-reading" aria-labelledby="linked-reading-title">
+      <Link className="text-link" href={hubHref("reading", data.selectedClassroom)}>나의 책장으로 돌아가기</Link>
+      <h2 id="linked-reading-title">{record?.book.title ?? "독서 기록을 확인해 주세요"}</h2>
+      {record ? (
+        <>
+          <p className="form-help">{[classroom?.name, record.read_on, record.book.author].filter(Boolean).join(" · ")}</p>
+          {saved && <p role="status"><SaveStatus kind="reading" /> 같은 기록에 반영했어요.</p>}
+          {showEditor ? (
+            <div>
+              <h3 ref={editorHeading} tabIndex={-1}>이 독서 기록에 더 쓰기</h3>
+              <p className="form-help">기억에 남는 구절이나 새로 든 생각을 덧붙여 보세요.</p>
+              <ReadingEditor key={record.id + ":" + record.revision} data={data} book={null} edit={record}
+                onEdit={() => setSaved(false)} onSaved={() => { setSaved(true); setEditing(false); }} />
+            </div>
+          ) : (
+            <>
+              <p className="submission-body">{record.thought}</p>
+              {record.question && <p>나의 질문 · {record.question}</p>}
+              {editable && <button type="button" className="button button-primary" onClick={() => {
+                setSaved(false);
+                setEditing(true);
+              }}>이 기록에 더 쓰기</button>}
+            </>
+          )}
+        </>
+      ) : <p>이 학급에서 열 수 있는 내 독서 기록인지 확인해 주세요.</p>}
+    </section>
+  );
+}
 export function Bookshelf({ data }: { data: HubData }) {
   const [book, setBook] = useState<Book | null>(null),
     [edit, setEdit] = useState<ReadingLog | null>(null);

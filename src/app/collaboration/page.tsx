@@ -7,16 +7,17 @@ import type { CollaborationState } from "@/lib/collaboration";
 import type { ReviewState } from "@/lib/learning-queues";
 import { CollaborationPanel } from "@/components/collaboration-panel";
 import { ReviewQueue } from "@/components/participation/review-queue";
+import { pageDestination } from "@/lib/login-entry";
 export const metadata = { title: "교사 협업·학교 운영" };
 export default async function CollaborationPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const p = await requireProfile();
+  const params = await searchParams;
+  const p = await requireProfile({ next: pageDestination("/collaboration", params), teacher: true });
   if (p.role !== "teacher") redirect("/account");
-  const params = await searchParams,
-    c = await createClient(),
+  const c = await createClient(),
     page = Math.max(1, Math.min(100000, Math.trunc(Number(params.page)) || 1));
   const initial = await c.rpc("collaboration_state", {
     p_classroom: null,
