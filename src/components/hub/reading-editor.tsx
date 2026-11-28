@@ -31,8 +31,11 @@ export function ReadingEditor({
 }) {
   const classes = data.classes.filter((c) => c.term_state !== "archived"),
     router = useRouter();
+  const defaultClassroom = edit?.classroom_id
+    ?? classes.find(c => c.id === bookClassroom)?.id
+    ?? (classes.length === 1 ? classes[0].id : "");
   const initial = (
-    classId = edit?.classroom_id ?? bookClassroom ?? classes[0]?.id,
+    classId = defaultClassroom,
   ): ReadingDraftPayload => ({
     title: book?.title ?? edit?.book.title ?? "",
     author: book?.author ?? edit?.book.author ?? "",
@@ -52,9 +55,7 @@ export function ReadingEditor({
       idea: "",
     }),
   });
-  const [classroom, setClassroom] = useState(
-      edit?.classroom_id ?? bookClassroom ?? classes[0]?.id ?? "",
-    ),
+  const [classroom, setClassroom] = useState(defaultClassroom),
     [value, setValue] = useState(initial),
     [dirty, setDirty] = useState(false),
     [message, setMessage] = useState(""),
@@ -77,7 +78,6 @@ export function ReadingEditor({
   const context = classroom + ":" + (edit?.id ?? "new"),
     storageKey =
       "bookforest.reading-recovery:" + data.profile.id + ":" + context;
-  const firstClassroom = classes[0]?.id;
   useEffect(() => {
     const {
       data: { subscription },
@@ -96,9 +96,6 @@ export function ReadingEditor({
     });
     return () => subscription.unsubscribe();
   }, [data.profile.id, storageKey]);
-  useEffect(() => {
-    if (!classroom && firstClassroom) setClassroom(firstClassroom);
-  }, [classroom, firstClassroom]);
   useEffect(() => {
     let active = true;
     generation.current++;
@@ -288,7 +285,7 @@ export function ReadingEditor({
     setTimeout(() => URL.revokeObjectURL(href), 10000);
   }
   async function save() {
-    if (busy || candidate || conflict) return;
+    if (busy || candidate || conflict || !classroom) return;
     const parsed = readingSchema.safeParse({
       ...(edit ? { id: edit.id, revision: edit.revision } : {}),
       classroomId: classroom,
@@ -364,6 +361,24 @@ export function ReadingEditor({
       onCompositionStart={() => setComposing(true)}
       onCompositionEnd={() => setComposing(false)}
     >
+      <label className="field">
+        독서 기록을 저장할 학급
+        <select
+          name="classroom"
+          value={classroom}
+          disabled={!!edit || busy || !classes.length || data.profile.consent_status !== "verified"}
+          required
+          onChange={event => {
+            if (dirty && !window.confirm("아직 임시 저장하지 못한 내용이 있어요. 다른 학급으로 이동할까요?")) return;
+            const id = event.target.value;
+            setClassroom(id);
+            setValue(initial(id));
+            setDirty(false);
+          }}>
+          <option value="">학급을 선택해 주세요</option>
+          {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </label>
       <PersonalDraftTools
         owner={data.profile.id}
         scope="reading"
@@ -415,36 +430,11 @@ export function ReadingEditor({
       )}
       <fieldset
         disabled={
-          busy || !classes.length || data.profile.consent_status !== "verified"
+          busy || !classroom || !classes.length || data.profile.consent_status !== "verified"
         }
         className="hub-fieldset"
       >
         <div className="hub-form-grid">
-          <label className="field">
-            학급
-            <select
-              value={classroom}
-              onChange={(e) => {
-                if (
-                  dirty &&
-                  !window.confirm(
-                    "아직 임시 저장하지 못한 내용이 있어요. 다른 학급으로 이동할까요?",
-                  )
-                )
-                  return;
-                setClassroom(e.target.value);
-                setValue(initial(e.target.value));
-                setDirty(false);
-              }}
-              disabled={!!edit}
-            >
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
           {(
             [
               ["title", "책 제목", 200],

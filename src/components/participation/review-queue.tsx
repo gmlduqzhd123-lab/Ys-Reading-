@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Classroom } from "@/lib/data";
 import type { ReviewState } from "@/lib/learning-queues";
 import { feedbackStarters } from "@/lib/participation";
@@ -26,13 +26,14 @@ export function ReviewQueue({
   owner: string;
 }) {
   const router = useRouter();
+  const params = useSearchParams();
   const { kind, rows, page } = state;
   const classId = state.classroom ?? "";
   const href = (reviewKind = kind, classroom = classId, reviewPage = page) =>
     basePath + "&" + new URLSearchParams({ reviewKind, classroom, reviewPage: String(reviewPage) });
 
   const [mode, setMode] = useState<ReviewMode>("one");
-  const [currentId, setCurrentId] = useState<string>();
+  const [currentId, setCurrentId] = useState<string | undefined>(() => params.get("reviewRecord") ?? undefined);
   const [selected, setSelected] = useState<string[]>([]);
   const [opened, setOpened] = useState<Set<string>>(new Set());
   const [handled, setHandled] = useState<string[]>([]);
@@ -49,16 +50,19 @@ export function ReviewQueue({
   const draft = useTeacherWorkDraft({
     owner,
     scope: "review",
-    context: { classroom: classId || null, kind, page },
+    context: current
+      ? { classroom: current.classroom_id, kind, record: current.id }
+      : { classroom: classId || null, kind, page },
     payload: { selected, body, decision },
     enabled: selected.length > 0,
     apply: payload => {
       const ids = Array.isArray(payload.selected) ? payload.selected.filter((id): id is string => typeof id === "string") : [];
-      if (ids.some(id => !queue.some(row => row.id === id)))
+      if ((current && ids.length > 0 && (ids.length !== 1 || ids[0] !== current.id)) ||
+          ids.some(id => !queue.some(row => row.id === id)))
         throw Error("원래 검토 대상이 이 페이지에서 바뀌었어요. 교사 초안을 파일로 보관하고 학생 기록을 다시 확인해 주세요.");
-      if (ids.length) {
-        setMode(ids.length > 1 ? "batch" : "one");
-        setCurrentId(ids.length === 1 ? ids[0] : undefined);
+      if (!current && ids.length) {
+        setMode("batch");
+        selectRecord(undefined);
       }
       setSelected(ids);
       setOpened(new Set());
@@ -82,17 +86,25 @@ export function ReviewQueue({
     setDecision("completed");
   }
 
+  function selectRecord(id: string | undefined) {
+    setCurrentId(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("reviewRecord", id);
+    else url.searchParams.delete("reviewRecord");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }
+
   function showRecord(id: string) {
     if (id === currentId || sending || !draft.confirmLeave()) return;
     resetInput();
     setNotice("");
-    setCurrentId(id);
+    selectRecord(id);
   }
 
   function openList() {
     if (sending || !draft.confirmLeave()) return;
     resetInput();
-    setCurrentId(undefined);
+    selectRecord(undefined);
     requestAnimationFrame(() => {
       if (currentId) document.getElementById("review-select-" + currentId)?.focus();
     });
@@ -147,8 +159,8 @@ export function ReviewQueue({
           : decision === "revision_requested" ? "고쳐쓰기 피드백 보내기" : "이 글 확인 완료"}
         disabled={draft.blocked || selected.some(id => !opened.has(id) || !queue.some(row => row.id === id))}
         onBusyChange={setSending}
-        onSuccess={() => {
-          void draft.clear().catch(() => {});
+        onSuccess={async () => {
+          await draft.clear();
           const action = kind === "reading" ? "독서 기록 확인을 마쳤어요."
             : decision === "completed" ? "작품을 완료했어요." : "글에 고쳐쓰기 피드백을 전했어요.";
           setNotice(selected.length + "건의 " + action);
@@ -157,7 +169,7 @@ export function ReviewQueue({
             ?? queue.find(row => !selected.includes(row.id));
           setNextRecord(remaining?.id);
           setHandled(previous => [...previous, ...selected]);
-          setCurrentId(undefined);
+          selectRecord(undefined);
           resetInput();
         }}
         payload={() => ({
@@ -237,7 +249,7 @@ export function ReviewQueue({
             onClick={() => {
               if (mode === key || !draft.confirmLeave()) return;
               resetInput();
-              setCurrentId(undefined);
+              selectRecord(undefined);
               setNotice("");
               setMode(key);
             }}>{label}</button>

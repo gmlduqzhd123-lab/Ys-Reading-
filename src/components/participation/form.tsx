@@ -22,7 +22,7 @@ export function ParticipationForm({
   payload: (data: FormData) => Record<string, unknown>;
   children?: ReactNode;
   label?: string;
-  onSuccess?: (data: Record<string, unknown>) => void;
+  onSuccess?: (data: Record<string, unknown>) => void | Promise<void>;
   onBusyChange?: (busy: boolean) => void;
   disabled?:boolean;
 }) {
@@ -67,7 +67,7 @@ export function ParticipationForm({
             if (result.ok) {
               key.current = null;
               setDirty(false);
-              onSuccess?.(result.data ?? {});
+              await onSuccess?.(result.data ?? {});
               router.refresh();
             }
           } catch {

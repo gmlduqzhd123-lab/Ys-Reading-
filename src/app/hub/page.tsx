@@ -51,7 +51,7 @@ export default async function HubPage({
   ];
   const tab = params.tab && allowed.includes(params.tab) ? params.tab : "today";
   const parsed = searchSchema.safeParse(params);
-  const filters = parsed.success ? parsed.data : searchSchema.parse({});
+  const filters = parsed.success ? parsed.data : searchSchema.parse({ classroom: params.classroom });
   const linkedRecord = tab === "reading" && profile.role === "student"
     ? z.uuid().safeParse(params.record).data
     : undefined;
@@ -135,7 +135,8 @@ export default async function HubPage({
     plazaReports = r.data;
   }
   let classroomTools: ClassroomToolState | null = null;
-  const toolsClass = data.selectedClassroom || data.classes[0]?.id;
+  const activeReadingClasses = data.classes.filter(classroom => classroom.term_state !== "archived");
+  const toolsClass = activeReadingClasses.length === 1 ? activeReadingClasses[0].id : undefined;
   if (
     profile.role === "student" &&
     profile.consent_status === "verified" &&

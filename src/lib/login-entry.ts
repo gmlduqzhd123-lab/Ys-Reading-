@@ -17,6 +17,10 @@ export function pageDestination(path: string, params: Record<string, string | un
   return query.size ? path + "?" + query : path;
 }
 
+export function accountEntry(next: unknown) {
+  return pageDestination("/account", { next: loginDestination(next) });
+}
+
 export function loginEntry({ next, teacher, notice }: {
   next?: unknown;
   teacher?: boolean;

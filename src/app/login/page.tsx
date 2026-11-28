@@ -6,7 +6,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentProfile } from "@/lib/auth";
 import { TeacherEmailLogin } from "@/components/teacher-email-login";
 import { classroomAccountHref, classroomLoginDestination, classroomLoginHref } from "@/lib/classroom-entry";
-import { loginDestination, loginEntry } from "@/lib/login-entry";
+import { accountEntry, loginDestination, loginEntry } from "@/lib/login-entry";
 import { accountReady } from "@/lib/account-access";
 export const metadata = { title: "내 교실 입장" };
 export default async function LoginPage({
@@ -20,9 +20,10 @@ export default async function LoginPage({
   const teacher = mode === "teacher" || !!intent;
   const configured = isSupabaseConfigured();
   const profile = configured ? await getCurrentProfile() : null;
-  if (profile) redirect(intent
-    ? classroomLoginDestination(intent, profile.role) ?? classroomAccountHref
-    : accountReady(profile) ? next ?? "/app" : "/account");
+  if (profile) {
+    if (!accountReady(profile)) redirect(intent ? classroomAccountHref : accountEntry(next));
+    redirect(intent ? classroomLoginDestination(intent, profile.role) ?? classroomAccountHref : next ?? "/app");
+  }
   return (
     <>
       <div className="login-layout">
@@ -49,6 +50,7 @@ export default async function LoginPage({
           </nav>
           {intent && <p>교사 로그인 후 학급 개설 화면으로 이동해요.</p>}
           {next && <p className="form-help">로그인 후 선택한 화면을 이어서 열어요.</p>}
+          {notice === "password-changed" && <p role="status" className="notice">새 비밀번호로 다시 로그인해 주세요.</p>}
           {!configured && (
             <div className="notice">
               <strong>교실 연결을 준비하고 있어요.</strong>지금은 독서미션을

@@ -1764,6 +1764,32 @@ button {
   grid-template-columns: 1fr 1fr;
   gap: 22px;
 }
+.guide-page [id] {
+  scroll-margin-top: 6rem;
+}
+.guide-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin-bottom: 22px;
+}
+.guide-shortcuts h2 {
+  margin: 0 0 4px;
+}
+.guide-shortcuts ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guide-shortcuts a {
+  min-height: 44px;
+}
+.guide-grid .text-link + .text-link {
+  margin-inline-start: 16px;
+}
 .accent-icon {
   color: #789762;
 }

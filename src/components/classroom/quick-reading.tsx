@@ -9,6 +9,28 @@ import { useWorkshopDraft, WorkshopDraftNotice } from "./work-draft";
 import { workshopDraftPayloads } from "@/lib/workshop-operations";
 import { hubHref } from "@/lib/hub-navigation";
 import { z } from "zod";
+
+export function QuickReadingClassChoice({ classes, tab }: {
+  classes: { id: string; name: string }[];
+  tab: "today" | "reading";
+}) {
+  return (
+    <section className="panel quick-reading" aria-labelledby="quick-reading-class-title">
+      <h2 id="quick-reading-class-title">오늘 읽고, 한 줄 남기기</h2>
+      <form action="/hub" className="hub-inline">
+        <input type="hidden" name="tab" value={tab} />
+        <label className="field">
+          간편 독서 기록을 남길 학급
+          <select name="classroom" defaultValue="" required>
+            <option value="">학급을 선택해 주세요</option>
+            {classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+        <button className="button button-primary">이 학급의 독서 기록 열기</button>
+      </form>
+    </section>
+  );
+}
 export function QuickReading({
   owner,
   state,

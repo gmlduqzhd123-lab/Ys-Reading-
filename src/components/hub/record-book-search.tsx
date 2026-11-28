@@ -18,7 +18,7 @@ export function RecordBookSearch({ classes, choose }: {
   classes: { id: string; name: string }[];
   choose: (book: Book | null, classroom: string) => boolean;
 }) {
-  const [classroom, setClassroom] = useState(classes[0]?.id ?? "");
+  const [classroom, setClassroom] = useState(classes.length === 1 ? classes[0].id : "");
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [library, setLibrary] = useState<HeldBook[]>([]);
@@ -107,6 +107,7 @@ export function RecordBookSearch({ classes, choose }: {
       {classes.length > 1 && <label className="field">
         보유 도서를 찾을 학급
         <select value={classroom} onChange={event => { reset(); setClassroom(event.target.value); }}>
+          <option value="">외부 도서만 검색</option>
           {classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
       </label>}

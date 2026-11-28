@@ -46,12 +46,22 @@ test("class context, 28-record split export, resume and learning notification", 
   await oneRecord.check();
   await choice.getByLabel("기록장·작품집 제목").fill("CI 연결 후 기록장");
   await choice.getByLabel("파일에 작성자 표시 이름 포함").check();
+  await choice.getByRole("link", { name: "다음 기록", exact: true }).click();
+  await expect(page).toHaveURL(/page=2/);
+  const olderRecord = choice.getByRole("checkbox", { name: /CI 다음 페이지 기록/ });
+  await olderRecord.check();
+  await expect(choice.getByText("선택한 기록 2건")).toBeVisible();
+  await expect(choice.getByLabel("기록장·작품집 제목")).toHaveValue("CI 연결 후 기록장");
+  await choice.getByRole("link", { name: "이전 기록", exact: true }).click();
+  await expect(oneRecord).toBeChecked();
+  await choice.getByRole("link", { name: "다음 기록", exact: true }).click();
+  await expect(olderRecord).toBeChecked();
   await page.getByRole("radio", { name: "Google Drive", exact: true }).check();
-  await expect(choice.getByText("선택한 기록 1건")).toBeVisible();
+  await expect(choice.getByText("선택한 기록 2건")).toBeVisible();
   await page.getByRole("link", { name: "교사 Google 계정 연결" }).click();
   await expect(page).toHaveURL(/google=cancelled/);
-  await expect(oneRecord).toBeChecked();
-  await expect(choice.getByText("선택한 기록 1건")).toBeVisible();
+  await expect(olderRecord).toBeChecked();
+  await expect(choice.getByText("선택한 기록 2건")).toBeVisible();
   await expect(page.getByRole("radio", { name: "파일 저장", exact: true })).toBeChecked();
   await expect(choice.getByLabel("기록장·작품집 제목")).toHaveValue("CI 연결 후 기록장");
   await expect(choice.getByLabel("파일에 작성자 표시 이름 포함")).not.toBeChecked();
@@ -59,7 +69,17 @@ test("class context, 28-record split export, resume and learning notification", 
   await choice.getByRole("button", { name: "표로 저장 · CSV" }).click();
   const csvFile = await csvDownload;
   expect(csvFile.suggestedFilename()).toMatch(/\.csv$/);
-  expect(fs.readFileSync((await csvFile.path())!, "utf8")).toContain("CI 묶음 기록 28");
+  const csv = fs.readFileSync((await csvFile.path())!, "utf8").split("\r\n");
+  expect(csv[1]).toContain("CI 묶음 기록 28");
+  expect(csv[2]).toContain("CI 다음 페이지 기록");
+  const crossClass = await page.request.post("/api/export", {
+    headers: { origin: "http://127.0.0.1:3096", "x-bookforest-actor": f.accounts[1].id },
+    data: {
+      kind: "reading", ids: [f.olderExportId], classroom: f.workshop.classroom,
+      title: "CI 다른 학급 범위", format: "csv", requestId: crypto.randomUUID(),
+    },
+  });
+  expect(crossClass.status()).toBe(403);
   await page.getByRole("radio", { name: "학급 묶음", exact: true }).check();
   await page.getByLabel("묶음 제목", { exact: true }).fill("CI 학기 묶음");
   await page.getByLabel("기록 시작 날짜", { exact: true }).fill("2024-02-01");

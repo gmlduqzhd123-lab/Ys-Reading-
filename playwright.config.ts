@@ -24,18 +24,18 @@ export default defineConfig({
     {
       name: "chromium",
       testMatch:
-        /(?:journey|completion|teacher-accessibility|classroom-workshop|reliability-operations)\.spec\.ts/,
+        /(?:journey|completion|teacher-accessibility|classroom-workshop|reliability-operations|workspace-navigation)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "webkit-mobile",
       testMatch:
-        /(?:responsive|mobile-learning|workshop-mobile|reliability-operations)\.spec\.ts/,
+        /(?:responsive|mobile-learning|workshop-mobile|reliability-operations|workspace-navigation)\.spec\.ts/,
       use: { ...devices["iPhone 13"] },
     },
     {
       name: "android-chrome",
-      testMatch: /(?:workshop-mobile|reliability-operations)\.spec\.ts/,
+      testMatch: /(?:workshop-mobile|reliability-operations|workspace-navigation)\.spec\.ts/,
       use: { ...devices["Pixel 7"] },
     },
   ],

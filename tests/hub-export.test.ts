@@ -10,9 +10,14 @@ vi.mock("@/lib/auth", () => ({ requireProfile: async () => state.profile }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     from: () => ({
-      select: () => ({
-        in: async () => ({ data: state.rows, error: state.error }),
-      }),
+      select: () => {
+        const query = {
+          in: () => query,
+          eq: () => query,
+          overrideTypes: async () => ({ data: state.rows, error: state.error }),
+        };
+        return query;
+      },
     }),
   }),
 }));

@@ -83,7 +83,12 @@ export function Bookshelf({ data }: { data: HubData }) {
     setEdit(null);
     setRecordSaved(false);
     setFormVersion(v => v + 1);
-    requestAnimationFrame(() => editor.current?.querySelector<HTMLInputElement>('form[data-reading-editor="true"] input[name="title"]')?.focus());
+    requestAnimationFrame(() => {
+      const form = editor.current?.querySelector('form[data-reading-editor="true"]');
+      const classroom = form?.querySelector<HTMLSelectElement>('select[name="classroom"]');
+      const field = classroom && !classroom.value ? classroom : form?.querySelector<HTMLInputElement>('input[name="title"]');
+      field?.focus();
+    });
     return true;
   }
   return (

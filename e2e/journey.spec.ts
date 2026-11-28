@@ -17,6 +17,61 @@ async function login(page: Page, id: string, password: string) {
     .click();
   await expect(page).toHaveURL(/\/hub|\/account/);
 }
+test("feedback stays with its submission and the previous batch draft still opens", async ({ page }) => {
+  const checkBrowser = watchBrowserErrors(page);
+  const { classroom, reviewRecords } = fixture.navigation;
+  const [first, second] = reviewRecords;
+  const teacher = createClient(fixture.url, fixture.key, { auth: { persistSession: false } });
+  const auth = await teacher.auth.signInWithPassword({
+    email: fixture.accounts[1].email, password: fixture.accounts[1].password,
+  });
+  expect(auth.error).toBeNull();
+  const legacy = await teacher.rpc("teacher_work_draft", {
+    p_action: "save", p_scope: "review", p_context: { classroom, kind: "writing", page: 1 },
+    p_payload: { selected: [first.id, second.id], body: "CI 기존 일괄 검토 초안", decision: "completed" },
+    p_revision: 0, p_request: crypto.randomUUID(),
+  });
+  expect(legacy.error).toBeNull();
+
+  await login(page, fixture.accounts[1].email, fixture.accounts[1].password);
+  await page.goto("/hub?tab=review&classroom=" + classroom);
+  const restore = page.getByRole("button", { name: "교사 초안 불러오기", exact: true });
+  const feedback = page.getByRole("textbox", { name: "피드백", exact: true });
+  const checked = page.getByRole("checkbox", { name: "이 기록을 읽고 확인했어요", exact: true });
+  await restore.click();
+  await expect(page.getByRole("button", { name: "여러 건 선택", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(feedback).toHaveValue("CI 기존 일괄 검토 초안");
+  await expect(page.getByRole("button", { name: "선택한 최신 글 검토 완료", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "한 건씩 보기", exact: true }).click();
+
+  const records = page.getByRole("region", { name: "검토할 기록" });
+  const saved = page.getByText("교사 작성 내용을 임시 보관했어요. 최종 저장·피드백 전송은 별도로 확인해 주세요.", { exact: true });
+  await records.getByRole("button", { name: new RegExp(first.title) }).click();
+  await checked.check();
+  await feedback.fill("CI 첫 글에 쓴 피드백");
+  await expect(saved).toBeVisible();
+
+  await records.getByRole("button", { name: new RegExp(second.title) }).click();
+  await expect(page).toHaveURL(new RegExp("reviewRecord=" + second.id));
+  await checked.check();
+  await expect(feedback).toHaveValue("");
+  await feedback.fill("CI 둘째 글에 쓴 피드백");
+  await expect(saved).toBeVisible();
+  await page.reload();
+  await restore.click();
+  await expect(feedback).toHaveValue("CI 둘째 글에 쓴 피드백");
+  await expect(checked).not.toBeChecked();
+  await expect(page.getByRole("button", { name: "이 글 확인 완료", exact: true })).toBeDisabled();
+
+  await records.getByRole("button", { name: new RegExp(first.title) }).click();
+  await restore.click();
+  await expect(feedback).toHaveValue("CI 첫 글에 쓴 피드백");
+  await page.getByRole("button", { name: "목록으로 돌아가기", exact: true }).click();
+  await restore.click();
+  await expect(feedback).toHaveValue("CI 기존 일괄 검토 초안");
+  checkBrowser();
+});
+
 test("real Auth, consent, reading, writing, review, rewards and economy journey", async ({
   browser,
 }) => {

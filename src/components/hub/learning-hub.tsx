@@ -33,7 +33,7 @@ import {ClassContext} from "./class-context";
 import {LearningUpdates} from "./learning-updates";
 import {hubHref, hubTabPermission, withClassroom} from "@/lib/hub-navigation";
 import type {ClassroomToolState} from '@/lib/classroom-tools';
-import {QuickReading} from '@/components/classroom/quick-reading';
+import { QuickReading, QuickReadingClassChoice } from "@/components/classroom/quick-reading";
 
 const tabGroups = [
   { label: "수업·기록", tabs: ["overview", "packs", "search", "reading", "exports"] },
@@ -113,6 +113,14 @@ export function LearningHub({
       : []),
   ];
   const tab = tabs.some(([id]) => id === initialTab) ? initialTab! : "today";
+  const quickReadingClasses = !teacher && !data.selectedClassroom
+    ? data.classes.filter(classroom => classroom.term_state !== "archived")
+    : [];
+  const quickReading = classroomTools ? (
+    <QuickReading key={data.profile.id + ":" + classroomTools.classroom.id} owner={data.profile.id} state={classroomTools} />
+  ) : (tab === "today" || tab === "reading") && !linkedRecord && quickReadingClasses.length > 1 ? (
+    <QuickReadingClassChoice classes={quickReadingClasses} tab={tab} />
+  ) : null;
   const simple=!teacher&&data.classes.length===1&&data.classes[0].simple_student_view===true;
   const primaryIds = teacher ? ["today", "review", "manage"] : ["today", "reading"];
   const primaryTabs = primaryIds.flatMap(id => tabs.filter(([tabId]) => id === tabId));
@@ -297,7 +305,7 @@ export function LearningHub({
               {tab === "today" && studentToday && (
                 <Today state={studentToday} classes={data.classes} classroom={data.selectedClassroom ?? ""} />
               )}
-              {tab==='today'&&classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}
+              {tab === "today" && quickReading}
               {teacher && ["today", "overview"].includes(tab) && overview && (
                 <ClassOverviewPanel
                   owns={owns}
@@ -338,7 +346,7 @@ export function LearningHub({
               {tab === "reading" && !linkedRecord && (
                 <div className="paper-dashboard">
                   <div className="paper-main">
-                    {classroomTools&&<QuickReading key={data.profile.id+classroomTools.classroom.id} owner={data.profile.id} state={classroomTools}/>}
+                    {quickReading}
                     <Bookshelf key={data.selectedClassroom ?? ""} data={data} />
                   </div>
                   <PaperGrowth data={data} growth={growth} />
@@ -346,7 +354,7 @@ export function LearningHub({
               )}
               {tab === "exports" && (
                 <Exports
-                  key={`${data.profile.id}:${data.selectedClassroom ?? ""}:${data.page}`}
+                  key={`${data.profile.id}:${data.selectedClassroom ?? ""}`}
                   data={data}
                   google={google}
                   googleNotice={googleNotice}
@@ -393,6 +401,7 @@ export function LearningHub({
                 "packs",
                 "overview",
                 "search",
+                "exports",
                 "terms",
                 "review",
               ].includes(tab) && (

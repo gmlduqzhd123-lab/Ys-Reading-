@@ -278,6 +278,48 @@ execFileSync("docker", ["exec", "-i", "supabase_db_bookforest", "psql", "-U", "p
   `,
   stdio: ["pipe", "pipe", "pipe"],
 });
+const navigationClassroom = randomUUID();
+const engines = ["chromium", "webkit-mobile", "android-chrome"] as const;
+const firstLogins = engines.map(engine => ({
+  engine,
+  loginId: "first" + randomUUID().replaceAll("-", "").slice(0, 12),
+  name: "CI " + engine,
+  password,
+}));
+const reviewRecords = ["CI 검토할 첫 글", "CI 검토할 둘째 글"].map((title, index) => ({
+  id: randomUUID(), title, loginId: "draft" + randomUUID().replaceAll("-", "").slice(0, 12),
+  name: "CI 초안 확인용 학생 " + (index + 1),
+}));
+function fixtureSql(input: string) {
+  execFileSync("docker", ["exec", "-i", "supabase_db_bookforest", "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-q"], {
+    input, stdio: ["pipe", "pipe", "pipe"],
+  });
+}
+fixtureSql(`insert into public.classrooms(id,name,teacher_id,created_at)
+  values('${navigationClassroom}','CI 화면 이동 검증','${accounts[1].id}','2018-01-01');`);
+await edge(teacher, {
+  kind: "create_students", requestId: randomUUID(), classroomId: navigationClassroom,
+  students: [...firstLogins, ...reviewRecords].map(({ loginId, name }) => ({ loginId, name, password })),
+});
+fixtureSql(`update public.profiles set consent_status='verified' where id in
+  (select student_id from public.enrollments where classroom_id='${navigationClassroom}');`);
+const navigationAssignment = await result(await teacher.rpc("assign_mission", {
+  p_classroom_id: navigationClassroom,
+  p_mission_id: missions.find(m => !m.requires_revision && m.kind === "writing")!.id,
+}), "CI_NAVIGATION_ASSIGN");
+fixtureSql(reviewRecords.map(record => `
+  update public.profiles set must_change_password=false where id=
+    (select id from auth.users where email='${record.loginId}@students.bookforest.invalid');
+  insert into public.submissions(id,assignment_id,student_id,title,body,version,status,request_id)
+  select '${record.id}','${navigationAssignment.id}',id,'${record.title}','교사 초안 분리를 확인하는 합성 글입니다.',1,'submitted','${randomUUID()}'
+  from auth.users where email='${record.loginId}@students.bookforest.invalid';`).join("\n"));
+const olderExportId = randomUUID();
+fixtureSql(`insert into public.reading_logs(classroom_id,student_id,book,read_on,status,thought,created_at)
+  select '${cls.id}','${mobileUser.data.user.id}',jsonb_build_object('title','CI 페이지 채움 '||n),'2023-03-01','reading','내보내기 이동 검증','2023-03-02'
+  from generate_series(1,75)n;
+  insert into public.reading_logs(id,classroom_id,student_id,book,read_on,status,thought,created_at)
+  values ('${olderExportId}','${cls.id}','${mobileUser.data.user.id}',jsonb_build_object('title','CI 다음 페이지 기록'),
+  '2023-01-01','reading','내보내기 마지막 페이지 확인','2023-01-02');`);
 fs.writeFileSync(
   "e2e/.runtime/fixtures.json",
   JSON.stringify({
@@ -294,6 +336,12 @@ fs.writeFileSync(
     workshopTouch,
     workshop:{classroom:workshopClass,assignment:workshopAssignment.id,student:{id:workshopUser.data.user.id,loginId:workshopLogin,password:nextPassword}},
     assignment: assignment.id,
+    navigation: {
+      classroom: navigationClassroom, assignment: navigationAssignment.id,
+      firstLogins: Object.fromEntries(firstLogins.map(({ engine, loginId }) => [engine, { loginId, password, nextPassword }])),
+      reviewRecords: reviewRecords.map(({ id, title }) => ({ id, title })),
+    },
+    olderExportId,
     operatorSecret: enrollment.data.totp.secret,
   }),
   { mode: 0o600 },

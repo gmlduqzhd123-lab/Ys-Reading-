@@ -45,6 +45,7 @@ export function useTeacherWorkDraft({
     request = useRef<{ hash: string; id: string } | null>(null),
     failures = useRef(0),
     clearing = useRef(false),
+    stored = useRef(false),
     identity = useRef(owner + scope + contextKey);
   const readyRef = useRef(ready);
   readyRef.current = ready;
@@ -84,6 +85,9 @@ export function useTeacherWorkDraft({
       request.current = null;
       pendingClear.current = null;
       failures.current = 0;
+      stored.current = false;
+      setCandidate(null);
+      setMessage("");
       setConflict(false);
       setPaused(false);
       ref.current.apply({});
@@ -103,6 +107,7 @@ export function useTeacherWorkDraft({
           return;
         }
         revision.current = r.revision;
+        stored.current = !!r.payload;
         setCandidate(r.payload ?? null);
         setReady(true);
       })
@@ -172,6 +177,7 @@ export function useTeacherWorkDraft({
                 return;
               }
               revision.current = r.revision;
+              stored.current = true;
               saved.current = current;
               request.current = null;
               failures.current = 0;
@@ -248,20 +254,26 @@ export function useTeacherWorkDraft({
     };
   }, []);
   async function clear() {
+    if (clearing.current) return false;
+    const g = generation.current;
+    const target = ref.current.context;
+    const isCurrent = () => active.current && g === generation.current && draftKey(ref.current.context) === contextKey;
     clearing.current = true;
-    await inFlight.current?.catch(() => {});
-    if (blocked || !active.current) return false;
-    pendingClear.current ??= {
-      revision: revision.current,
-      request: crypto.randomUUID(),
-    };
     try {
+      await inFlight.current?.catch(() => {});
+      if (blocked || !isCurrent()) return false;
+      if (readyRef.current && !stored.current) return true;
+      pendingClear.current ??= {
+        revision: revision.current,
+        request: crypto.randomUUID(),
+      };
       const r = await teacherDraftAction(owner, {
         action: "discard",
         scope,
-        context: ref.current.context,
+        context: target,
         ...pendingClear.current,
       });
+      if (!isCurrent()) return r.ok;
       if (!r.ok) {
         if (r.code === "STALE") {
           pendingClear.current = null;
@@ -271,6 +283,7 @@ export function useTeacherWorkDraft({
         throw Error(r.message);
       }
       revision.current = r.revision;
+      stored.current = false;
       saved.current = draftKey(ref.current.payload);
       setCandidate(null);
       setConflict(false);
@@ -279,6 +292,7 @@ export function useTeacherWorkDraft({
       setMessage("교사 임시 보관 내용을 정리했어요.");
       return true;
     } catch {
+      if (!isCurrent()) return false;
       setPaused(true);
       setMessage(
         "최종 저장과 별도로 교사 초안 정리를 확인하지 못했어요. 다시 확인해 주세요.",

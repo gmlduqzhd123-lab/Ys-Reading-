@@ -4,16 +4,21 @@ import { z } from "zod";
 import { requireProfile } from "./auth";
 import { createClient } from "./supabase/server";
 import { escapeHtml } from "./studio";
+import { readExportRecords } from "./export-records";
+import { exportSelectionLimit } from "./export-selection";
+import type { ReadingLog } from "./hub-data";
+import type { Draft, Submission } from "./data";
 export const exportSchema = z
   .object({
     kind: z.enum(["reading", "writing", "drafts", "exhibition"]),
-    ids: z.array(z.uuid()).min(1).max(100),
+    ids: z.array(z.uuid()).min(1).max(exportSelectionLimit),
     format: z.enum(["docx", "print", "csv", "google-docs", "google-sheets"]),
     title: z.string().trim().min(1).max(100).default("나의 책숲 기록"),
     requestId: z.uuid(),
     includeNames: z.boolean().optional(),
     batchId: z.uuid().optional(),
     part: z.number().int().min(0).max(399).optional(),
+    classroom: z.uuid().optional(),
   })
   .strict();
 export interface ExportEntry {
@@ -26,15 +31,20 @@ export interface ExportBundle {
   title: string;
   entries: ExportEntry[];
 }
+type ExportRecord =
+  | Pick<ReadingLog, "id" | "student_id" | "book" | "read_on" | "thought" | "question">
+  | Draft
+  | Submission;
+
 export async function loadExportBundle(
   input: z.infer<typeof exportSchema>,
 ): Promise<ExportBundle> {
   const profile = await requireProfile();
   if (profile.role === "student" && profile.consent_status !== "verified")
     throw new Error("BF_CONSENT_REQUIRED");
-  const client = await createClient();
   if (input.batchId) {
     if (input.part === undefined) throw Error("BF_FORBIDDEN");
+    const client = await createClient();
     const r = await client.rpc("export_batch_content", {p_id: input.batchId, p_part: input.part});
     const frozen = r.data;
     if (r.error || !frozen || frozen.kind !== (input.kind === "drafts" ? "draft" : input.kind) || frozen.format !== input.format || frozen.requestId !== input.requestId || frozen.includeNames !== Boolean(input.includeNames) || JSON.stringify(frozen.ids) !== JSON.stringify(input.ids) || frozen.bundle.title !== input.title) throw Error("BF_FORBIDDEN");
@@ -43,6 +53,7 @@ export async function loadExportBundle(
   const ids = [...new Set(input.ids)];
   if(input.kind==="exhibition"){
     if(profile.role!=="teacher")throw new Error("BF_FORBIDDEN");
+    const client = await createClient();
     const entries=await client.from("exhibition_entries").select("id,post_id").in("id",ids).eq("status","approved");
     if(entries.error||entries.data?.length!==ids.length)throw new Error("BF_FORBIDDEN");
     const posts=await client.from("plaza_posts").select("id,title,body,pen_name").in("id",entries.data.map(e=>e.post_id)).eq("status","published");
@@ -51,17 +62,12 @@ export async function loadExportBundle(
     const entryById=new Map(entries.data.map(e=>[e.id,e]));
     return {title:input.title,entries:ids.map(id=>{const post=byId.get(entryById.get(id)!.post_id)!;return {title:post.title,body:post.body,meta:"학급·학년 전시 작품"+(input.includeNames?" · "+post.pen_name:"")};})};
   }
-  const table =
-    input.kind === "reading"
-      ? "reading_logs"
-      : input.kind === "drafts"
-        ? "drafts"
-        : "submissions";
-  const { data, error } = await client.from(table).select("*").in("id", ids);
+  const { data, error } = await readExportRecords<ExportRecord>(input.kind, ids, profile, input.classroom);
   if (error || data?.length !== ids.length) throw new Error("BF_FORBIDDEN");
   const byId = new Map(data.map((r) => [r.id, r]));
   const names = new Map<string, string>();
   if (input.includeNames) {
+    const client = await createClient();
     const response = await client
       .from("profiles")
       .select("id,display_name")
@@ -73,7 +79,7 @@ export async function loadExportBundle(
     title: input.title,
     entries: ids.map((id) => {
       const r = byId.get(id)!;
-      return input.kind === "reading"
+      return "book" in r
         ? {
             title: String(r.book.title),
             meta: `${names.has(r.student_id) ? `${names.get(r.student_id)} · ` : ""}${r.read_on} · ${r.book.author ?? ""} · ${r.book.publisher ?? ""} · ${r.book.isbn ?? ""}`,
@@ -82,7 +88,7 @@ export async function loadExportBundle(
           }
         : {
             title: r.title || "작성 중인 글",
-            meta: `${names.has(r.student_id) ? `${names.get(r.student_id)} · ` : ""}${new Date(r.updated_at ?? r.created_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })} · ${input.kind === "drafts" ? "작성 중인 초안" : `${r.version}번째 글`}`,
+            meta: `${names.has(r.student_id) ? `${names.get(r.student_id)} · ` : ""}${new Date("updated_at" in r ? r.updated_at ?? r.created_at : r.created_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })} · ${"version" in r ? `${r.version}번째 글` : "작성 중인 초안"}`,
             body: r.body,
           };
     }),

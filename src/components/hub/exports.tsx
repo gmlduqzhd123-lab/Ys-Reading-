@@ -7,8 +7,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { HubData } from "@/lib/hub-data";
 import { Empty, Panel } from "./shared";
 import { googleCallbackNotice } from "@/lib/google-errors";
-import { exportSelectionKey, readExportSelection } from "@/lib/export-selection";
+import { exportSelectionKey, exportSelectionLimit } from "@/lib/export-selection";
+import { restoreExportSelection } from "@/app/hub/export-selection-actions";
+import { hubHref } from "@/lib/hub-navigation";
+
 type ExportMethod = "file" | "google" | "batch";
+type ExportKind = "reading" | "writing" | "drafts";
+type SelectedRecord = { id: string; title: string };
 
 export function Exports({
   data,
@@ -20,16 +25,26 @@ export function Exports({
   googleNotice?: string;
 }) {
   const router = useRouter();
-  const requestedMethod = useSearchParams().get("exportMode");
+  const params = useSearchParams();
+  const requestedMethod = params.get("exportMode");
+  const requestedKind = params.get("exportKind");
+  const teacher = data.profile.role === "teacher";
   const [interactive, setInteractive] = useState(false);
   useEffect(() => setInteractive(true), []);
-  const [kind, setKind] = useState<"reading" | "writing" | "drafts">("reading"),
-    [selected, setSelected] = useState<string[]>([]),
+  const [kind, setKind] = useState<ExportKind>(() => {
+    if (requestedKind === "writing" || (!teacher && requestedKind === "drafts")) return requestedKind;
+    return "reading";
+  }),
+    [selected, setSelected] = useState<SelectedRecord[]>([]),
     [title, setTitle] = useState("나의 책숲 기록"),
     [message, setMessage] = useState(""),
     [url, setUrl] = useState(""),
     [busy, setBusy] = useState(false),
     [includeNames, setIncludeNames] = useState(false);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [restoreFailed, setRestoreFailed] = useState(false);
+  const canRestore = teacher && !!googleNotice && ["connected", "cancelled", "school-policy", "expired", "configuration", "failed"].includes(googleNotice);
+  const [restoring, setRestoring] = useState(canRestore);
   const [requiresReconnect, setRequiresReconnect] = useState(false);
   const connectionNotice = googleCallbackNotice(
     googleNotice,
@@ -57,7 +72,6 @@ export function Exports({
             meta: `${s.version}번째 글`,
             student: s.student_id,
           }));
-  const teacher = data.profile.role === "teacher";
   const [method, setMethod] = useState<ExportMethod>(() => {
     if (requestedMethod === "batch") return "batch";
     if (teacher && (requestedMethod === "google" || (!requestedMethod && googleNotice === "connected"))) return "google";
@@ -65,33 +79,51 @@ export function Exports({
   });
   const [batchOpened, setBatchOpened] = useState(method === "batch");
   const classroom = data.selectedClassroom ?? "";
-  const selectionKey = exportSelectionKey(data.profile.id, classroom, data.page);
+  const owner = data.profile.id;
+  const selectionKey = exportSelectionKey(owner, classroom, data.page);
   const connectHref = "/api/google/connect?" + new URLSearchParams({ classroom, page: String(data.page) });
   useEffect(() => {
-    if (!teacher || !googleNotice || !["connected", "cancelled", "school-policy", "expired", "configuration", "failed"].includes(googleNotice)) return;
-    try {
-      const raw = sessionStorage.getItem(selectionKey);
-      sessionStorage.removeItem(selectionKey);
-      const saved = readExportSelection(raw, Date.now(), {
-        reading: new Set(data.logs.map(record => record.id)),
-        writing: new Set(data.submissions.map(record => record.id)),
-      });
-      if (!saved) return;
-      setKind(saved.kind);
-      setTitle(saved.title);
-      setSelected(saved.ids);
-      setIncludeNames(false);
-      key.current = {};
-      setMessage(saved.omitted
-        ? "현재 내보낼 수 있는 기록을 선택했어요. 목록에서 선택을 확인해 주세요."
-        : "연결 전에 선택한 기록과 제목을 불러왔어요.");
-    } catch {}
-  }, [teacher, googleNotice, selectionKey, data.logs, data.submissions]);
+    if (!canRestore) {
+      setRestoring(false);
+      return;
+    }
+    let active = true;
+    async function restore() {
+      setRestoring(true);
+      setRestoreFailed(false);
+      try {
+        const raw = sessionStorage.getItem(selectionKey);
+        if (!raw) return;
+        const saved = await restoreExportSelection(owner, classroom, raw);
+        if (!active) return;
+        if (saved?.status === "unavailable") {
+          setRestoreFailed(true);
+          return;
+        }
+        sessionStorage.removeItem(selectionKey);
+        if (!saved) return;
+        setKind(saved.kind);
+        setTitle(saved.title);
+        setSelected(saved.records);
+        setIncludeNames(false);
+        key.current = {};
+        setMessage(saved.omitted
+          ? "지금 내보낼 수 있는 기록을 불러왔어요. 선택 목록을 확인해 주세요."
+          : "연결 전에 선택한 기록과 제목을 불러왔어요.");
+      } catch {
+        if (active) setRestoreFailed(true);
+      } finally {
+        if (active) setRestoring(false);
+      }
+    }
+    void restore();
+    return () => { active = false; };
+  }, [canRestore, classroom, owner, selectionKey, restoreAttempt]);
 
   function rememberSelection(event: MouseEvent<HTMLAnchorElement>) {
     if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || kind === "drafts") return;
     try {
-      sessionStorage.setItem(selectionKey, JSON.stringify({ kind, title, ids: selected, savedAt: Date.now() }));
+      sessionStorage.setItem(selectionKey, JSON.stringify({ kind, title, ids: selected.map(record => record.id), savedAt: Date.now() }));
     } catch {}
   }
   async function download(format: string) {
@@ -109,10 +141,11 @@ export function Exports({
     try {
       const response = await fetch("/api/export", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-bookforest-actor": owner },
         body: JSON.stringify({
           kind,
-          ids: selected,
+          ids: selected.map(record => record.id),
+          classroom: classroom || undefined,
           title,
           format,
           requestId: key.current[format],
@@ -164,6 +197,24 @@ export function Exports({
     window.history.replaceState(null, "", next.pathname + next.search + next.hash);
   }
 
+  function chooseKind(value: ExportKind) {
+    setKind(value);
+    setSelected([]);
+    key.current = {};
+    const href = hubHref("exports", classroom, { exportMode: method, exportKind: value });
+    if (data.page > 1) router.push(href, { scroll: false });
+    else window.history.replaceState(null, "", href);
+  }
+
+  function selectRecord(record: SelectedRecord, chosen: boolean) {
+    setSelected(old => {
+      if (!chosen) return old.filter(item => item.id !== record.id);
+      if (old.length >= exportSelectionLimit || old.some(item => item.id === record.id)) return old;
+      return [...old, { id: record.id, title: record.title }];
+    });
+    key.current = {};
+  }
+
   async function disconnect(revoke: boolean) {
     if (busy || (revoke && !window.confirm("책숲의 Google 접근 권한을 회수할까요? 다른 브라우저에서도 다시 승인이 필요할 수 있습니다."))) return;
     setBusy(true);
@@ -188,11 +239,12 @@ export function Exports({
     ...(teacher ? [{ value: "google", label: "Google Drive" }] as const : []),
     { value: "batch", label: teacher ? "학급 묶음" : "기간별 묶음" },
   ] as const;
-  const canDownload = !busy && interactive && selected.length > 0 && !!title.trim();
+  const canSelect = interactive && !busy && !restoring;
+  const canDownload = canSelect && selected.length > 0 && !!title.trim();
   return (
     <>
       <Panel title="기록·글 내보내기">
-        <fieldset className="export-methods" disabled={!interactive || busy}>
+        <fieldset className="export-methods" disabled={!canSelect}>
           <legend>저장 방법</legend>
           {methods.map(({ value, label }) => (
             <label key={value}>
@@ -208,11 +260,7 @@ export function Exports({
             <div>
               <label className="field">
                 기록 종류
-                <select disabled={busy || !interactive} value={kind} onChange={(e) => {
-                  setKind(e.target.value as typeof kind);
-                  setSelected([]);
-                  key.current = {};
-                }}>
+                <select disabled={!canSelect} value={kind} onChange={e => chooseKind(e.target.value as ExportKind)}>
                   <option value="reading">독서 기록장</option>
                   <option value="writing">제출한 글 · 완료 작품</option>
                   {!teacher && <option value="drafts">작성 중인 글 · 내 초안</option>}
@@ -220,34 +268,69 @@ export function Exports({
               </label>
               {!rows.length ? <Empty>아직 내보낼 기록이 없습니다.</Empty> : (
                 <div className="export-record-list" role="region" aria-label="내보낼 기록 선택" tabIndex={0}>
-                  {rows.map(row => (
-                    <label className="hub-check hub-record" key={row.id}>
-                      <input type="checkbox" disabled={busy || !interactive} checked={selected.includes(row.id)}
-                        onChange={(event) => {
-                          const chosen = event.target.checked;
-                          setSelected(old => chosen ? [...old, row.id] : old.filter(id => id !== row.id));
-                          key.current = {};
-                        }} />
-                      {selected.includes(row.id) && <strong>{selected.indexOf(row.id) + 1}.</strong>}
-                      <span>
-                        {row.title}
-                        <small> · {row.meta}{teacher ? ` · ${data.students.find(person => person.id === row.student)?.display_name ?? "학생"}` : ""}</small>
-                      </span>
-                    </label>
-                  ))}
+                  {rows.map(row => {
+                    const position = selected.findIndex(item => item.id === row.id);
+                    return (
+                      <label className="hub-check hub-record" key={row.id}>
+                        <input type="checkbox" disabled={!canSelect || (position < 0 && selected.length >= exportSelectionLimit)}
+                          checked={position >= 0} onChange={event => selectRecord(row, event.target.checked)} />
+                        {position >= 0 && <strong>{position + 1}.</strong>}
+                        <span>
+                          {row.title}
+                          <small> · {row.meta}{teacher ? ` · ${data.students.find(person => person.id === row.student)?.display_name ?? "학생"}` : ""}</small>
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
+              )}
+              {!restoring && (data.page > 1 || data.exportNext[kind]) && (
+                <nav className="hub-row export-pages" aria-label="내보낼 기록 페이지">
+                  {data.page > 1 && (
+                    <Link className="button button-outline" scroll={false}
+                      href={hubHref("exports", classroom, { page: data.page - 1, exportKind: kind, exportMode: method })}>이전 기록</Link>
+                  )}
+                  <p aria-current="page">{data.page}페이지</p>
+                  {data.exportNext[kind] && (
+                    <Link className="button button-outline" scroll={false}
+                      href={hubHref("exports", classroom, { page: data.page + 1, exportKind: kind, exportMode: method })}>다음 기록</Link>
+                  )}
+                </nav>
               )}
             </div>
             <section className="export-confirm" aria-labelledby="export-summary-heading">
               <h3 id="export-summary-heading">내보내기 설정</h3>
               <p role="status"><strong>선택한 기록 {selected.length}건</strong></p>
+              {selected.length >= exportSelectionLimit && <p className="form-help">한 파일에 기록을 최대 {exportSelectionLimit}건 담을 수 있어요.</p>}
+              {selected.length > 0 && (
+                <details className="export-selection">
+                  <summary>선택 목록 · 파일에 담기는 순서</summary>
+                  <ol>
+                    {selected.map(record => (
+                      <li key={record.id}>
+                        <span>{record.title}</span>
+                        <button type="button" className="button button-outline" disabled={!canSelect}
+                          aria-label={`${record.title} 선택 해제`} onClick={() => selectRecord(record, false)}>선택 해제</button>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
+              {restoring && <p role="status">연결 전에 선택한 기록을 확인하고 있어요…</p>}
+              {canRestore && restoreFailed && (
+                <p role="status">
+                  이전 선택을 불러오지 못했어요.{" "}
+                  <button type="button" className="button button-outline" disabled={!canSelect}
+                    onClick={() => setRestoreAttempt(attempt => attempt + 1)}>이전 선택 다시 불러오기</button>
+                </p>
+              )}
               <label className="field">
                 기록장·작품집 제목
-                <input disabled={busy || !interactive} value={title} maxLength={100} required
+                <input disabled={!canSelect} value={title} maxLength={100} required
                   onChange={(e) => { setTitle(e.target.value); key.current = {}; }} />
               </label>
               <label className="hub-check">
-                <input type="checkbox" disabled={busy || !interactive} checked={includeNames}
+                <input type="checkbox" disabled={!canSelect} checked={includeNames}
                   onChange={(e) => { setIncludeNames(e.target.checked); key.current = {}; }} />
                 파일에 작성자 표시 이름 포함
               </label>
@@ -264,7 +347,7 @@ export function Exports({
                   {!google.configured ? (
                     <p className="notice">학교의 Google 연결을 준비하고 있어요.</p>
                   ) : !google.connected || requiresReconnect ? (
-                    <a className="button button-primary" href={connectHref} onClick={rememberSelection}>
+                    <a className="button button-primary" aria-disabled={!canSelect} href={canSelect ? connectHref : undefined} onClick={rememberSelection}>
                       {requiresReconnect ? "Google 계정 다시 연결" : "교사 Google 계정 연결"}
                     </a>
                   ) : (
@@ -277,7 +360,7 @@ export function Exports({
                         <summary>Google 연결 관리</summary>
                         <GoogleConnectionCheck />
                         <div className="button-row">
-                          {!busy && <a className="button button-outline" href={connectHref} onClick={rememberSelection}>Google 계정 다시 연결</a>}
+                          {canSelect && <a className="button button-outline" href={connectHref} onClick={rememberSelection}>Google 계정 다시 연결</a>}
                           <button className="button button-outline" disabled={busy} onClick={() => void disconnect(false)}>이 브라우저 연결 해제</button>
                           <button className="button button-outline" disabled={busy} onClick={() => void disconnect(true)}>Google 접근 권한 회수</button>
                         </div>

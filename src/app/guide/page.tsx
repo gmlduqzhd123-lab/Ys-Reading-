@@ -1,20 +1,36 @@
 import Link from "next/link";
 import { BookOpen, GraduationCap, ShieldCheck, ArrowRight } from "lucide-react";
 export const metadata = { title: "책숲 사용 안내" };
+
+const guideLinks = [
+  { role: "학생", links: [["첫 로그인", "#student-login"], ["첫 독서 기록", "#first-reading"]] },
+  { role: "교사", links: [["학급 개설", "#teacher-start"], ["학생 계정 발급", "#student-accounts"], ["첫 미션 배정", "#first-mission"]] },
+  { role: "운영자", links: [["백업·복원", "#operator-backup"], ["권한·보관", "#data-management"]] },
+] as const;
+
 export default function GuidePage() {
   return (
     <div className="guide-page">
       <div className="page-intro">
-        <span className="eyebrow">WELCOME TO BOOKFOREST</span>
-        <h1>우리의 생각이 자라는 방법</h1>
-        <p>책을 읽는 즐거움부터, 내 글을 다시 만나는 기쁨까지.</p>
+        <h1>책숲 사용 안내</h1>
       </div>
+      <nav className="guide-shortcuts panel" aria-label="역할별 사용 안내">
+        {guideLinks.map(({ role, links }) => (
+          <section key={role}>
+            <h2>{role}</h2>
+            <ul>
+              {links.map(([title, href]) => <li key={href}><a className="text-link" href={href}>{title}</a></li>)}
+            </ul>
+          </section>
+        ))}
+      </nav>
       <div className="guide-grid">
-        <section className="panel">
-          <BookOpen className="accent-icon" size={30} />
-          <h2>학생이라면</h2>
+        <section className="panel" id="student-login">
+          <BookOpen className="accent-icon" size={30} aria-hidden="true" />
+          <h2>학생 첫 로그인</h2>
           <ol className="guide-list">
-            <li>선생님에게 받은 학생 아이디로 로그인해요.</li>
+            <li>선생님에게 받은 학생 아이디와 초기 비밀번호로 로그인해요.</li>
+            <li>처음 로그인이면 새 비밀번호를 정한 뒤 그 비밀번호로 다시 로그인해요. 열었던 미션 링크로 이어집니다.</li>
             <li>내 교실에서 배정된 독서미션을 골라요.</li>
             <li>책을 읽고 생각을 쓴 다음 제출해요.</li>
             <li>선생님의 피드백을 읽고 글을 다듬어요.</li>
@@ -28,16 +44,17 @@ export default function GuidePage() {
             내 교실 입장하기 <ArrowRight size={16} />
           </Link>
         </section>
-        <section className="panel">
-          <GraduationCap className="accent-icon" size={30} />
-          <h2>선생님이라면</h2>
+        <section className="panel" id="teacher-start">
+          <GraduationCap className="accent-icon" size={30} aria-hidden="true" />
+          <h2>교사 학급 준비</h2>
           <ol className="guide-list">
             <li>교사 계정으로 로그인하고 오늘의 교실에서 ‘학급 개설’을 눌러요.</li>
-            <li>
-              학급을 개설한 뒤 학생 계정을 준비하고 필요한 참여 동의
-              확인을 진행해요.
+            <li id="student-accounts">
+              <strong>학생 계정 발급.</strong> 학급 준비의 ‘학생 계정’에서 아이디와 별칭을 등록하고, 발급한 초기 비밀번호 안내표를 저장해요. 학생이 참여하기 전에 동의를 확인해요.
             </li>
-            <li>검토한 미션을 선택해 학급에 배정해요.</li>
+            <li id="first-mission">
+              <strong>첫 미션 배정.</strong> 학급 준비의 ‘첫 미션’에서 미션과 표현 방법을 확인하고 해당 학급에 배정해요.
+            </li>
             <li>제출 버전에 피드백과 수정 요청을 남겨요.</li>
             <li>
               현황·알림에서 학생의 활동을 확인하고 기록 검색으로 지난 글을
@@ -46,8 +63,9 @@ export default function GuidePage() {
             <li>완료된 작품으로 우리 반·학년 글쓰기 활동을 열어요.</li>
           </ol>
           <Link href="/start?mode=new" className="text-link">
-            학급 개설 <ArrowRight size={16} />
+            새 학급 개설 <ArrowRight size={16} />
           </Link>
+          <Link href="/start" className="text-link">기존 학급 준비 계속하기 <ArrowRight size={16} /></Link>
           <p className="form-help">
             담당 교사는 학생 계정을 발급하고, 운영자는 필요한 동의 근거와 교사
             권한을 확인합니다.
@@ -70,11 +88,12 @@ export default function GuidePage() {
           책숲 놀이터 열기 <ArrowRight size={16} />
         </Link>
       </section>
-      <section className="panel">
+      <section className="panel" id="first-reading">
         <h2>나의 책장 · 함께 자라는 교실</h2>
         <p>
           오늘 할 일의 ‘오늘 읽고, 한 줄 남기기’에서 읽던 책을 골라 간편하게
-          기록할 수 있어요. ‘수업 공방’에서는 교사가 만든 활동지를 온라인으로
+          기록할 수 있어요. 참여 학급이 여러 곳이면 기록을 남길 학급을 먼저 골라요.
+          ‘수업 공방’에서는 교사가 만든 활동지를 온라인으로
           배부하거나 인쇄하고, 학생은 활동·퀴즈·독서 리듬·도감을 이용합니다.
           종이 제출은 교사가 관찰 기록으로 따로 확인합니다.
         </p>
@@ -113,7 +132,7 @@ export default function GuidePage() {
           저장은 Google 계정 없이 사용할 수 있어요. 내보낸 사본은 이후 원본
           수정과 자동 동기화되지 않습니다.
         </p>
-        <Link href="/hub" className="text-link">
+        <Link href="/hub?tab=reading" className="text-link">
           나의 책장 열기 <ArrowRight size={16} />
         </Link>
       </section>
@@ -135,9 +154,9 @@ export default function GuidePage() {
       <section className="panel" id="operator-backup">
         <h2>운영자 백업과 복원 확인</h2>
         <p>
-          운영자 PC의 프로젝트 폴더에서{" "}
-          <code>node scripts/operator-backup.mjs</code>를 실행합니다. Codex의
-          책숲 Supabase 연결 인증이 필요합니다. 백업은 현재 Windows 사용자와
+          서비스 상태에서 최근 백업과 복원 확인 결과를 볼 수 있어요.
+          운영자 PC의 자동 백업은 책숲의 백업 전용 인증을 사용합니다.
+          백업은 현재 Windows 사용자와
           SYSTEM만 접근하는 문서 폴더의 Bookforest-OperatorBackups 폴더에
           암호화해 저장합니다.
         </p>
@@ -151,11 +170,8 @@ export default function GuidePage() {
           암호화 키는 이 Windows 사용자 계정에 묶여 있습니다. PC나 Windows
           계정을 잃으면 이 백업만으로 복호화할 수 없으므로 기기 교체 전 운영자가
           ‘복구 키 내보내기’ 도구로 별도 암호를 설정한 키 파일을 다른 안전한
-          장소에 보관해야 합니다. 현재 운영자 PC에는 매일 19시 백업과 매시간
-          연결 점검을 구성했습니다. 연결 실패는 별도 경로로 보고하고 재시도하며,
-          로그인·연결 회복 후 누락된 백업을 실행합니다. PC가 켜져 있고 해당
-          Windows 사용자로 로그인한 상태여야 하며 Codex 연결 인증도 유효해야
-          합니다.
+          장소에 보관해야 합니다. PC 예약 백업은 해당 Windows 사용자로 로그인한 상태에서 실행됩니다.
+          연결 실패는 별도 경로로 보고하고, 연결이 회복되면 누락된 백업을 다시 시도합니다.
         </p>
         <p>
           복원 검사는 운영 자료를 덮어쓰지 않습니다. 실제 장애 복구는 격리된 새
@@ -168,8 +184,9 @@ export default function GuidePage() {
           발급 후 초기 비밀번호 안내표를 저장해야 합니다. 학기 진급은 페이지별로
           같은 다음 학급에 추가한 뒤 새 학급의 참여 근거를 확인하고 시작합니다.
         </p>
+        <Link href="/status" className="text-link">서비스 상태 열기 <ArrowRight size={16} /></Link>
       </section>
-      <section className="panel">
+      <section className="panel" id="data-management">
         <h2>학기 성장과 개인정보 운영</h2>
         <p>
           선생님은 학기 성장 보고서에서 기간·학생·대표 작품을 선택하고 원문과

@@ -3,8 +3,8 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { classroomLoginHref } from "./classroom-entry";
-import { loginEntry } from "./login-entry";
+import { classroomAccountHref, classroomLoginHref } from "./classroom-entry";
+import { accountEntry, loginEntry } from "./login-entry";
 
 export interface Profile {
   id: string;
@@ -60,6 +60,6 @@ export async function requireProfile(entry?: { classroomSetup?: boolean; next?: 
     profile.must_change_password ||
     profile.session_fresh === false
   )
-    redirect("/account");
+    redirect(entry?.classroomSetup ? classroomAccountHref : accountEntry(entry?.next));
   return profile;
 }

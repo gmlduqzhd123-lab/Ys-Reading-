@@ -57,6 +57,7 @@ export interface HubData {
   truncated: string[];
   page: number;
   hasNext: boolean;
+  exportNext: Record<"reading" | "writing" | "drafts", boolean>;
 }
 export async function loadHub(
   requestedPage = 1,
@@ -233,6 +234,7 @@ export async function loadHub(
     throw new Error(
       "성장·지갑 합계를 불러오지 못했습니다. 새 데이터베이스 구성을 확인해 주세요.",
     );
+  const more = new Set(results.filter(r => (r.data?.length ?? 0) > 100).map(r => r.table));
   return {
     selectedClassroom: classroom,
     availableClasses: rows("classrooms") as unknown as Classroom[],
@@ -263,9 +265,8 @@ export async function loadHub(
     totals: summary?.data ?? { xp: 0, balances: {} },
     schemaReady: !missing,
     page,
-    hasNext: results.some(
-      (r) => activeTables.has(r.table) && (r.data?.length ?? 0) > 100,
-    ),
+    hasNext: [...more].some(table => activeTables.has(table)),
+    exportNext: { reading: more.has("reading_logs"), writing: more.has("submissions"), drafts: more.has("drafts") },
     truncated: [],
   };
 }

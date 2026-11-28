@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { accountReady, teacherCallbackUrl } from "@/lib/account-access";
 import { classroomAccountHref, classroomLoginCookie, classroomLoginDestination, classroomLoginHref } from "@/lib/classroom-entry";
-import { loginDestination, loginEntry } from "@/lib/login-entry";
+import { accountEntry, loginDestination, loginEntry } from "@/lib/login-entry";
 
 export async function GET(request: NextRequest) {
   const noStore = { "Cache-Control": "private, no-store", Pragma: "no-cache" };
@@ -51,5 +51,5 @@ export async function GET(request: NextRequest) {
       if (destination) return reply(destination);
     }
   }
-  return reply(intent === "classroom" ? classroomAccountHref : "/account");
+  return reply(intent === "classroom" ? classroomAccountHref : accountEntry(next));
 }

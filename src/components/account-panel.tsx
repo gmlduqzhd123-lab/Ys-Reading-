@@ -14,12 +14,16 @@ export function AccountPanel({
   deletions,
   classroomSetup = false,
   teacherRequested = false,
+  returnTo,
+  passwordRelogin,
 }: {
   profile: Profile;
   operator: boolean;
   deletions: OperationsState["deletions"];
   classroomSetup?: boolean;
   teacherRequested?: boolean;
+  returnTo?: string;
+  passwordRelogin: string;
 }) {
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
@@ -69,6 +73,7 @@ export function AccountPanel({
               나의 책장
             </Link>
           )}
+          {ready && returnTo && <Link className="button button-primary" href={returnTo}>선택한 활동 계속하기</Link>}
           {ready && (profile.role === "teacher" || operator) && (
             <Link className="button button-primary" href="/operations">
               학생 계정·기록 관리
@@ -86,6 +91,9 @@ export function AccountPanel({
       {fresh && (
         <section className="ops-card">
           <h2>비밀번호 바꾸기</h2>
+          {profile.must_change_password && returnTo && (
+            <p className="form-help">새 비밀번호로 다시 로그인하면 처음 선택한 화면이 열려요.</p>
+          )}
           <form
             className="ops-form"
             action={(fd) => {
@@ -103,7 +111,7 @@ export function AccountPanel({
                   password,
                 });
                 setMessage(r.message);
-                if (r.ok) router.replace("/login");
+                if (r.ok) router.replace(passwordRelogin);
               });
             }}
           >

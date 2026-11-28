@@ -260,6 +260,10 @@ input::placeholder, textarea::placeholder { color: #8b8188; }
 .export-confirm h3 { margin-top: 0; }
 .export-confirm .hub-check { min-height: 44px; }
 .export-confirm .button-row, .export-connection { margin-block: 12px; }
+.export-pages { margin-top: 12px; }
+.export-selection ol { max-height: 16rem; overflow: auto; padding-inline-start: 1.5rem; }
+.export-selection li { padding-block: 4px; overflow-wrap: anywhere; }
+.export-selection li > button { margin-inline-start: 8px; }
 @media (max-width: 760px) {
   .export-workspace { grid-template-columns: minmax(0, 1fr); }
   .export-record-list { max-height: 17rem; }
