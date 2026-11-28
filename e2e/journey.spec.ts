@@ -69,6 +69,22 @@ test("feedback stays with its submission and the previous batch draft still open
   await page.getByRole("button", { name: "목록으로 돌아가기", exact: true }).click();
   await restore.click();
   await expect(feedback).toHaveValue("CI 기존 일괄 검토 초안");
+
+  await page.getByRole("button", { name: "한 건씩 보기", exact: true }).click();
+  await records.getByRole("button", { name: new RegExp(second.title) }).click();
+  await restore.click();
+  await checked.check();
+  await page.getByRole("button", { name: "이 글 확인 완료", exact: true }).click();
+  await expect(page.getByText("1건의 작품을 완료했어요.", { exact: true })).toBeVisible();
+  const submitted = await teacher.rpc("teacher_work_draft", {
+    p_action: "get", p_scope: "review", p_context: { classroom, kind: "writing", record: second.id },
+  });
+  expect(submitted.error).toBeNull();
+  expect(submitted.data?.payload).toBeNull();
+  const pending = await teacher.rpc("teacher_work_draft", {
+    p_action: "get", p_scope: "review", p_context: { classroom, kind: "writing", record: first.id },
+  });
+  expect(pending.data?.payload?.body).toBe("CI 첫 글에 쓴 피드백");
   checkBrowser();
 });
 

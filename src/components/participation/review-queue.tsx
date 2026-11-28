@@ -41,11 +41,12 @@ export function ReviewQueue({
   const [decision, setDecision] = useState("completed");
   const [notice, setNotice] = useState("");
   const [nextRecord, setNextRecord] = useState<string>();
-  const [sending, setSending] = useState(false);
+  const [pendingReview, setPendingReview] = useState<{ record?: ReviewState["rows"][number] } | null>(null);
+  const sending = pendingReview !== null;
   const detailRef = useRef<HTMLHeadingElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const queue = rows.filter(row => !handled.includes(row.id));
-  const current = mode === "one" ? queue.find(row => row.id === currentId) : undefined;
+  const current = mode === "one" ? queue.find(row => row.id === currentId) ?? pendingReview?.record : undefined;
 
   const draft = useTeacherWorkDraft({
     owner,
@@ -158,7 +159,7 @@ export function ReviewQueue({
           : isBatch ? "선택한 최신 글 검토 완료"
           : decision === "revision_requested" ? "고쳐쓰기 피드백 보내기" : "이 글 확인 완료"}
         disabled={draft.blocked || selected.some(id => !opened.has(id) || !queue.some(row => row.id === id))}
-        onBusyChange={setSending}
+        onBusyChange={busy => setPendingReview(busy ? { record: current } : null)}
         onSuccess={async () => {
           await draft.clear();
           const action = kind === "reading" ? "독서 기록 확인을 마쳤어요."

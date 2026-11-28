@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Book } from "@/lib/hub";
 import type { ClassroomToolState } from "@/lib/classroom-tools";
 import { useToolAction } from "./use-tool-action";
@@ -14,19 +15,28 @@ export function QuickReadingClassChoice({ classes, tab }: {
   classes: { id: string; name: string }[];
   tab: "today" | "reading";
 }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   return (
     <section className="panel quick-reading" aria-labelledby="quick-reading-class-title">
       <h2 id="quick-reading-class-title">오늘 읽고, 한 줄 남기기</h2>
-      <form action="/hub" className="hub-inline">
+      <form action="/hub" className="hub-inline" onSubmit={event => {
+        event.preventDefault();
+        const classroom = new FormData(event.currentTarget).get("classroom");
+        if (typeof classroom !== "string" || !classes.some(item => item.id === classroom) || pending) return;
+        startTransition(() => router.push(hubHref(tab, classroom), { scroll: false }));
+      }}>
         <input type="hidden" name="tab" value={tab} />
         <label className="field">
           간편 독서 기록을 남길 학급
-          <select name="classroom" defaultValue="" required>
+          <select name="classroom" defaultValue="" required disabled={pending}>
             <option value="">학급을 선택해 주세요</option>
             {classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
-        <button className="button button-primary">이 학급의 독서 기록 열기</button>
+        <button className="button button-primary" disabled={pending}>
+          {pending ? "독서 기록을 열고 있어요…" : "이 학급의 독서 기록 열기"}
+        </button>
       </form>
     </section>
   );

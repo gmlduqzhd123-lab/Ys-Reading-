@@ -231,7 +231,7 @@ export function LearningHub({
         <nav className="workspace-tabs" aria-label="교실 바로가기">
           {primaryTabs.map(([id, label]) => (
             <Link key={id} className={`hub-tab ${tab === id ? "selected" : ""}`}
-              aria-current={tab === id ? "page" : undefined} href={hubHref(id, data.selectedClassroom)}>
+              aria-current={tab === id ? "page" : undefined} href={hubHref(id, data.selectedClassroom)} prefetch={false}>
               {label}
             </Link>
           ))}
@@ -256,7 +256,7 @@ export function LearningHub({
                     {index === 1 && canRead && <Link className="hub-tab" href={withClassroom("/reports", data.selectedClassroom)}>학기 성장 보고서</Link>}
                     {links.map(([id, name]) => (
                       <Link key={id} className={`hub-tab ${tab === id ? "selected" : ""}`}
-                        aria-current={tab === id ? "page" : undefined} href={hubHref(id, data.selectedClassroom)}>
+                        aria-current={tab === id ? "page" : undefined} href={hubHref(id, data.selectedClassroom)} prefetch={false}>
                         {name}
                       </Link>
                     ))}

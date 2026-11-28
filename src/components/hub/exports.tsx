@@ -201,9 +201,8 @@ export function Exports({
     setKind(value);
     setSelected([]);
     key.current = {};
-    const href = hubHref("exports", classroom, { exportMode: method, exportKind: value });
-    if (data.page > 1) router.push(href, { scroll: false });
-    else window.history.replaceState(null, "", href);
+    if (data.page > 1)
+      router.push(hubHref("exports", classroom, { exportMode: method, exportKind: value }), { scroll: false });
   }
 
   function selectRecord(record: SelectedRecord, chosen: boolean) {
@@ -287,12 +286,12 @@ export function Exports({
               {!restoring && (data.page > 1 || data.exportNext[kind]) && (
                 <nav className="hub-row export-pages" aria-label="내보낼 기록 페이지">
                   {data.page > 1 && (
-                    <Link className="button button-outline" scroll={false}
+                    <Link className="button button-outline" scroll={false} prefetch={false}
                       href={hubHref("exports", classroom, { page: data.page - 1, exportKind: kind, exportMode: method })}>이전 기록</Link>
                   )}
                   <p aria-current="page">{data.page}페이지</p>
                   {data.exportNext[kind] && (
-                    <Link className="button button-outline" scroll={false}
+                    <Link className="button button-outline" scroll={false} prefetch={false}
                       href={hubHref("exports", classroom, { page: data.page + 1, exportKind: kind, exportMode: method })}>다음 기록</Link>
                   )}
                 </nav>
