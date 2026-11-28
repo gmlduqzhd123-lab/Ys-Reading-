@@ -69,6 +69,7 @@ test("mobile workshop restores drafts, reviews and exports selected evidence, an
     path = (section: string) =>
       "/classroom?classroom=" + cls + "&section=" + section;
   if (!cls) throw Error("ISOLATED_TOUCH_CLASS_REQUIRED");
+  await Promise.all(errors.map(check => check.ready));
   for (const p of [teacher, student]) p.on("dialog", (d) => d.accept());
   await login(teacher, f.accounts[1].email, f.accounts[1].password);
   await teacher.goto(path("maker"));

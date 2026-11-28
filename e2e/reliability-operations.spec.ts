@@ -29,6 +29,7 @@ test("private-device encrypted recovery survives reload, prevents tab overwrite 
     pass = "CI-private-device-passphrase-2026",
     text = "암호화 보관만 확인하는 합성 제목 " + Date.now(),
     path = "/classroom?section=maker&classroom=" + f.workshop.classroom;
+  await check.ready;
   await login(page);
   await context.route("**/*", (route) => {
     const r = route.request();
@@ -157,6 +158,7 @@ test("private-device encrypted recovery survives reload, prevents tab overwrite 
   ).toBeVisible();
   const second = await context.newPage(),
     checkSecond = watchBrowserErrors(second);
+  await checkSecond.ready;
   await second.goto(path);
   await access(second).locator("summary").first().click();
   await access(second)

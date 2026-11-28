@@ -492,7 +492,7 @@ test("real Auth, consent, reading, writing, review, rewards and economy journey"
   ).toBeVisible();
   await student.reload();
   await expect(student.getByText(/검토 완료·게시 중단/)).toBeVisible();
-  expect(browserChecks.flatMap(check=>check.errors),"Browser runtime errors across all roles").toEqual([]);
+  expect(browserChecks.flatMap(check=>check.getErrors()),"Browser runtime errors across all roles").toEqual([]);
   await tc.close();
   await oc.close();
   await sc.close();

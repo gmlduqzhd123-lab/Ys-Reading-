@@ -1,24 +1,20 @@
 import { expect, type Page } from "@playwright/test";
 
+type ObservedDocument = { origin: string; hiddenAt: number | null };
+
 // Log routes and error categories only, never DOM text, credentials or writing.
 export function watchBrowserErrors(page: Page) {
   const errors: string[] = [];
   const failedNavigation: string[] = [];
+  const navigationFailures: { document: ObservedDocument; at: number; diagnostic: string }[] = [];
   let phase = "page";
-  let leavingOrigin: string | null = null;
+  let currentDocument: ObservedDocument | null = null;
   const webkit = page.context().browser()?.browserType().name() === "webkit";
-  page.on("request", request => {
-    if (!request.isNavigationRequest()) return;
-    try {
-      if (request.frame() !== page.mainFrame()) return;
-      const previous = new URL(page.url());
-      const next = new URL(request.url());
-      leavingOrigin = previous.origin === next.origin ? previous.origin : null;
-    } catch {
-      leavingOrigin = null;
-    }
-  });
-  page.on("domcontentloaded", () => { leavingOrigin = null; });
+  const ready = webkit ? page.addInitScript(() => {
+    if (window !== window.top) return;
+    console.debug("bookforest:test-document-open", location.origin);
+    window.addEventListener("pagehide", () => console.debug("bookforest:test-document-hide"));
+  }) : Promise.resolve();
   page.on("requestfailed", request => {
     const url = new URL(request.url());
     if (!url.searchParams.has("_rsc")) return;
@@ -26,7 +22,7 @@ export function watchBrowserErrors(page: Page) {
     const kind = /abort|cancel|\b999\b/i.test(reason) ? "CANCELLED" : "FAILED";
     failedNavigation.push(`${phase} ${url.pathname.replace(/\/[a-f0-9-]{36}$/i, "/:id")} ${kind}`);
   });
-  const record = (message: string, error?: Error) => {
+  const describe = (message: string, error?: Error) => {
     const category = /hydration|hydrating|#418|didn't match/i.test(message)
       ? "HYDRATION_MISMATCH"
       : "UNHANDLED_BROWSER_ERROR";
@@ -67,39 +63,59 @@ export function watchBrowserErrors(page: Page) {
     )
       .slice(0, 4)
       .join(",");
-    errors.push(
-      `${category} ${new URL(page.url()).pathname} phase=${phase} name=${name} reason=${reason} frames=${frames}`,
-    );
+    return `${category} ${new URL(page.url()).pathname} phase=${phase} name=${name} reason=${reason} frames=${frames}`;
   };
   page.on("pageerror", error => {
-    // WebKit may report an abandoned fetch as an access-control error while
-    // unloading the old document. Keep genuine app errors and failed requests
-    // in the destination document visible.
-    const abandoned = webkit && leavingOrigin
-      ? /^Fetch API cannot load (\S+) due to access control checks\.?$/.exec(error.message)
-      : null;
-    if (abandoned) {
-      try {
-        const url = new URL(abandoned[1]);
-        if (url.origin === leavingOrigin && (url.searchParams.has("_rsc") || url.pathname === "/api/monitor")) return;
-      } catch {}
+    const diagnostic = describe(error.message, error);
+    if (currentDocument && mayBeAbandonedRequest(error, currentDocument.origin)) {
+      navigationFailures.push({ document: currentDocument, at: Date.now(), diagnostic });
+      return;
     }
-    record(error.message, error);
+    errors.push(diagnostic);
   });
-  page.on("console", (message) => {
+  page.on("console", message => {
+    const value = message.text();
+    if (webkit && value.startsWith("bookforest:test-document-open ")) {
+      currentDocument = { origin: value.slice("bookforest:test-document-open ".length), hiddenAt: null };
+      return;
+    }
+    if (webkit && value === "bookforest:test-document-hide") {
+      if (currentDocument) currentDocument.hiddenAt = Date.now();
+      return;
+    }
     if (
       message.type() === "error" &&
-      /hydration|hydrating|#418|didn't match/i.test(message.text())
+      /hydration|hydrating|#418|didn't match/i.test(value)
     )
-      record(message.text());
+      errors.push(describe(value));
   });
+  function unresolved() {
+    return errors.concat(navigationFailures
+      // WebKit reports old-document fetch cancellation around pagehide.
+      // A failed request on an active document remains an error.
+      .filter(({ document, at }) => document.hiddenAt === null || Math.abs(document.hiddenAt - at) > 750)
+      .map(({ diagnostic }) => diagnostic));
+  }
   return Object.assign(
-    () => expect(errors, "Browser runtime errors. Failed route requests: " + failedNavigation.slice(-8).join(", ")).toEqual([]),
+    () => expect(unresolved(), "Browser runtime errors. Failed route requests: " + failedNavigation.slice(-8).join(", ")).toEqual([]),
     {
-      errors,
+      ready,
+      getErrors: unresolved,
       phase: (value: string) => {
         phase = value;
       },
     },
   );
+}
+
+function mayBeAbandonedRequest(error: Error, origin: string) {
+  if (error.name === "TypeError" && error.message === "Load failed" && error.stack?.includes("/_next/static/chunks/")) return true;
+  const match = /^Fetch API cannot load (.+?) due to access control checks\.?$/.exec(error.message);
+  if (!match) return false;
+  try {
+    const url = new URL(match[1].replace(/^['"]|['"]$/g, ""));
+    return url.origin === origin && (url.searchParams.has("_rsc") || url.pathname === "/api/monitor");
+  } catch {
+    return false;
+  }
 }
