@@ -110,7 +110,10 @@ export function watchBrowserErrors(page: Page) {
 
 function mayBeAbandonedRequest(error: Error, origin: string) {
   if (error.name === "TypeError" && error.message === "Load failed" && error.stack?.includes("/_next/static/chunks/")) return true;
-  const match = /^Fetch API cannot load (.+?) due to access control checks\.?$/.exec(error.message);
+  // Playwright splits native WebKit messages on the first colon, which can
+  // be the colon in "http:". The stack preserves the original first line.
+  const format = /^Fetch API cannot load (.+?) due to access control checks\.?$/;
+  const match = format.exec(error.message) ?? format.exec(error.stack?.split("\n", 1)[0] ?? "");
   if (!match) return false;
   try {
     const url = new URL(match[1].replace(/^['"]|['"]$/g, ""));
