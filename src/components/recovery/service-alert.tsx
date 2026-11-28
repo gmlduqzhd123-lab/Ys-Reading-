@@ -5,11 +5,13 @@ import { monitorCheckStale, type MonitorState } from "@/lib/monitoring";
 export function ServiceAlert() {
   const [message, setMessage] = useState("");
   useEffect(() => {
-    let disposed = false,
-      failed = false;
+    let disposed = false;
+    let failed = false;
+    let pending = false;
     const controller = new AbortController();
     async function check() {
-      if (document.visibilityState !== "visible") return;
+      if (disposed || pending || document.visibilityState !== "visible") return;
+      pending = true;
       try {
         const r = await fetch("/api/monitor", {
           cache: "no-store",
@@ -42,6 +44,8 @@ export function ServiceAlert() {
             "서버 점검 정보를 확인하지 못했어요. 연결 점검에서 저장 상태를 확인해 주세요.",
           );
         }
+      } finally {
+        pending = false;
       }
     }
     void check();
@@ -60,7 +64,7 @@ export function ServiceAlert() {
   }, []);
   return message ? (
     <div className="connection-banner" role="status">
-      {message} <Link href="/status">연결·복구 확인</Link>
+      {message} <Link href="/status" prefetch={false}>연결·복구 확인</Link>
     </div>
   ) : null;
 }

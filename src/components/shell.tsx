@@ -201,6 +201,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <header className="paper-header">
         <Link
           href="/"
+          prefetch={false}
           className="paper-brand"
           onClick={close}
           aria-label="책숲 BOOKFOREST · 홈"
@@ -226,6 +227,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link
             className="paper-mobile-account"
             href="/account"
+            prefetch={false}
             onClick={close}
           >
             계정·참여 관리
@@ -248,6 +250,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link
             className="paper-account"
             href="/account"
+            prefetch={false}
             onClick={close}
             aria-label="나의 계정"
           >
@@ -273,14 +276,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <footer className="page-footer">
-          <Link href="/" className="paper-footer-brand">
+          <Link href="/" prefetch={false} className="paper-footer-brand">
             책숲 <span>읽고, 생각하고, 함께 자라요.</span>
           </Link>
           <div>
-            <Link href="/guide">
+            <Link href="/guide" prefetch={false}>
               사용 안내 <ArrowUpRight size={12} />
             </Link>
-            <Link href="/privacy">개인정보와 작품 공개 안내</Link>
+            <Link href="/privacy" prefetch={false}>개인정보와 작품 공개 안내</Link>
           </div>
           <p className="ys-credit">
             © 2026 엽쌤. All rights reserved. ·{" "}

@@ -235,7 +235,7 @@ export function LearningHub({
               {label}
             </Link>
           ))}
-          {!teacher && <Link className="hub-tab" href={withClassroom("/app?view=feedback", data.selectedClassroom)}>받은 피드백</Link>}
+          {!teacher && <Link className="hub-tab" href={withClassroom("/app?view=feedback", data.selectedClassroom)} prefetch={false}>받은 피드백</Link>}
         </nav>
         <details className="workspace-more" key={tab + ":" + data.selectedClassroom}
           open={otherTabs.some(([id]) => id === tab) || undefined}>

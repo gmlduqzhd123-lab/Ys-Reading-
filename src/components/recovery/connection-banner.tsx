@@ -42,7 +42,7 @@ export function ConnectionBanner() {
       {offline
         ? "인터넷 연결이 끊겼어요. 지금 입력은 화면에 남아 있어요. 저장 완료를 확인하기 전에는 탭을 닫지 말고 글을 파일로 보관해 주세요."
         : "인터넷에 다시 연결됐어요. 글의 저장 상태를 확인하고 ‘다시 저장’을 눌러 주세요."}{" "}
-      <Link href="/status">연결 상태 점검</Link>
+      <Link href="/status" prefetch={false}>연결 상태 점검</Link>
       {!offline && (
         <button
           onClick={() => setReconnected(false)}

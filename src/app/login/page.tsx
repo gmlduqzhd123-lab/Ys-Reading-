@@ -45,8 +45,8 @@ export default async function LoginPage({
           <span className="eyebrow">WELCOME BACK</span>
           <h2>{teacher ? "교사 로그인" : "학생 입장"}</h2>
           <nav className="login-choices" aria-label="로그인 종류">
-            <Link href={loginEntry({ next })} aria-current={!teacher ? "page" : undefined}>학생 입장</Link>
-            <Link href={intent ? classroomLoginHref : loginEntry({ next, teacher: true })} aria-current={teacher ? "page" : undefined}>교사 로그인</Link>
+            <Link href={loginEntry({ next })} prefetch={false} aria-current={!teacher ? "page" : undefined}>학생 입장</Link>
+            <Link href={intent ? classroomLoginHref : loginEntry({ next, teacher: true })} prefetch={false} aria-current={teacher ? "page" : undefined}>교사 로그인</Link>
           </nav>
           {intent && <p>교사 로그인 후 학급 개설 화면으로 이동해요.</p>}
           {next && <p className="form-help">로그인 후 선택한 화면을 이어서 열어요.</p>}

@@ -20,8 +20,8 @@ export default function Home() {
           <h1>읽은 만큼,<br className="paper-mobile-break" /> 자라는 나.</h1>
           <p>오늘의 한 문장을 책숲에 남겨 보세요.<br />작은 기록이 모여, 나만의 이야기가 됩니다.</p>
           <div className="button-row">
-            <Link href="/hub?tab=today" className="button button-primary"><PenLine size={16} aria-hidden="true" />학생 입장</Link>
-            <Link href={newClassHref} className="button button-outline">교사 시작 <ArrowRight size={16} aria-hidden="true" /></Link>
+            <Link href="/hub?tab=today" prefetch={false} className="button button-primary"><PenLine size={16} aria-hidden="true" />학생 입장</Link>
+            <Link href={newClassHref} prefetch={false} className="button button-outline">교사 시작 <ArrowRight size={16} aria-hidden="true" /></Link>
             <Link href="/missions" className="paper-text-link">독서미션 둘러보기 <ArrowRight size={16} aria-hidden="true" /></Link>
           </div>
         </div>

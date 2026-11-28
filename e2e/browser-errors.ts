@@ -5,6 +5,20 @@ export function watchBrowserErrors(page: Page) {
   const errors: string[] = [];
   const failedNavigation: string[] = [];
   let phase = "page";
+  let leavingOrigin: string | null = null;
+  const webkit = page.context().browser()?.browserType().name() === "webkit";
+  page.on("request", request => {
+    if (!request.isNavigationRequest()) return;
+    try {
+      if (request.frame() !== page.mainFrame()) return;
+      const previous = new URL(page.url());
+      const next = new URL(request.url());
+      leavingOrigin = previous.origin === next.origin ? previous.origin : null;
+    } catch {
+      leavingOrigin = null;
+    }
+  });
+  page.on("domcontentloaded", () => { leavingOrigin = null; });
   page.on("requestfailed", request => {
     const url = new URL(request.url());
     if (!url.searchParams.has("_rsc")) return;
@@ -36,6 +50,8 @@ export function watchBrowserErrors(page: Page) {
         "Request was cancelled",
         "WebKit",
         "NSURLErrorDomain",
+        "due to access control checks",
+        "AbortSignal",
         "ResizeObserver loop",
         "AbortError",
         "cancelled",
@@ -55,7 +71,21 @@ export function watchBrowserErrors(page: Page) {
       `${category} ${new URL(page.url()).pathname} phase=${phase} name=${name} reason=${reason} frames=${frames}`,
     );
   };
-  page.on("pageerror", (error) => record(error.message, error));
+  page.on("pageerror", error => {
+    // WebKit may report an abandoned fetch as an access-control error while
+    // unloading the old document. Keep genuine app errors and failed requests
+    // in the destination document visible.
+    const abandoned = webkit && leavingOrigin
+      ? /^Fetch API cannot load (\S+) due to access control checks\.?$/.exec(error.message)
+      : null;
+    if (abandoned) {
+      try {
+        const url = new URL(abandoned[1]);
+        if (url.origin === leavingOrigin && (url.searchParams.has("_rsc") || url.pathname === "/api/monitor")) return;
+      } catch {}
+    }
+    record(error.message, error);
+  });
   page.on("console", (message) => {
     if (
       message.type() === "error" &&

@@ -252,7 +252,7 @@ export function Exports({
             </label>
           ))}
         </fieldset>
-        <Link className="text-link" href="/account/records">내보낸 사본의 보관·삭제 확인 →</Link>
+        <Link className="text-link" href="/account/records" prefetch={false}>내보낸 사본의 보관·삭제 확인 →</Link>
         {connectionNotice && <p className="notice" role="status">{connectionNotice}</p>}
         {method !== "batch" && (
           <div id="file-export-choice" className="export-workspace" tabIndex={-1}>
