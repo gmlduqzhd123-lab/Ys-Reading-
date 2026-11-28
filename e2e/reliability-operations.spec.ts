@@ -2,8 +2,8 @@ import { test, expect, type Page } from "@playwright/test";
 import fs from "node:fs";
 import { watchBrowserErrors } from "./browser-errors";
 const f = JSON.parse(fs.readFileSync("e2e/.runtime/fixtures.json", "utf8"));
-async function login(p: Page) {
-  await p.goto("/login");
+async function login(p: Page, destination: string) {
+  await p.goto(destination);
   await p
     .getByLabel("학생 아이디 또는 선생님 이메일", { exact: true })
     .fill(f.accounts[1].email);
@@ -11,7 +11,7 @@ async function login(p: Page) {
   await p
     .getByRole("button", { name: "내 교실로 들어가기", exact: true })
     .click();
-  await expect(p).toHaveURL(/\/hub/);
+  await expect(p).toHaveURL(destination);
 }
 function access(p: Page) {
   return p
@@ -30,7 +30,6 @@ test("private-device encrypted recovery survives reload, prevents tab overwrite 
     text = "암호화 보관만 확인하는 합성 제목 " + Date.now(),
     path = "/classroom?section=maker&classroom=" + f.workshop.classroom;
   await check.ready;
-  await login(page);
   await context.route("**/*", (route) => {
     const r = route.request();
     if (
@@ -40,7 +39,7 @@ test("private-device encrypted recovery survives reload, prevents tab overwrite 
       return route.abort("failed");
     return route.continue();
   });
-  await page.goto(path);
+  await login(page, path);
   const title = page.getByLabel("활동 제목", { exact: true });
   await expect(title).toBeVisible();
   await expect(

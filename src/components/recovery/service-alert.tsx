@@ -48,18 +48,27 @@ export function ServiceAlert() {
         pending = false;
       }
     }
-    void check();
-    const timer = setInterval(() => void check(), 60000);
-    document.addEventListener("visibilitychange", check);
-    window.addEventListener("online", check);
-    window.addEventListener("focus", check);
+    let scheduled: ReturnType<typeof setTimeout> | undefined;
+    const cancel = () => clearTimeout(scheduled);
+    const schedule = () => {
+      cancel();
+      if (document.visibilityState === "visible") scheduled = setTimeout(() => void check(), 1000);
+    };
+    schedule();
+    const timer = setInterval(schedule, 60000);
+    document.addEventListener("visibilitychange", schedule);
+    window.addEventListener("online", schedule);
+    window.addEventListener("pageshow", schedule);
+    window.addEventListener("pagehide", cancel);
     return () => {
       disposed = true;
       controller.abort();
+      cancel();
       clearInterval(timer);
-      document.removeEventListener("visibilitychange", check);
-      window.removeEventListener("online", check);
-      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", schedule);
+      window.removeEventListener("online", schedule);
+      window.removeEventListener("pageshow", schedule);
+      window.removeEventListener("pagehide", cancel);
     };
   }, []);
   return message ? (
